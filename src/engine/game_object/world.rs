@@ -1,7 +1,8 @@
 
 use std::{cell::RefCell, ptr, collections::VecDeque};
+use anyhow::{Result, anyhow};
 
-use crate::engine::vectors::Vector3;
+use crate::engine::game_object::game_object::DEAD_MESSAGE;
 
 use super::{GameObject, game_object::_GameObject};
 
@@ -36,85 +37,54 @@ impl World {
         GameObject { id, world: &self }
     }
 
-    pub(in crate::engine::game_object) fn set_parent(&self, parent: u32, child: u32) {
+    pub(in crate::engine::game_object) fn set_parent(&self, parent: u32, child: u32) -> Result<()> {
         let mut temp = self.obj_list.borrow_mut();
         let old_parent = temp[child as usize].as_ref().map_or(0, |t| t.parent);
         
-        temp[old_parent as usize].as_mut().unwrap().children.remove(&child);
-        temp[parent as usize].as_mut().unwrap().children.insert(child);
-        temp[child as usize].as_mut().unwrap().parent = parent;
-    }
+        temp[old_parent as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.children.remove(&child);
+        temp[parent as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.children.insert(child);
+        temp[child as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.parent = parent;
 
-    pub(in crate::engine::game_object) fn get_all_children(&self, obj: u32) -> Box<[u32]> {
-        let mut objects: Vec<u32> = Vec::new();
-
-        let mut q = VecDeque::new();
-        q.push_back(obj);
-        while q.len() > 0 {
-            let current = q.pop_front().unwrap();
-            let temp = &self.obj_list.borrow()[current as usize];
-            let obj = temp.as_ref().unwrap();
-
-            q.extend(obj.children.iter());
-            objects.extend(obj.children.iter());
-        }
-
-        objects.into_boxed_slice()
+        Ok(())
     }
 
     pub fn get_root(&self) -> GameObject {
         self.id_to_game_object(*self.root.borrow())
     }
 
-    pub fn create_empty(&self, name: &str, parent: GameObject) -> GameObject {
+    pub fn create_empty(&self, name: &str, parent: GameObject) -> Result<GameObject> {
         if !ptr::eq(self, parent.world) {
-            panic!("Parent from another world!");
+            return Err(anyhow!("Parent from another world!"));
         }
 
         let id = self.add_object(_GameObject::empty(name));
-        self.set_parent(parent.id, id);
+        self.set_parent(parent.id, id)?;
 
-        self.id_to_game_object(id)
+        Ok(self.id_to_game_object(id))
     }
 
-    pub fn create_at_pos(&self, name: &str, parent: GameObject, position: Vector3) -> GameObject {
-        if !ptr::eq(self, parent.world) {
-            panic!("Parent from another world!");
-        }
-
-        let id = self.add_object(_GameObject::at_pos(name, position));
-        self.set_parent(parent.id, id);
-
-        self.id_to_game_object(id)
-    }
-
-    pub fn create_object(&self, name: &str, parent: GameObject, position: Vector3, rotation: Vector3, scale: Vector3) -> GameObject {
-        if !ptr::eq(self, parent.world) {
-            panic!("Parent from another world!");
-        }
-
-        let id = self.add_object(_GameObject::new(name, position, rotation, scale));
-        self.set_parent(parent.id, id);
-
-        self.id_to_game_object(id)
-    }
-
-    pub fn destroy(&self, obj: GameObject) {
-        let children = obj.get_children();
+    pub fn destroy(&self, obj: GameObject) -> Result<()> {
+        let children = obj.get_children()?;
 
         // DFS destroy children
         for child in Vec::from(children).into_iter() {
-            self.destroy(child);
+            self.destroy(child)?;
         }
 
         // Remove self from parent's child list
         let mut temp = self.obj_list.borrow_mut();
-        let parent = temp[obj.id as usize].as_ref().unwrap().parent as usize;
-        let parent = temp[parent].as_mut().unwrap();
+        let parent = temp[obj.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?.parent as usize;
+        let parent = temp[parent].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?;
 
         parent.children.remove(&obj.id);
 
         // De-allocate _GameObject
         temp[obj.id as usize] = None;
+
+        Ok(())
+    }
+
+    pub fn get_objlist_size(&self) -> usize {
+        self.object_count.borrow().to_owned() as usize
     }
 }

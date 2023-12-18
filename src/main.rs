@@ -1,58 +1,99 @@
+#![cfg_attr(debug_assertions, allow(dead_code))]
+
 mod engine;
 
-use std::mem;
+use anyhow::Error;
+use engine::component::{Component, Engine};
+use regex::Regex;
 
-use engine::component::Component;
-
-use crate::engine::{game_object::World};
-
-#[derive(Clone, Copy)]
-struct TestComponent1 {
-    test: i32
-}
-
-impl Component for TestComponent1 {}
+use crate::engine::game_object::World;
 
 #[derive(Clone, Copy)]
-struct TestComponent2 {
-    test: f32
+pub struct TestComponent {
+    pub value: i32
 }
 
-impl Component for TestComponent2 {}
+impl Component for TestComponent {
+    fn update(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
+        println!("{}", self.value);
 
-fn main() -> anyhow::Result<()> {
-    let c1: Box<dyn Component> = Box::new(TestComponent1 { test: 5 });
-    let c2: Box<dyn Component> = Box::new(TestComponent2 { test: 5.0 });
+        Ok(())
+    }
+}
 
-    let t = c1.downcast::<TestComponent1>().ok().unwrap();
-
-    println!("vaue: {}", t.test);
-
+fn start_game() -> anyhow::Result<()> {
     let world = World::new();
     let root = world.get_root();
 
     let a = world.create_empty("a", root)?;
-    let b = world.create_empty("b", a)?;
+    let _b= world.create_empty("b", a)?;
     let c = world.create_empty("c", a)?;
     let d = world.create_empty("d", c)?;
 
-    let children = root.get_all_children()? ;
-    let names: Box<[String]> = children.iter().map(|c| c.get_name().unwrap()).collect();
+    let comp = TestComponent { value: 5 };
+    d.add_component(comp)?;
 
-    println!("children: {:?}", names);
+    println!("Sending update...");
+    root.update(&None)?;
 
-    world.destroy(c)?;
-
-    let children = root.get_all_children()?;
-    let names: Box<[String]> = children.iter().map(|c| c.get_name().unwrap()).collect();
-
-    println!("children: {:?}", names);
-
-    let r = d.get_name();
-    if r.is_err() {
-        let e = r.err().unwrap();
-        println!("{}", e.backtrace());
-    }
+    println!("Changing component value...");
+    let mut comp = d.get_component::<TestComponent>()?.unwrap();
+    comp.borrow_mut().value = 69;
+    
+    println!("Sending update...");
+    root.update(&None)?;
 
     Ok(())
+}
+
+fn main() {
+    match start_game() {
+        Ok(_) => {},
+        Err(err) => { print!("{}", clean_backtrace(&err)); }
+    }
+}
+
+pub fn clean_backtrace(error: &Error) -> String {
+    let str = format!("{}", error.backtrace());
+
+    let mut clean_str = String::new();
+    clean_str.reserve(str.len());
+
+    clean_str += &format!("Error: {}\n", error.to_string());
+    
+    let is_error_line = Regex::new("^ +[0-9]+:").unwrap();
+    let in_crate = Regex::new("^ +[0-9]+: opengl_engine::").unwrap();
+
+    let mut count = 0;
+    let mut adding = false;
+    for line in str.split('\n') {
+        let result = is_error_line.find(line);
+
+        if adding {
+            if result.is_some() {
+                adding = false;
+            } else {
+                clean_str += &line;
+                clean_str += "\n";
+            }
+        }
+        if !adding {
+            match result {
+                Some(line_number) => {
+                    if in_crate.find(line).is_some() {
+                        adding = true;
+                        
+                        let new_line = format!("   {}: ", count) + &line[line_number.end()..];
+                        clean_str += &new_line;
+                        clean_str += "\n";
+        
+                        count += 1;
+                    }
+                },
+                None => {}
+            }
+        }
+    }
+
+    clean_str
 }

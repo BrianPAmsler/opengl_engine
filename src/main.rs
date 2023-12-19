@@ -3,7 +3,7 @@
 mod engine;
 
 use anyhow::Error;
-use engine::component::{Component, Engine};
+use engine::{component::Component, Engine};
 use regex::Regex;
 
 use crate::engine::game_object::World;
@@ -23,25 +23,37 @@ impl Component for TestComponent {
 
 fn start_game() -> anyhow::Result<()> {
     let world = World::new();
+    world.reserve_objlist(10000000);
     let root = world.get_root();
 
     let a = world.create_empty("a", root)?;
-    let _b= world.create_empty("b", a)?;
+    let b = world.create_empty("b", a)?;
     let c = world.create_empty("c", a)?;
     let d = world.create_empty("d", c)?;
 
-    let comp = TestComponent { value: 5 };
-    d.add_component(comp)?;
+    let comp1 = TestComponent { value: 1 };
+    let comp2 = TestComponent { value: 2 };
+    let comp3 = TestComponent { value: 3 };
+    let comp4 = TestComponent { value: 4 };
+
+    a.add_component(comp1)?;
+    b.add_component(comp2)?;
+    c.add_component(comp3)?;
+    d.add_component(comp4)?;
 
     println!("Sending update...");
-    root.update(&None)?;
+    root.update(&Engine {})?;
 
-    println!("Changing component value...");
-    let mut comp = d.get_component::<TestComponent>()?.unwrap();
-    comp.borrow_mut().value = 69;
-    
-    println!("Sending update...");
-    root.update(&None)?;
+    println!("Removing comp3...");
+    let comp = c.get_component::<TestComponent>()?.unwrap();
+
+    c.remove_component(comp)?;
+
+    world.destroy(d)?;
+
+    root.update(&Engine {})?;
+
+    d.get_name()?;
 
     Ok(())
 }
@@ -49,20 +61,20 @@ fn start_game() -> anyhow::Result<()> {
 fn main() {
     match start_game() {
         Ok(_) => {},
-        Err(err) => { print!("{}", clean_backtrace(&err)); }
+        Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine"), ); }
     }
 }
 
-pub fn clean_backtrace(error: &Error) -> String {
+pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {
     let str = format!("{}", error.backtrace());
 
     let mut clean_str = String::new();
     clean_str.reserve(str.len());
 
-    clean_str += &format!("Error: {}\n", error.to_string());
+    clean_str += &format!("Error: {}\n\nStack Backtrace\n", error.to_string());
     
     let is_error_line = Regex::new("^ +[0-9]+:").unwrap();
-    let in_crate = Regex::new("^ +[0-9]+: opengl_engine::").unwrap();
+    let in_crate = Regex::new(&format!("^ +[0-9]+: {}::", crate_name)).unwrap();
 
     let mut count = 0;
     let mut adding = false;

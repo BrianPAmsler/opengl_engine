@@ -48,6 +48,10 @@ impl World {
         Ok(())
     }
 
+    pub fn reserve_objlist(&self, size: usize) {
+        self.obj_list.borrow_mut().reserve(size);
+    }
+
     pub fn get_root(&self) -> GameObject {
         self.id_to_game_object(*self.root.borrow())
     }

@@ -3,10 +3,7 @@ use std::{marker::PhantomData, rc::Rc, cell::{RefCell, Ref, RefMut}};
 use anyhow::Error;
 use downcast_rs::{Downcast, impl_downcast};
 
-use super::game_object::{GameObject, World};
-
-// TODO: Placeholder until Engine is implemented
-pub type Engine = Option<PhantomData<()>>;
+use super::{game_object::{GameObject, World}, Engine};
 
 pub trait Component: Downcast + CopyCloneRequriement {
     fn init(&mut self, _engine: &Engine, _world: &World, _owner: GameObject) -> Result<(), Error> {Ok(())}

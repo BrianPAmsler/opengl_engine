@@ -1,8 +1,8 @@
 use std::{collections::{HashSet, VecDeque}, ops::{Deref, DerefMut}, cell::RefCell, rc::Rc};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, Error};
 
-use crate::engine::component::{Component, Engine, ComponentRc};
+use crate::engine::{component::{Component, ComponentRc}, Engine};
 
 use super::World;
 
@@ -237,5 +237,30 @@ impl<'a> GameObject<'a> {
         }
 
         Ok(vec.into_boxed_slice())
+    }
+
+    pub fn get_all_components<C: Component>(&self) -> Result<Box<[ComponentRc<C>]>> {
+        let mut vec = Vec::new();
+
+        // Add Self Components
+        vec.extend(self.get_components()?.into_vec().into_iter());
+
+        // Add components in children
+        self.get_children()?.into_iter().try_for_each(|c| {
+            c.get_all_components()?.into_vec().into_iter().for_each(|d| vec.push(d));
+
+            Ok::<(), Error>(())
+        })?;
+
+        Ok(vec.into_boxed_slice())
+    }
+
+    pub fn remove_component<C: Component>(&self, component: ComponentRc<C>) -> Result<()> {
+        let mut game_object = self.borrow_game_object_mut()?;
+        let component = component.take_rc();
+
+        game_object.components.retain(|c| !Rc::ptr_eq(c, &component));
+
+        Ok(())
     }
 }

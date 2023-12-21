@@ -1,3 +1,5 @@
+pub mod components;
+
 use std::{marker::PhantomData, rc::Rc, cell::{RefCell, Ref, RefMut}};
 
 use anyhow::Error;
@@ -19,7 +21,7 @@ pub trait CopyCloneRequriement {
 
 impl<T> CopyCloneRequriement for T
 where
-    T: Component + Clone + Copy
+    T: Component + Clone
 {   
     fn clone_box(&self) -> Box<dyn Component> {
         Box::new(self.clone())
@@ -32,6 +34,7 @@ impl Clone for Box<dyn Component> {
     }
 }
 
+#[derive(Clone)]
 pub struct ComponentRc<C: Component> {
     rc: Rc<RefCell<dyn Component>>,
     _pd: PhantomData<C>

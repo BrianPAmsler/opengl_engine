@@ -2,7 +2,7 @@
 use std::{cell::RefCell, ptr};
 use anyhow::{Result, anyhow};
 
-use crate::engine::game_object::game_object::DEAD_MESSAGE;
+use crate::engine::{game_object::game_object::DEAD_MESSAGE, component::components::Transform};
 
 use super::{GameObject, game_object::_GameObject};
 
@@ -64,7 +64,10 @@ impl World {
         let id = self.add_object(_GameObject::empty(name));
         self.set_parent(parent.id, id)?;
 
-        Ok(self.id_to_game_object(id))
+        let obj = self.id_to_game_object(id);
+        obj.add_component(Transform::ZERO)?;
+
+        Ok(obj)
     }
 
     pub fn destroy(&self, obj: GameObject) -> Result<()> {

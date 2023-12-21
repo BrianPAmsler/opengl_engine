@@ -3,19 +3,25 @@
 mod engine;
 
 use anyhow::Error;
-use engine::{component::Component, Engine};
+use engine::{component::{Component, components::Transform, ComponentRc}, Engine, vectors::Vector3};
 use regex::Regex;
 
 use crate::engine::game_object::World;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct TestComponent {
-    pub value: i32
+    pub transform: Option<ComponentRc<Transform>>
 }
 
 impl Component for TestComponent {
+    fn init(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
+        self.transform = _owner.get_component::<Transform>()?;
+
+        Ok(())
+    }
+
     fn update(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
-        println!("{}", self.value);
+        self.transform.as_mut().unwrap().borrow_mut().position += (0.0f32, 1.0f32, 0.0f32).into();
 
         Ok(())
     }
@@ -31,29 +37,17 @@ fn start_game() -> anyhow::Result<()> {
     let c = world.create_empty("c", a)?;
     let d = world.create_empty("d", c)?;
 
-    let comp1 = TestComponent { value: 1 };
-    let comp2 = TestComponent { value: 2 };
-    let comp3 = TestComponent { value: 3 };
-    let comp4 = TestComponent { value: 4 };
+    c.add_component(TestComponent { transform: None })?;
 
-    a.add_component(comp1)?;
-    b.add_component(comp2)?;
-    c.add_component(comp3)?;
-    d.add_component(comp4)?;
+    root.init(&Engine {  })?;
 
-    println!("Sending update...");
-    root.update(&Engine {})?;
+    let comp = c.get_component::<Transform>()?.unwrap();
 
-    println!("Removing comp3...");
-    let comp = c.get_component::<TestComponent>()?.unwrap();
+    println!("Pos: {}", comp.borrow().position);
 
-    c.remove_component(comp)?;
+    root.update(&Engine {  })?;
 
-    world.destroy(d)?;
-
-    root.update(&Engine {})?;
-
-    d.get_name()?;
+    println!("Pos after update: {}", comp.borrow().position);
 
     Ok(())
 }

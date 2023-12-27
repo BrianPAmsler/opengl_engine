@@ -3,14 +3,15 @@
 mod engine;
 
 use anyhow::Error;
-use engine::{component::{Component, components::Transform, ComponentRc}, Engine, vectors::Vector3};
+use engine::{Engine, game_object::component::{components::Transform, ComponentRef, Component}};
 use regex::Regex;
 
 use crate::engine::game_object::World;
 
 #[derive(Clone)]
 pub struct TestComponent {
-    pub transform: Option<ComponentRc<Transform>>
+    pub transform: Option<ComponentRef<Transform>>,
+    pub value: u32
 }
 
 impl Component for TestComponent {
@@ -21,7 +22,7 @@ impl Component for TestComponent {
     }
 
     fn update(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
-        self.transform.as_mut().unwrap().borrow_mut().position += (0.0f32, 1.0f32, 0.0f32).into();
+        self.transform.as_mut().unwrap().borrow_mut()?.position += (0, 1, 0).into();
 
         Ok(())
     }
@@ -37,17 +38,17 @@ fn start_game() -> anyhow::Result<()> {
     let c = world.create_empty("c", a)?;
     let d = world.create_empty("d", c)?;
 
-    c.add_component(TestComponent { transform: None })?;
+    c.add_component(TestComponent { transform: None, value: 0 })?;
 
     root.init(&Engine {  })?;
 
     let comp = c.get_component::<Transform>()?.unwrap();
 
-    println!("Pos: {}", comp.borrow().position);
+    println!("Pos: {}", comp.borrow()?.position);
 
     root.update(&Engine {  })?;
 
-    println!("Pos after update: {}", comp.borrow().position);
+    println!("Pos after update: {}", comp.borrow()?.position);
 
     Ok(())
 }

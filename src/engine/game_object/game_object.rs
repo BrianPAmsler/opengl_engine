@@ -1,19 +1,19 @@
-use std::{collections::{HashSet, VecDeque}, ops::{Deref, DerefMut}, cell::RefCell, rc::Rc};
+use std::{collections::{HashSet, VecDeque}, ops::{Deref, DerefMut}, cell::{RefCell, Ref}};
 
-use anyhow::{Result, anyhow, Error};
+use anyhow::{Result, anyhow, Error, bail};
 
-use crate::engine::{component::{Component, ComponentRc}, Engine};
+use crate::engine::Engine;
 
-use super::World;
+use super::{World, component::{Component, ComponentRef}};
 
 pub(in crate) const DEAD_MESSAGE: &'static str = "Object has been destroyed!";
 
 #[derive(Clone)]
 pub(in crate::engine::game_object) struct _GameObject {
     pub name: String,
-    pub parent: u32,
-    pub components: Vec<Rc<RefCell<dyn Component>>>,
-    pub children: HashSet<u32>
+    pub parent: usize,
+    pub components: Vec<Option<RefCell<Box<dyn Component>>>>,
+    pub children: HashSet<usize>
 }
 
 impl _GameObject {
@@ -22,9 +22,15 @@ impl _GameObject {
     }
 }
 
-struct GameObjectRef<'a> {
+pub(in crate::engine::game_object) struct GameObjectRef<'a> {
     r: std::cell::Ref<'a, Vec<Option<Box<_GameObject>>>>,
     id: usize
+}
+
+impl Clone for GameObjectRef<'_> {
+    fn clone(&self) -> Self {
+        Self { r: Ref::clone(&self.r), id: self.id.clone() }
+    }
 }
 
 impl Deref for GameObjectRef<'_> {
@@ -55,13 +61,13 @@ impl DerefMut for GameObjectRefMut<'_> {
 }
 
 #[derive(Clone, Copy)]
-pub struct GameObject<'a> {
-    pub(in crate::engine::game_object) id: u32,
-    pub(in crate::engine::game_object) world: &'a World
+pub struct GameObject {
+    pub(in crate::engine::game_object) id: usize,
+    pub(in crate::engine::game_object) world: &'static World
 }
 
-impl<'a> GameObject<'a> {
-    fn borrow_game_object(&self) -> Result<GameObjectRef<'a>> {
+impl GameObject {
+    fn borrow_game_object(&self) -> Result<GameObjectRef<'static>> {
         let r = self.world.obj_list.borrow();
 
         r[self.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?;
@@ -69,7 +75,7 @@ impl<'a> GameObject<'a> {
         Ok(GameObjectRef { r, id: self.id as usize })
     }
 
-    fn borrow_game_object_mut(&self) -> Result<GameObjectRefMut<'a>> {
+    fn borrow_game_object_mut(&self) -> Result<GameObjectRefMut> {
         let r = self.world.obj_list.borrow_mut();
 
         r[self.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?;
@@ -117,7 +123,7 @@ impl<'a> GameObject<'a> {
     pub fn get_all_children(&self) -> Result<Box<[GameObject]>> {
         let obj_list = self.world.obj_list.borrow();
 
-        let mut objects: Vec<u32> = Vec::new();
+        let mut objects: Vec<usize> = Vec::new();
         let mut q = VecDeque::new();
         q.push_back(self.id);
         while q.len() > 0 {
@@ -138,10 +144,10 @@ impl<'a> GameObject<'a> {
     }
 
     pub fn add_component<C: Component>(&self, component: C) -> Result<()>{
-        let rc = Rc::new(RefCell::new(component));
+        let rf = RefCell::new(Box::new(component));
         let mut game_object = self.borrow_game_object_mut()?;
 
-        game_object.components.push(rc);
+        game_object.components.push(Some(rf));
 
         Ok(())
     }
@@ -149,13 +155,11 @@ impl<'a> GameObject<'a> {
     pub fn init(&self, _engine: &Engine) -> Result<()> {
         // Init components
 
-        // Grab references to all of the components so we can iterate throuh them without borrowing our _GameObject
-        let components: Box<[Rc<RefCell<dyn Component>>]> = self.borrow_game_object()?.components.iter().map(|x| {
-            x.clone()
-        }).collect();
-
         // Send init to all components
-        components.iter().try_for_each(|c| c.borrow_mut().init(_engine, self.world, self.clone()))?;
+        let game_object = self.borrow_game_object()?;
+        game_object.components.iter()
+            .filter_map(|option| option.as_ref())
+            .try_for_each(|c| c.borrow_mut().init(_engine, self.world, self.clone()))?;
 
         // Send init to all children
         let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
@@ -170,13 +174,11 @@ impl<'a> GameObject<'a> {
     pub fn update(&self, _engine: &Engine) -> Result<()> {
         // Update components
 
-        // Grab references to all of the components so we can iterate throuh them without borrowing our _GameObject
-        let components: Box<[Rc<RefCell<dyn Component>>]> = self.borrow_game_object()?.components.iter().map(|x| {
-            x.clone()
-        }).collect();
-
         // Send update to all components
-        components.iter().try_for_each(|c| c.borrow_mut().update(_engine, self.world, self.clone()))?;
+        let game_object = self.borrow_game_object()?;
+        game_object.components.iter()
+            .filter_map(|option| option.as_ref())
+            .try_for_each(|c| c.borrow_mut().update(_engine, self.world, self.clone()))?;
 
         // Send update to all children
         let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
@@ -191,13 +193,11 @@ impl<'a> GameObject<'a> {
     pub fn fixed_update(&self, _engine: &Engine) -> Result<()> {
         // Update components
 
-        // Grab references to all of the components so we can iterate throuh them without borrowing our _GameObject
-        let components: Box<[Rc<RefCell<dyn Component>>]> = self.borrow_game_object()?.components.iter().map(|x| {
-            x.clone()
-        }).collect();
-
-        // Send update to all components
-        components.iter().try_for_each(|c| c.borrow_mut().fixed_update(_engine, self.world, self.clone()))?;
+        // Send fixed_update to all components
+        let game_object = self.borrow_game_object()?;
+        game_object.components.iter()
+            .filter_map(|option| option.as_ref())
+            .try_for_each(|c| c.borrow_mut().fixed_update(_engine, self.world, self.clone()))?;
 
         // Send update to all children
         let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
@@ -209,11 +209,11 @@ impl<'a> GameObject<'a> {
         Ok(())
     }
 
-    pub fn get_component<C: Component>(&self) -> Result<Option<ComponentRc<C>>> {
+    pub fn get_component<C: Component>(&self) -> Result<Option<ComponentRef<C>>> {
         let game_object = self.borrow_game_object()?;
 
-        for c in &game_object.components {
-            let temp = ComponentRc::downcast_rc(c);
+        for c in game_object.components.iter().enumerate().filter_map(|x| x.1.as_ref().map(|t| (x.0, t))) {
+            let temp = ComponentRef::new(game_object.clone(), c.1.borrow().deref(), self.world, self.id, c.0);
 
             if temp.is_some() {
                 return Ok(temp);
@@ -223,13 +223,13 @@ impl<'a> GameObject<'a> {
         Ok(None)
     }
 
-    pub fn get_components<C: Component>(&self) -> Result<Box<[ComponentRc<C>]>> {
+    pub fn get_components<C: Component>(&self) -> Result<Box<[ComponentRef<C>]>> {
         let game_object = self.borrow_game_object()?;
         let mut vec = Vec::new();
         vec.reserve(game_object.components.len());
 
-        for c in &game_object.components {
-            let temp = ComponentRc::downcast_rc(c);
+        for c in game_object.components.iter().enumerate().filter_map(|x| x.1.as_ref().map(|t| (x.0, t))) {
+            let temp = ComponentRef::new(self.borrow_game_object()?, c.1.borrow().deref(), self.world, self.id, c.0);
 
             if temp.is_some() {
                 vec.push(temp.unwrap());
@@ -239,7 +239,7 @@ impl<'a> GameObject<'a> {
         Ok(vec.into_boxed_slice())
     }
 
-    pub fn get_all_components<C: Component>(&self) -> Result<Box<[ComponentRc<C>]>> {
+    pub fn get_all_components<C: Component>(&self) -> Result<Box<[ComponentRef<C>]>> {
         let mut vec = Vec::new();
 
         // Add Self Components
@@ -255,11 +255,18 @@ impl<'a> GameObject<'a> {
         Ok(vec.into_boxed_slice())
     }
 
-    pub fn remove_component<C: Component>(&self, component: ComponentRc<C>) -> Result<()> {
+    pub fn remove_component<C: Component>(&self, component: ComponentRef<C>) -> Result<()> {
         let mut game_object = self.borrow_game_object_mut()?;
-        let component = component.take_rc();
+        
+        if !std::ptr::eq(self.world, component.world) || component.object_id != self.id {
+            bail!("invalid!");
+        }
 
-        game_object.components.retain(|c| !Rc::ptr_eq(c, &component));
+        if game_object.components[component.component_index].is_none() {
+            bail!("component dead!")
+        }
+
+        game_object.components[component.component_index] = None;
 
         Ok(())
     }

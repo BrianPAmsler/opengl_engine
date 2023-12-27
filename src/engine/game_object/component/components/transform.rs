@@ -1,4 +1,4 @@
-use crate::engine::{vectors::Vector3, component::Component};
+use crate::engine::{vectors::Vector3, game_object::component::Component};
 
 #[derive(Clone, Copy)]
 pub struct Transform {

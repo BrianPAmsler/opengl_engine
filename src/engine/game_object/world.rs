@@ -2,18 +2,18 @@
 use std::{cell::RefCell, ptr};
 use anyhow::{Result, anyhow};
 
-use crate::engine::{game_object::game_object::DEAD_MESSAGE, component::components::Transform};
+use crate::engine::game_object::game_object::DEAD_MESSAGE;
 
-use super::{GameObject, game_object::_GameObject};
+use super::{GameObject, game_object::_GameObject, component::components::Transform};
 
 pub struct World {
-    pub(in crate::engine::game_object) root: RefCell<u32>,
+    pub(in crate::engine::game_object) root: RefCell<usize>,
     pub(in crate::engine::game_object) obj_list: RefCell<Vec<Option<Box<_GameObject>>>>, // Change this to a map if this list becomes too big
-    pub(in crate::engine::game_object) object_count: RefCell<u32>
+    pub(in crate::engine::game_object) object_count: RefCell<usize>
 }
 
 impl World {
-    pub fn new() -> World {
+    pub fn new() -> &'static World {
         let world = World {
             root: RefCell::new(0),
             obj_list: RefCell::new(Vec::new()),
@@ -22,10 +22,10 @@ impl World {
 
         world.add_object(_GameObject::empty("root"));
 
-        world
+        Box::leak(Box::new(world))
     }
     
-    fn add_object(&self, obj: _GameObject) -> u32 {
+    fn add_object(&self, obj: _GameObject) -> usize {
         let id = *self.object_count.borrow();
         *self.object_count.borrow_mut() += 1;
         self.obj_list.borrow_mut().push(Some(Box::new(obj)));
@@ -33,11 +33,11 @@ impl World {
         id
     }
 
-    pub(in crate::engine::game_object) fn id_to_game_object<'a>(&'a self, id: u32) -> GameObject<'a> {
+    pub(in crate::engine::game_object) fn id_to_game_object(&'static self, id: usize) -> GameObject {
         GameObject { id, world: &self }
     }
 
-    pub(in crate::engine::game_object) fn set_parent(&self, parent: u32, child: u32) -> Result<()> {
+    pub(in crate::engine::game_object) fn set_parent(&self, parent: usize, child: usize) -> Result<()> {
         let mut temp = self.obj_list.borrow_mut();
         let old_parent = temp[child as usize].as_ref().map_or(0, |t| t.parent);
         
@@ -52,11 +52,11 @@ impl World {
         self.obj_list.borrow_mut().reserve(size);
     }
 
-    pub fn get_root(&self) -> GameObject {
+    pub fn get_root(&'static self) -> GameObject {
         self.id_to_game_object(*self.root.borrow())
     }
 
-    pub fn create_empty(&self, name: &str, parent: GameObject) -> Result<GameObject> {
+    pub fn create_empty(&'static self, name: &str, parent: GameObject) -> Result<GameObject> {
         if !ptr::eq(self, parent.world) {
             return Err(anyhow!("Parent from another world!"));
         }

@@ -4,9 +4,10 @@ mod engine;
 
 use anyhow::Error;
 use engine::{Engine, game_object::component::{components::Transform, ComponentRef, Component}};
+use glfw::{Context, Key, Action};
 use regex::Regex;
 
-use crate::engine::game_object::World;
+use crate::engine::{game_object::World, graphics::Graphics};
 
 #[derive(Clone)]
 pub struct TestComponent {
@@ -34,9 +35,9 @@ fn start_game() -> anyhow::Result<()> {
     let root = world.get_root();
 
     let a = world.create_empty("a", root)?;
-    let b = world.create_empty("b", a)?;
+    let _b = world.create_empty("b", a)?;
     let c = world.create_empty("c", a)?;
-    let d = world.create_empty("d", c)?;
+    let _d = world.create_empty("d", c)?;
 
     c.add_component(TestComponent { transform: None, value: 0 })?;
 
@@ -49,6 +50,26 @@ fn start_game() -> anyhow::Result<()> {
     root.update(&Engine {  })?;
 
     println!("Pos after update: {}", comp.borrow()?.position);
+
+    let mut gfx = Graphics::init("Test Window", 800, 600, glfw::WindowMode::Windowed)?;
+
+    // Loop until the user closes the window
+    while !gfx.window.should_close() {
+        // Swap front and back buffers
+        gfx.window.swap_buffers();
+
+        // Poll for and process events
+        gfx.glfw.poll_events();
+        for (_, event) in glfw::flush_messages(&gfx.events) {
+            println!("{:?}", event);
+            match event {
+                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
+                    gfx.window.set_should_close(true)
+                },
+                _ => {},
+            }
+        }
+    }
 
     Ok(())
 }

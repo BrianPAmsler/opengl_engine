@@ -7,6 +7,9 @@ edition = "2021"
 anyhow = {version = "1.0.75", features=["backtrace"]}
 const_format = "0.2.32"
 downcast-rs = "1.2.0"
+gl33 = "0.2.1"
+glfw = "0.54.0"
+libc = "0.2.151"
 regex = "1.10.2"
 
 [profile.release]

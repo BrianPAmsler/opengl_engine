@@ -4,7 +4,7 @@ mod engine;
 
 use anyhow::Error;
 use engine::{Engine, game_object::component::{components::Transform, ComponentRef, Component}};
-use glfw::{Context, Key, Action};
+use glfw::{Key, WindowEvent, Action};
 use regex::Regex;
 
 use crate::engine::{game_object::World, graphics::Graphics};
@@ -53,20 +53,15 @@ fn start_game() -> anyhow::Result<()> {
 
     let mut gfx = Graphics::init("Test Window", 800, 600, glfw::WindowMode::Windowed)?;
 
-    // Loop until the user closes the window
-    while !gfx.window.should_close() {
-        // Swap front and back buffers
-        gfx.window.swap_buffers();
+    while !gfx.should_close() {
+        gfx.process_frame();
+        let msgs = gfx.flush_messages();
+        for msg in msgs {
+            println!("{:?}", msg.1);
 
-        // Poll for and process events
-        gfx.glfw.poll_events();
-        for (_, event) in glfw::flush_messages(&gfx.events) {
-            println!("{:?}", event);
-            match event {
-                glfw::WindowEvent::Key(Key::Escape, _, Action::Press, _) => {
-                    gfx.window.set_should_close(true)
-                },
-                _ => {},
+            match msg.1 {
+                WindowEvent::Key(Key::Escape, _, Action::Press, _) => gfx.set_should_close(true),
+                _ => ()
             }
         }
     }

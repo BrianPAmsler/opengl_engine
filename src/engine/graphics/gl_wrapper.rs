@@ -490,28 +490,56 @@ impl GLWrapper {
         unsafe { self.fns.GenBuffers(buffers.len() as i32, buffers.as_mut_ptr()) }
     }
     
+    pub fn glGenBuffer(&self, buffer: &mut u32) {
+        unsafe { self.fns.GenBuffers(1, buffer) }
+    }
+    
     pub fn glGenFramebuffers(&self, framebuffers: &mut [u32]) {
         unsafe { self.fns.GenFramebuffers(framebuffers.len() as i32, framebuffers.as_mut_ptr()) }
+    }
+    
+    pub fn glGenFramebuffer(&self, framebuffer: &mut u32) {
+        unsafe { self.fns.GenFramebuffers(1, framebuffer) }
     }
     
     pub fn glGenQueries(&self, ids: &mut [u32]) {
         unsafe { self.fns.GenQueries(ids.len() as i32, ids.as_mut_ptr()) }
     }
     
+    pub fn glGenQuery(&self, id: &mut u32) {
+        unsafe { self.fns.GenQueries(1, id) }
+    }
+    
     pub fn glGenRenderbuffers(&self, renderbuffers: &mut [u32]) {
         unsafe { self.fns.GenRenderbuffers(renderbuffers.len() as i32, renderbuffers.as_mut_ptr()) }
+    }
+    
+    pub fn glGenRenderbuffer(&self, renderbuffer: &mut u32) {
+        unsafe { self.fns.GenRenderbuffers(1, renderbuffer) }
     }
     
     pub fn glGenSamplers(&self, samplers: &mut [u32]) {
         unsafe { self.fns.GenSamplers(samplers.len() as i32, samplers.as_mut_ptr()) }
     }
     
+    pub fn glGenSampler(&self, sampler: &mut u32) {
+        unsafe { self.fns.GenSamplers(1, sampler) }
+    }
+    
     pub fn glGenTextures(&self, textures: &mut [u32]) {
         unsafe { self.fns.GenTextures(textures.len() as i32, textures.as_mut_ptr()) }
     }
     
+    pub fn glGenTexture(&self, texture: &mut u32) {
+        unsafe { self.fns.GenTextures(1, texture) }
+    }
+    
     pub fn glGenVertexArrays(&self, arrays: &mut [u32]) {
         unsafe { self.fns.GenVertexArrays(arrays.len() as i32, arrays.as_mut_ptr()) }
+    }
+    
+    pub fn glGenVertexArray(&self, array: &mut u32) {
+        unsafe { self.fns.GenVertexArrays(1, array) }
     }
     
     pub fn glGenerateMipmap(&self, target: TextureTarget) {

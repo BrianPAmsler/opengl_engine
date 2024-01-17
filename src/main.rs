@@ -2,12 +2,11 @@
 
 mod engine;
 
-use std::{ffi::CStr, os::raw::c_void};
+use std::ffi::CStr;
 
 use anyhow::{Error, Result};
 use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, CStringArray}};
-use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_FALSE, GL_COLOR_BUFFER_BIT};
-use libc::c_float;
+use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 #[derive(Clone, Default)]
@@ -100,7 +99,7 @@ impl Component for Renderer {
         let gfx = _engine.get_graphics()?;
         gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        unsafe { gfx.glGenBuffers(1, &mut self.vbo); }
+        gfx.glGenBuffers(std::array::from_mut(&mut self.vbo));
         gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
         gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
         self.vertex_shader = gfx.glCreateShader(GL_VERTEX_SHADER);
@@ -145,7 +144,7 @@ impl Component for Renderer {
         gfx.glLinkProgram(self.shader_program);
         gfx.glUseProgram(self.shader_program);
 
-        unsafe { gfx.glGenVertexArrays(1, &mut self.vao); }
+        gfx.glGenVertexArray(&mut self.vao);
         gfx.glBindVertexArray(self.vao);
 
         // Enable pos attribute pointer
@@ -157,7 +156,7 @@ impl Component for Renderer {
             24,
             0 as *const _,
         ); }
-        unsafe { gfx.glEnableVertexAttribArray(0); }
+        gfx.glEnableVertexAttribArray(0);
 
         // Enable color attribute pointer
         unsafe { gfx.glVertexAttribPointer(
@@ -168,7 +167,7 @@ impl Component for Renderer {
             24,
             12 as *const _,
         ); }
-        unsafe { gfx.glEnableVertexAttribArray(1); }
+        gfx.glEnableVertexAttribArray(1);
 
         Ok(())
     }
@@ -176,7 +175,7 @@ impl Component for Renderer {
     fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
         gfx.glClear(GL_COLOR_BUFFER_BIT);
-        unsafe { gfx.glDrawArrays(GL_TRIANGLES, 0, 3); }
+        gfx.glDrawArrays(GL_TRIANGLES, 0, 3);
 
         Ok(())   
     }

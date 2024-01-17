@@ -1,6 +1,6 @@
 
 use std::{cell::RefCell, ptr};
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 
 use crate::engine::game_object::game_object::DEAD_MESSAGE;
 
@@ -71,6 +71,10 @@ impl World {
     }
 
     pub fn destroy(&self, obj: GameObject) -> Result<()> {
+        if obj.id == 0 {
+            bail!("Root object cannot be deleted!");
+        }
+
         let children = obj.get_children()?;
 
         // DFS destroy children

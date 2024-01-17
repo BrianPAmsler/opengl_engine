@@ -2,69 +2,201 @@
 
 mod engine;
 
-use anyhow::Error;
-use engine::{Engine, game_object::component::{components::Transform, ComponentRef, Component}};
-use glfw::{Key, WindowEvent, Action};
+use std::{ffi::CStr, os::raw::c_void};
+
+use anyhow::{Error, Result};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, CStringArray}};
+use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_FALSE, GL_COLOR_BUFFER_BIT};
+use libc::c_float;
 use regex::Regex;
 
-use crate::engine::{game_object::World, graphics::Graphics};
-
-#[derive(Clone)]
-pub struct TestComponent {
-    pub transform: Option<ComponentRef<Transform>>,
-    pub value: u32
+#[derive(Clone, Default)]
+pub struct FPSCounter {
+    count: i64,
+    fixed_count: i64,
+    last_update: f32,
+    last_fixed_update: f32
 }
 
-impl Component for TestComponent {
-    fn init(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
-        self.transform = _owner.get_component::<Transform>()?;
+impl Component for FPSCounter {
+    fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {
+        self.count += 1;
+        let current_tick = _engine.get_time();
+
+        let delta = current_tick - self.last_update;
+
+        if delta >= 1.0 {
+            let fps = self.count as f32 / delta;
+            println!("FPS: {}\n", fps);
+
+            self.count = 0;
+            self.last_update = current_tick;
+        }
 
         Ok(())
     }
 
-    fn update(&mut self, _engine: &Engine, _world: &World, _owner: engine::game_object::GameObject) -> Result<(), Error> {
-        self.transform.as_mut().unwrap().borrow_mut()?.position += (0, 1, 0).into();
+    fn fixed_update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {
+        self.fixed_count += 1;
+        let current_tick = _engine.get_time();
+
+        let delta = current_tick - self.last_fixed_update;
+
+        if delta >= 1.0 {
+            let fps = self.fixed_count as f32 / delta;
+            println!("Fixed FPS: {}\n", fps);
+
+            self.fixed_count = 0;
+            self.last_fixed_update = current_tick;
+        }
 
         Ok(())
     }
 }
 
-fn start_game() -> anyhow::Result<()> {
-    let world = World::new();
-    world.reserve_objlist(10000000);
-    let root = world.get_root();
+const TEST_TRIANGLE: [ColoredVertex; 3] = [
+    ColoredVertex { x: 0.0, y: 1.0, z: 0.0, r: 1.0, g: 0.0, b: 0.0 },
+    ColoredVertex { x: -1.0, y: -1.0, z: 0.0, r: 0.0, g: 0.0, b: 1.0 },
+    ColoredVertex { x: 1.0, y: -1.0, z: 0.0, r: 0.0, g: 1.0, b: 0.0 },
+];
 
-    let a = world.create_empty("a", root)?;
+const VERTEX_SHADER_SOURCE: &'static str = "
+#version 460 core
+
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 vertexColor;
+
+smooth out vec3 color;
+
+void main()
+{
+    gl_Position = vec4(position, 1.0);
+    color = vertexColor;
+}";
+
+const FRAG_SHADER_SOURCE: &'static str = "
+#version 150 core
+
+in vec3 color;
+
+out vec4 outColor;
+
+void main()
+{
+    outColor = vec4(color, 1.0);
+}";
+
+#[derive(Clone, Default)]
+pub struct Renderer {
+    vbo: u32,
+    vertex_shader: u32,
+    fragment_shader: u32,
+    shader_program: u32,
+    vao: u32
+}
+
+impl Component for Renderer {
+    fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {
+        let gfx = _engine.get_graphics()?;
+        gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
+
+        unsafe { gfx.glGenBuffers(1, &mut self.vbo); }
+        gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
+        gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
+        self.vertex_shader = gfx.glCreateShader(GL_VERTEX_SHADER);
+
+        let vtx_src = CStringArray::new(&[VERTEX_SHADER_SOURCE]);
+        gfx.glShaderSource(self.vertex_shader, &vtx_src);
+        gfx.glCompileShader(self.vertex_shader);
+
+        let mut status = 0;
+        unsafe { gfx.glGetShaderiv(self.vertex_shader, GL_COMPILE_STATUS, &mut status); }
+
+        if status == 0 {
+            let mut buffer = [0u8; 1024];
+            unsafe { gfx.glGetShaderInfoLog(self.vertex_shader, 1024, 0 as *mut i32, buffer.as_mut_ptr()); }
+            let msg = unsafe {CStr::from_ptr(buffer.as_ptr() as *const i8)};
+
+            println!("Vertex shader error: {}", msg.to_str()?);
+        }
+
+        self.fragment_shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
+
+        let frag_src = CStringArray::new(&[FRAG_SHADER_SOURCE]);
+        gfx.glShaderSource(self.fragment_shader, &frag_src);
+        gfx.glCompileShader(self.fragment_shader);
+
+        unsafe { gfx.glGetShaderiv(self.fragment_shader, GL_COMPILE_STATUS, &mut status); }
+
+        if status == 0 {
+            let mut buffer = [0u8; 1024];
+            unsafe { gfx.glGetShaderInfoLog(self.fragment_shader, 1024, 0 as *mut i32, buffer.as_mut_ptr()); }
+            let msg = unsafe {CStr::from_ptr(buffer.as_ptr() as *const i8)};
+
+            println!("Fragment shader error: {}", msg.to_str()?);
+        }
+
+        self.shader_program = gfx.glCreateProgram();
+        gfx.glAttachShader(self.shader_program, self.vertex_shader);
+        gfx.glAttachShader(self.shader_program, self.fragment_shader);
+
+        gfx.glBindFragDataLocation(self.shader_program, 0, "outColor");
+
+        gfx.glLinkProgram(self.shader_program);
+        gfx.glUseProgram(self.shader_program);
+
+        unsafe { gfx.glGenVertexArrays(1, &mut self.vao); }
+        gfx.glBindVertexArray(self.vao);
+
+        // Enable pos attribute pointer
+        unsafe { gfx.glVertexAttribPointer(
+            0,
+            3,
+            GL_FLOAT,
+            0,
+            24,
+            0 as *const _,
+        ); }
+        unsafe { gfx.glEnableVertexAttribArray(0); }
+
+        // Enable color attribute pointer
+        unsafe { gfx.glVertexAttribPointer(
+            1,
+            3,
+            GL_FLOAT,
+            0,
+            24,
+            12 as *const _,
+        ); }
+        unsafe { gfx.glEnableVertexAttribArray(1); }
+
+        Ok(())
+    }
+
+    fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {
+        let gfx = _engine.get_graphics()?;
+        gfx.glClear(GL_COLOR_BUFFER_BIT);
+        unsafe { gfx.glDrawArrays(GL_TRIANGLES, 0, 3); }
+
+        Ok(())   
+    }
+}
+
+fn start_game() -> Result<()> {
+    let mut engine = Engine::new()?;
+    engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
+
+    let world = engine.world;
+
+    let a = world.create_empty("a", world.get_root())?;
     let _b = world.create_empty("b", a)?;
     let c = world.create_empty("c", a)?;
     let _d = world.create_empty("d", c)?;
 
-    c.add_component(TestComponent { transform: None, value: 0 })?;
+    _d.add_component(FPSCounter::default())?;
+    a.add_component(Renderer::default())?;
 
-    root.init(&Engine {  })?;
-
-    let comp = c.get_component::<Transform>()?.unwrap();
-
-    println!("Pos: {}", comp.borrow()?.position);
-
-    root.update(&Engine {  })?;
-
-    println!("Pos after update: {}", comp.borrow()?.position);
-
-    let mut gfx = Graphics::init("Test Window", 800, 600, glfw::WindowMode::Windowed)?;
-
-    while !gfx.should_close() {
-        gfx.process_frame();
-        let msgs = gfx.flush_messages();
-        for msg in msgs {
-            println!("{:?}", msg.1);
-
-            match msg.1 {
-                WindowEvent::Key(Key::Escape, _, Action::Press, _) => gfx.set_should_close(true),
-                _ => ()
-            }
-        }
-    }
+    engine.run()?;
 
     Ok(())
 }

@@ -159,52 +159,31 @@ impl GameObject {
         let game_object = self.borrow_game_object()?;
         game_object.components.iter()
             .filter_map(|option| option.as_ref())
-            .try_for_each(|c| c.borrow_mut().init(_engine, self.world, self.clone()))?;
-
-        // Send init to all children
-        let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
-            self.world.id_to_game_object(*id)
-        }).collect();
-
-        children.iter().try_for_each(|c| c.init(_engine))?;
+            .try_for_each(|c| c.borrow_mut().init(_engine, self.clone()))?;
 
         Ok(())
     }
 
-    pub fn update(&self, _engine: &Engine) -> Result<()> {
+    pub fn update(&self, _engine: &Engine, delta_time: f32) -> Result<()> {
         // Update components
 
         // Send update to all components
         let game_object = self.borrow_game_object()?;
         game_object.components.iter()
             .filter_map(|option| option.as_ref())
-            .try_for_each(|c| c.borrow_mut().update(_engine, self.world, self.clone()))?;
-
-        // Send update to all children
-        let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
-            self.world.id_to_game_object(*id)
-        }).collect();
-
-        children.iter().try_for_each(|c| c.update(_engine))?;
+            .try_for_each(|c| c.borrow_mut().update(_engine, self.clone(), delta_time))?;
 
         Ok(())
     }
 
-    pub fn fixed_update(&self, _engine: &Engine) -> Result<()> {
+    pub fn fixed_update(&self, _engine: &Engine, delta_time: f32) -> Result<()> {
         // Update components
 
         // Send fixed_update to all components
         let game_object = self.borrow_game_object()?;
         game_object.components.iter()
             .filter_map(|option| option.as_ref())
-            .try_for_each(|c| c.borrow_mut().fixed_update(_engine, self.world, self.clone()))?;
-
-        // Send update to all children
-        let children: Box<[GameObject]> = self.borrow_game_object()?.children.iter().map(|id| {
-            self.world.id_to_game_object(*id)
-        }).collect();
-
-        children.iter().try_for_each(|c| c.fixed_update(_engine))?;
+            .try_for_each(|c| c.borrow_mut().fixed_update(_engine, self.clone(), delta_time))?;
 
         Ok(())
     }

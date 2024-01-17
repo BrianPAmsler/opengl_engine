@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use std::{ffi::{c_void, CStr, CString}, ops::{Deref, DerefMut}};
+use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}};
 
 use anyhow::{Result, anyhow};
 
@@ -71,7 +71,7 @@ impl GLWrapper {
     }
     
     pub fn glBindAttribLocation(&self, program: u32, index: u32, name: &str) {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.BindAttribLocation(program, index, null_str.as_ptr() as *const u8) }
     }
     
@@ -88,12 +88,12 @@ impl GLWrapper {
     }
     
     pub fn glBindFragDataLocation(&self, program: u32, color: u32, name: &str) {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.BindFragDataLocation(program, color, null_str.as_ptr() as *const u8) }
     }
     
     pub fn glBindFragDataLocationIndexed(&self, program: u32, colorNumber: u32, index: u32, name: &str) {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.BindFragDataLocationIndexed(program, colorNumber, index, null_str.as_ptr() as *const u8) }
     }
     
@@ -141,8 +141,8 @@ impl GLWrapper {
         unsafe { self.fns.BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) }
     }
     
-    pub fn glBufferData(&self, target: BufferTargetARB, data: &[u8], usage: BufferUsageARB) {
-        unsafe { self.fns.BufferData(target, data.len() as isize, data.as_ptr() as *const c_void, usage) }
+    pub fn glBufferData<T>(&self, target: BufferTargetARB, data: &[T], usage: BufferUsageARB) {
+        unsafe { self.fns.BufferData(target, (data.len() * std::mem::size_of::<T>()) as isize, data.as_ptr() as *const c_void, usage) }
     }
     
     pub fn glBufferSubData(&self, target: BufferTargetARB, offset: isize, data: &[u8]) {
@@ -535,7 +535,7 @@ impl GLWrapper {
     }
     
     pub fn glGetAttribLocation(&self, program: u32, name: &str) -> i32 {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.GetAttribLocation(program, null_str.as_ptr() as *const u8) }
     }
     
@@ -580,12 +580,12 @@ impl GLWrapper {
     }
     
     pub fn glGetFragDataIndex(&self, program: u32, name: &str) -> i32 {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.GetFragDataIndex(program, null_str.as_ptr() as *const u8) }
     }
     
     pub fn glGetFragDataLocation(&self, program: u32, name: &str) -> i32 {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.GetFragDataLocation(program, null_str.as_ptr() as *const u8) }
     }
     
@@ -730,7 +730,7 @@ impl GLWrapper {
     }
     
     pub fn glGetUniformBlockIndex(&self, program: u32, uniformBlockName: &str) -> u32 {
-        let null_str = CStr::from_bytes_with_nul(uniformBlockName.as_bytes()).unwrap();
+        let null_str = CString::new(uniformBlockName).unwrap();
         unsafe { self.fns.GetUniformBlockIndex(program, null_str.as_ptr() as *const u8) }
     }
     
@@ -740,7 +740,7 @@ impl GLWrapper {
     }
     
     pub fn glGetUniformLocation(&self, program: u32, name: &str) -> i32 {
-        let null_str = CStr::from_bytes_with_nul(name.as_bytes()).unwrap();
+        let null_str = CString::new(name).unwrap();
         unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as *const u8) }
     }
     

@@ -2,8 +2,6 @@
 
 mod engine;
 
-use std::ffi::CStr;
-
 use anyhow::{Error, Result};
 use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, CStringArray}};
 use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
@@ -109,14 +107,12 @@ impl Component for Renderer {
         gfx.glCompileShader(self.vertex_shader);
 
         let mut status = 0;
-        unsafe { gfx.glGetShaderiv(self.vertex_shader, GL_COMPILE_STATUS, &mut status); }
+        gfx.glGetShaderiv(self.vertex_shader, GL_COMPILE_STATUS, &mut status);
 
         if status == 0 {
-            let mut buffer = [0u8; 1024];
-            unsafe { gfx.glGetShaderInfoLog(self.vertex_shader, 1024, 0 as *mut i32, buffer.as_mut_ptr()); }
-            let msg = unsafe {CStr::from_ptr(buffer.as_ptr() as *const i8)};
+            let msg = gfx.glGetShaderInfoLog(self.vertex_shader);
 
-            println!("Vertex shader error: {}", msg.to_str()?);
+            println!("Vertex shader error: {}", msg);
         }
 
         self.fragment_shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
@@ -125,14 +121,12 @@ impl Component for Renderer {
         gfx.glShaderSource(self.fragment_shader, &frag_src);
         gfx.glCompileShader(self.fragment_shader);
 
-        unsafe { gfx.glGetShaderiv(self.fragment_shader, GL_COMPILE_STATUS, &mut status); }
+        gfx.glGetShaderiv(self.fragment_shader, GL_COMPILE_STATUS, &mut status);
 
         if status == 0 {
-            let mut buffer = [0u8; 1024];
-            unsafe { gfx.glGetShaderInfoLog(self.fragment_shader, 1024, 0 as *mut i32, buffer.as_mut_ptr()); }
-            let msg = unsafe {CStr::from_ptr(buffer.as_ptr() as *const i8)};
+            let msg = gfx.glGetShaderInfoLog(self.fragment_shader);
 
-            println!("Fragment shader error: {}", msg.to_str()?);
+            println!("Fragment shader error: {}", msg);
         }
 
         self.shader_program = gfx.glCreateProgram();
@@ -148,25 +142,25 @@ impl Component for Renderer {
         gfx.glBindVertexArray(self.vao);
 
         // Enable pos attribute pointer
-        unsafe { gfx.glVertexAttribPointer(
+        gfx.glVertexAttribPointer(
             0,
             3,
             GL_FLOAT,
             0,
             24,
-            0 as *const _,
-        ); }
+            0,
+        );
         gfx.glEnableVertexAttribArray(0);
 
         // Enable color attribute pointer
-        unsafe { gfx.glVertexAttribPointer(
+        gfx.glVertexAttribPointer(
             1,
             3,
             GL_FLOAT,
             0,
             24,
-            12 as *const _,
-        ); }
+            12,
+        );
         gfx.glEnableVertexAttribArray(1);
 
         Ok(())

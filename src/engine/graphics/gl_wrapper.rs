@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}};
+use std::{ffi::{c_void, CString, CStr}, ops::{Deref, DerefMut}};
 
 use anyhow::{Result, anyhow};
 
@@ -742,16 +742,23 @@ impl GLWrapper {
         self.fns.GetSamplerParameteriv(sampler, pname, params)
     }
     
-    pub unsafe fn glGetShaderInfoLog(&self, shader: u32, bufSize: i32, length: *mut i32, infoLog: *mut u8) {
-        self.fns.GetShaderInfoLog(shader, bufSize, length, infoLog)
+    pub fn glGetShaderInfoLog(&self, shader: u32) -> String {
+        let mut length = 0;
+        self.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &mut length);
+
+        let mut buffer = vec![0u8; length as usize + 1];
+
+        unsafe { self.fns.GetShaderInfoLog(shader, length, std::ptr::null_mut(), buffer.as_mut_ptr()) }
+
+        CStr::from_bytes_until_nul(&buffer).unwrap().to_str().unwrap().to_owned()
     }
     
     pub unsafe fn glGetShaderSource(&self, shader: u32, bufSize: i32, length: *mut i32, source: *mut u8) {
         self.fns.GetShaderSource(shader, bufSize, length, source)
     }
     
-    pub unsafe fn glGetShaderiv(&self, shader: u32, pname: ShaderParameterName, params: *mut i32) {
-        self.fns.GetShaderiv(shader, pname, params)
+    pub fn glGetShaderiv(&self, shader: u32, pname: ShaderParameterName, params: &mut i32) {
+        unsafe { self.fns.GetShaderiv(shader, pname, params) }
     }
     
     pub unsafe fn glGetString(&self, name: StringName) -> String {
@@ -1550,8 +1557,8 @@ impl GLWrapper {
         self.fns.VertexAttribP4uiv(index, type_, normalized, value)
     }
     
-    pub unsafe fn glVertexAttribPointer(&self, index: u32, size: i32, type_: VertexAttribPointerType, normalized: u8, stride: i32, pointer: *const c_void) {
-        self.fns.VertexAttribPointer(index, size, type_, normalized, stride, pointer)
+    pub fn glVertexAttribPointer(&self, index: u32, size: i32, type_: VertexAttribPointerType, normalized: u8, stride: i32, offset: u32) {
+        unsafe { self.fns.VertexAttribPointer(index, size, type_, normalized, stride, offset as *const c_void) }
     }
     
     pub unsafe fn glViewport(&self, x: i32, y: i32, width: i32, height: i32) {

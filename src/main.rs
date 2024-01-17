@@ -97,7 +97,7 @@ impl Component for Renderer {
         let gfx = _engine.get_graphics()?;
         gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        gfx.glGenBuffers(std::array::from_mut(&mut self.vbo));
+        gfx.glGenBuffer(&mut self.vbo);
         gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
         gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
         self.vertex_shader = gfx.glCreateShader(GL_VERTEX_SHADER);

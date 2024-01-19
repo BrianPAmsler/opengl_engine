@@ -51,6 +51,33 @@ impl DerefMut for CStringArray {
     }
 }
 
+// ## I commented this out because I was only using it once. ##
+// ## If I need this functionality again, uncomment it.      ##
+
+// struct StringPointer<'a> {
+//     string: &'a str,
+//     ptr: *const u8,
+//     len: i32
+// }
+
+// impl StringPointer<'_> {
+//     pub fn new<'a>(string: &'a str) -> StringPointer<'a> {
+//         StringPointer { string, ptr: string.as_ptr(), len: string.len() as i32 }
+//     }
+
+//     pub fn as_ptr(&self) -> *const *const u8 {
+//         &self.ptr
+//     }
+
+//     pub fn len_ptr(&self) -> *const i32 {
+//         &self.len
+//     }
+
+//     pub fn len(&self) -> usize {
+//         self.string.len()
+//     }
+// }
+
 pub struct GLWrapper {
     fns: GlFns
 }
@@ -1053,8 +1080,11 @@ impl GLWrapper {
     }
     
     // NEEDS TESTING
-    pub fn glShaderSource(&self, shader: u32, string: &CStringArray) {
-        unsafe { self.fns.ShaderSource(shader, string.len() as i32, string.as_ptr(), 0 as *const i32) }
+    pub fn glShaderSource(&self, shader: u32, string: &str) {
+        let string_pointer = string.as_ptr();
+        let len = string.len() as i32;
+        
+        unsafe { self.fns.ShaderSource(shader, 1, &string_pointer, &len) }
     }
     
     pub unsafe fn glStencilFunc(&self, func: StencilFunction, ref_: i32, mask: u32) {

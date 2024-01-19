@@ -3,7 +3,7 @@
 mod engine;
 
 use anyhow::{Error, Result};
-use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, CStringArray}};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::vertex_objects::ColoredVertex};
 use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
@@ -100,33 +100,28 @@ impl Component for Renderer {
         gfx.glGenBuffer(&mut self.vbo);
         gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
         gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
+
         self.vertex_shader = gfx.glCreateShader(GL_VERTEX_SHADER);
 
-        let vtx_src = CStringArray::new(&[VERTEX_SHADER_SOURCE]);
-        gfx.glShaderSource(self.vertex_shader, &vtx_src);
+        gfx.glShaderSource(self.vertex_shader, VERTEX_SHADER_SOURCE);
         gfx.glCompileShader(self.vertex_shader);
 
         let mut status = 0;
         gfx.glGetShaderiv(self.vertex_shader, GL_COMPILE_STATUS, &mut status);
 
         if status == 0 {
-            let msg = gfx.glGetShaderInfoLog(self.vertex_shader);
-
-            println!("Vertex shader error: {}", msg);
+            println!("Vertex shader error: {}", gfx.glGetShaderInfoLog(self.vertex_shader));
         }
 
         self.fragment_shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
 
-        let frag_src = CStringArray::new(&[FRAG_SHADER_SOURCE]);
-        gfx.glShaderSource(self.fragment_shader, &frag_src);
+        gfx.glShaderSource(self.fragment_shader, FRAG_SHADER_SOURCE);
         gfx.glCompileShader(self.fragment_shader);
 
         gfx.glGetShaderiv(self.fragment_shader, GL_COMPILE_STATUS, &mut status);
 
         if status == 0 {
-            let msg = gfx.glGetShaderInfoLog(self.fragment_shader);
-
-            println!("Fragment shader error: {}", msg);
+            println!("Fragment shader error: {}", gfx.glGetShaderInfoLog(self.fragment_shader));
         }
 
         self.shader_program = gfx.glCreateProgram();

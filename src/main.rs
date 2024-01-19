@@ -3,8 +3,8 @@
 mod engine;
 
 use anyhow::{Error, Result};
-use engine::{Engine, game_object::{component::Component, GameObject}, graphics::vertex_objects::ColoredVertex};
-use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_VERTEX_SHADER, GL_COMPILE_STATUS, GL_FRAGMENT_SHADER, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, shader::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder}}};
+use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 #[derive(Clone, Default)]
@@ -86,9 +86,7 @@ void main()
 #[derive(Clone, Default)]
 pub struct Renderer {
     vbo: u32,
-    vertex_shader: u32,
-    fragment_shader: u32,
-    shader_program: u32,
+    shader_program: ShaderProgram,
     vao: u32
 }
 
@@ -101,37 +99,15 @@ impl Component for Renderer {
         gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
         gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
 
-        self.vertex_shader = gfx.glCreateShader(GL_VERTEX_SHADER);
+        let vert_shader = VertexShader::compile_shader(gfx, VERTEX_SHADER_SOURCE)?;
+        let frag_shader = FragmentShader::compile_shader(gfx, FRAG_SHADER_SOURCE)?;
 
-        gfx.glShaderSource(self.vertex_shader, VERTEX_SHADER_SOURCE);
-        gfx.glCompileShader(self.vertex_shader);
+        let mut program_builder = ShaderProgramBuilder::new(gfx);
+        program_builder.attach_shader(vert_shader);
+        program_builder.attach_shader(frag_shader);
+        self.shader_program = program_builder.finish();
 
-        let mut status = 0;
-        gfx.glGetShaderiv(self.vertex_shader, GL_COMPILE_STATUS, &mut status);
-
-        if status == 0 {
-            println!("Vertex shader error: {}", gfx.glGetShaderInfoLog(self.vertex_shader));
-        }
-
-        self.fragment_shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
-
-        gfx.glShaderSource(self.fragment_shader, FRAG_SHADER_SOURCE);
-        gfx.glCompileShader(self.fragment_shader);
-
-        gfx.glGetShaderiv(self.fragment_shader, GL_COMPILE_STATUS, &mut status);
-
-        if status == 0 {
-            println!("Fragment shader error: {}", gfx.glGetShaderInfoLog(self.fragment_shader));
-        }
-
-        self.shader_program = gfx.glCreateProgram();
-        gfx.glAttachShader(self.shader_program, self.vertex_shader);
-        gfx.glAttachShader(self.shader_program, self.fragment_shader);
-
-        gfx.glBindFragDataLocation(self.shader_program, 0, "outColor");
-
-        gfx.glLinkProgram(self.shader_program);
-        gfx.glUseProgram(self.shader_program);
+        gfx.glUseProgram(self.shader_program.get_program());
 
         gfx.glGenVertexArray(&mut self.vao);
         gfx.glBindVertexArray(self.vao);

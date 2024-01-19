@@ -97,13 +97,17 @@ impl ShaderProgramBuilder<'_> {
     }
 
     pub fn finish(self) -> ShaderProgram {
-        ShaderProgram { program: self.program, shaders: self.shaders.into_boxed_slice() }
+        self.gfx.glLinkProgram(self.program);
+        let shaders = self.shaders.into_iter().map(|s| s.get_shader()).collect();
+
+        ShaderProgram { program: self.program, shaders }
     }
 }
 
+#[derive(Clone, Default)]
 pub struct ShaderProgram {
     program: u32,
-    shaders: Box<[Box<dyn ShaderTrait>]>
+    shaders: Box<[u32]>
 }
 
 impl ShaderProgram {

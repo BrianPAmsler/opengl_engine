@@ -27,7 +27,7 @@ pub struct CStringArray {
 impl CStringArray {
     pub fn new(strings: &[&str]) -> CStringArray {
         let strings: Box<[CString]> = strings.iter().map(|s| CString::new(*s).unwrap()).collect();
-        let ptrs = strings.iter().map(|s| s.as_ptr() as *const u8).collect();
+        let ptrs = strings.iter().map(|s| s.as_ptr() as _).collect();
 
         CStringArray { strings, ptrs }
     }
@@ -111,7 +111,7 @@ impl GLWrapper {
     
     pub fn glBindAttribLocation(&self, program: u32, index: u32, name: &str) {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.BindAttribLocation(program, index, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.BindAttribLocation(program, index, null_str.as_ptr() as _) }
     }
     
     pub fn glBindBuffer(&self, target: BufferTargetARB, buffer: u32) {
@@ -128,12 +128,12 @@ impl GLWrapper {
     
     pub fn glBindFragDataLocation(&self, program: u32, color: u32, name: &str) {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.BindFragDataLocation(program, color, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.BindFragDataLocation(program, color, null_str.as_ptr() as _) }
     }
     
     pub fn glBindFragDataLocationIndexed(&self, program: u32, colorNumber: u32, index: u32, name: &str) {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.BindFragDataLocationIndexed(program, colorNumber, index, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.BindFragDataLocationIndexed(program, colorNumber, index, null_str.as_ptr() as _) }
     }
     
     pub fn glBindFramebuffer(&self, target: FramebufferTarget, framebuffer: u32) {
@@ -181,11 +181,11 @@ impl GLWrapper {
     }
     
     pub fn glBufferData<T>(&self, target: BufferTargetARB, data: &[T], usage: BufferUsageARB) {
-        unsafe { self.fns.BufferData(target, (data.len() * std::mem::size_of::<T>()) as isize, data.as_ptr() as *const c_void, usage) }
+        unsafe { self.fns.BufferData(target, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _, usage) }
     }
     
     pub fn glBufferSubData(&self, target: BufferTargetARB, offset: isize, data: &[u8]) {
-        unsafe { self.fns.BufferSubData(target, offset, data.len() as isize, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.BufferSubData(target, offset, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCheckFramebufferStatus(&self, target: FramebufferTarget) -> FramebufferStatus {
@@ -278,27 +278,27 @@ impl GLWrapper {
     }
     
     pub fn glCompressedTexImage1D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: i32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage1D(target, level, internalformat, width, border, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexImage1D(target, level, internalformat, width, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: i32, height: i32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage2D(target, level, internalformat, width, height, border, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexImage2D(target, level, internalformat, width, height, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexImage3D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: i32, height: i32, depth: i32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage3D(target, level, internalformat, width, height, depth, border, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexImage3D(target, level, internalformat, width, height, depth, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage1D(&self, target: TextureTarget, level: i32, xoffset: i32, width: i32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage1D(target, level, xoffset, width, format, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexSubImage1D(target, level, xoffset, width, format, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage2D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, width: i32, height: i32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage3D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: i32, height: i32, depth: i32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, data.len() as i32, data.as_ptr() as *const c_void) }
+        unsafe { self.fns.CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCopyBufferSubData(&self, readTarget: CopyBufferSubDataTarget, writeTarget: CopyBufferSubDataTarget, readOffset: isize, writeOffset: isize, size: isize) {
@@ -338,11 +338,11 @@ impl GLWrapper {
     }
     
     pub fn glDeleteBuffers(&self, buffers: &[u32]) {
-        unsafe { self.fns.DeleteBuffers(buffers.len() as i32, buffers.as_ptr()) }
+        unsafe { self.fns.DeleteBuffers(buffers.len() as _, buffers.as_ptr()) }
     }
     
     pub fn glDeleteFramebuffers(&self, framebuffers: &[u32]) {
-        unsafe { self.fns.DeleteFramebuffers(framebuffers.len() as i32, framebuffers.as_ptr()) }
+        unsafe { self.fns.DeleteFramebuffers(framebuffers.len() as _, framebuffers.as_ptr()) }
     }
     
     pub fn glDeleteProgram(&self, program: u32) {
@@ -350,15 +350,15 @@ impl GLWrapper {
     }
     
     pub fn glDeleteQueries(&self, ids: &[u32]) {
-        unsafe { self.fns.DeleteQueries(ids.len() as i32, ids.as_ptr()) }
+        unsafe { self.fns.DeleteQueries(ids.len() as _, ids.as_ptr()) }
     }
     
     pub fn glDeleteRenderbuffers(&self, renderbuffers: &[u32]) {
-        unsafe { self.fns.DeleteRenderbuffers(renderbuffers.len() as i32, renderbuffers.as_ptr()) }
+        unsafe { self.fns.DeleteRenderbuffers(renderbuffers.len() as _, renderbuffers.as_ptr()) }
     }
     
     pub fn glDeleteSamplers(&self, samplers: &[u32]) {
-        unsafe { self.fns.DeleteSamplers(samplers.len() as i32, samplers.as_ptr()) }
+        unsafe { self.fns.DeleteSamplers(samplers.len() as _, samplers.as_ptr()) }
     }
     
     pub fn glDeleteShader(&self, shader: u32) {
@@ -370,11 +370,11 @@ impl GLWrapper {
     }
     
     pub fn glDeleteTextures(&self, textures: &[u32]) {
-        unsafe { self.fns.DeleteTextures(textures.len() as i32, textures.as_ptr()) }
+        unsafe { self.fns.DeleteTextures(textures.len() as _, textures.as_ptr()) }
     }
     
     pub fn glDeleteVertexArrays(&self, arrays: &[u32]) {
-        unsafe { self.fns.DeleteVertexArrays(arrays.len() as i32, arrays.as_ptr()) }
+        unsafe { self.fns.DeleteVertexArrays(arrays.len() as _, arrays.as_ptr()) }
     }
     
     pub fn glDepthFunc(&self, func: DepthFunction) {
@@ -418,31 +418,31 @@ impl GLWrapper {
     }
     
     pub fn glDrawBuffers(&self, bufs: &[DrawBufferMode]) {
-        unsafe { self.fns.DrawBuffers(bufs.len() as i32, bufs.as_ptr()) }
+        unsafe { self.fns.DrawBuffers(bufs.len() as _, bufs.as_ptr()) }
     }
     
-    pub unsafe fn glDrawElements(&self, mode: PrimitiveType, count: i32, type_: DrawElementsType, indices: *const c_void) {
-        self.fns.DrawElements(mode, count, type_, indices)
+    pub fn glDrawElements(&self, mode: PrimitiveType, type_: DrawElementsType, indices: &[u32]) {
+        unsafe { self.fns.DrawElements(mode, indices.len() as _, type_, indices.as_ptr() as _) }
     }
     
-    pub unsafe fn glDrawElementsBaseVertex(&self, mode: PrimitiveType, count: i32, type_: DrawElementsType, indices: *const c_void, basevertex: i32) {
-        self.fns.DrawElementsBaseVertex(mode, count, type_, indices, basevertex)
+    pub fn glDrawElementsBaseVertex(&self, mode: PrimitiveType, type_: DrawElementsType, indices: &[u32], basevertex: i32) {
+        unsafe { self.fns.DrawElementsBaseVertex(mode, indices.len() as _, type_, indices.as_ptr() as _, basevertex) }
     }
     
-    pub unsafe fn glDrawElementsInstanced(&self, mode: PrimitiveType, count: i32, type_: DrawElementsType, indices: *const c_void, instancecount: i32) {
-        self.fns.DrawElementsInstanced(mode, count, type_, indices, instancecount)
+    pub fn glDrawElementsInstanced(&self, mode: PrimitiveType, type_: DrawElementsType, indices: &[u32], instancecount: i32) {
+        unsafe { self.fns.DrawElementsInstanced(mode, indices.len() as _, type_, indices.as_ptr() as _, instancecount) }
     }
     
-    pub unsafe fn glDrawElementsInstancedBaseVertex(&self, mode: PrimitiveType, count: i32, type_: DrawElementsType, indices: *const c_void, instancecount: i32, basevertex: i32) {
-        self.fns.DrawElementsInstancedBaseVertex(mode, count, type_, indices, instancecount, basevertex)
+    pub fn glDrawElementsInstancedBaseVertex(&self, mode: PrimitiveType, type_: DrawElementsType, indices: &[u32], instancecount: i32, basevertex: i32) {
+        unsafe { self.fns.DrawElementsInstancedBaseVertex(mode, indices.len() as _, type_, indices.as_ptr() as _, instancecount, basevertex) }
     }
     
-    pub unsafe fn glDrawRangeElements(&self, mode: PrimitiveType, start: u32, end: u32, count: i32, type_: DrawElementsType, indices: *const c_void) {
-        self.fns.DrawRangeElements(mode, start, end, count, type_, indices)
+    pub fn glDrawRangeElements(&self, mode: PrimitiveType, start: u32, end: u32, type_: DrawElementsType, indices: &[u32]) {
+        unsafe { self.fns.DrawRangeElements(mode, start, end, indices.len() as _, type_, indices.as_ptr() as _) }
     }
     
-    pub unsafe fn glDrawRangeElementsBaseVertex(&self, mode: PrimitiveType, start: u32, end: u32, count: i32, type_: DrawElementsType, indices: *const c_void, basevertex: i32) {
-        self.fns.DrawRangeElementsBaseVertex(mode, start, end, count, type_, indices, basevertex)
+    pub fn glDrawRangeElementsBaseVertex(&self, mode: PrimitiveType, start: u32, end: u32, type_: DrawElementsType, indices: &[u32], basevertex: i32) {
+        unsafe { self.fns.DrawRangeElementsBaseVertex(mode, start, end, indices.len() as _, type_, indices.as_ptr() as _, basevertex) }
     }
     
     pub fn glEnable(&self, cap: EnableCap) {
@@ -514,7 +514,7 @@ impl GLWrapper {
     }
     
     pub fn glGenBuffers(&self, buffers: &mut [u32]) {
-        unsafe { self.fns.GenBuffers(buffers.len() as i32, buffers.as_mut_ptr()) }
+        unsafe { self.fns.GenBuffers(buffers.len() as _, buffers.as_mut_ptr()) }
     }
     
     pub fn glGenBuffer(&self, buffer: &mut u32) {
@@ -522,7 +522,7 @@ impl GLWrapper {
     }
     
     pub fn glGenFramebuffers(&self, framebuffers: &mut [u32]) {
-        unsafe { self.fns.GenFramebuffers(framebuffers.len() as i32, framebuffers.as_mut_ptr()) }
+        unsafe { self.fns.GenFramebuffers(framebuffers.len() as _, framebuffers.as_mut_ptr()) }
     }
     
     pub fn glGenFramebuffer(&self, framebuffer: &mut u32) {
@@ -530,7 +530,7 @@ impl GLWrapper {
     }
     
     pub fn glGenQueries(&self, ids: &mut [u32]) {
-        unsafe { self.fns.GenQueries(ids.len() as i32, ids.as_mut_ptr()) }
+        unsafe { self.fns.GenQueries(ids.len() as _, ids.as_mut_ptr()) }
     }
     
     pub fn glGenQuery(&self, id: &mut u32) {
@@ -538,7 +538,7 @@ impl GLWrapper {
     }
     
     pub fn glGenRenderbuffers(&self, renderbuffers: &mut [u32]) {
-        unsafe { self.fns.GenRenderbuffers(renderbuffers.len() as i32, renderbuffers.as_mut_ptr()) }
+        unsafe { self.fns.GenRenderbuffers(renderbuffers.len() as _, renderbuffers.as_mut_ptr()) }
     }
     
     pub fn glGenRenderbuffer(&self, renderbuffer: &mut u32) {
@@ -546,7 +546,7 @@ impl GLWrapper {
     }
     
     pub fn glGenSamplers(&self, samplers: &mut [u32]) {
-        unsafe { self.fns.GenSamplers(samplers.len() as i32, samplers.as_mut_ptr()) }
+        unsafe { self.fns.GenSamplers(samplers.len() as _, samplers.as_mut_ptr()) }
     }
     
     pub fn glGenSampler(&self, sampler: &mut u32) {
@@ -554,7 +554,7 @@ impl GLWrapper {
     }
     
     pub fn glGenTextures(&self, textures: &mut [u32]) {
-        unsafe { self.fns.GenTextures(textures.len() as i32, textures.as_mut_ptr()) }
+        unsafe { self.fns.GenTextures(textures.len() as _, textures.as_mut_ptr()) }
     }
     
     pub fn glGenTexture(&self, texture: &mut u32) {
@@ -562,7 +562,7 @@ impl GLWrapper {
     }
     
     pub fn glGenVertexArrays(&self, arrays: &mut [u32]) {
-        unsafe { self.fns.GenVertexArrays(arrays.len() as i32, arrays.as_mut_ptr()) }
+        unsafe { self.fns.GenVertexArrays(arrays.len() as _, arrays.as_mut_ptr()) }
     }
     
     pub fn glGenVertexArray(&self, array: &mut u32) {
@@ -580,9 +580,9 @@ impl GLWrapper {
         let mut type_ = GL_INT;
         let mut length = 0i32;
 
-        unsafe { self.fns.GetActiveAttrib(program, index, 100, &mut length as *mut i32, &mut size as *mut i32, &mut type_ as *mut AttributeType, name.as_mut_ptr()); }
+        unsafe { self.fns.GetActiveAttrib(program, index, 100, &mut length as _, &mut size as _, &mut type_ as _, name.as_mut_ptr()); }
 
-        let name = String::from_utf8_lossy(&name[..length as usize]).into_owned();
+        let name = String::from_utf8_lossy(&name[..length as _]).into_owned();
 
         Attrib { name, type_, size }
     }
@@ -593,9 +593,9 @@ impl GLWrapper {
         let mut type_ = GL_INT;
         let mut length = 0i32;
 
-        unsafe {self.fns.GetActiveUniform(program, index, 100, &mut length as *mut i32, &mut size as *mut i32, &mut type_ as *mut UniformType, name.as_mut_ptr()); }
+        unsafe {self.fns.GetActiveUniform(program, index, 100, &mut length as _, &mut size as _, &mut type_ as _, name.as_mut_ptr()); }
 
-        let name = String::from_utf8_lossy(&name[0..length as usize]).into_owned();
+        let name = String::from_utf8_lossy(&name[0..length as _]).into_owned();
 
         Uniform { name, type_, size }
     }
@@ -604,9 +604,9 @@ impl GLWrapper {
         let mut uniformBlockName = [0u8; 100];
         let mut length = 0i32;
 
-        unsafe { self.fns.GetActiveUniformBlockName(program, uniformBlockIndex, 100, &mut length as *mut i32, uniformBlockName.as_mut_ptr()); }
+        unsafe { self.fns.GetActiveUniformBlockName(program, uniformBlockIndex, 100, &mut length as _, uniformBlockName.as_mut_ptr()); }
 
-        String::from_utf8_lossy(&uniformBlockName[..length as usize]).into_owned()
+        String::from_utf8_lossy(&uniformBlockName[..length as _]).into_owned()
     }
     
     pub unsafe fn glGetActiveUniformBlockiv(&self, program: u32, uniformBlockIndex: u32, pname: UniformBlockPName, params: *mut i32) {
@@ -617,15 +617,15 @@ impl GLWrapper {
         let mut uniformName = [0u8; 100];
         let mut length = 0i32;
 
-        unsafe { self.fns.GetActiveUniformName(program, uniformIndex, 100, &mut length as *mut i32, uniformName.as_mut_ptr()); }
+        unsafe { self.fns.GetActiveUniformName(program, uniformIndex, 100, &mut length as _, uniformName.as_mut_ptr()); }
 
-        String::from_utf8_lossy(&uniformName[..length as usize]).into_owned()
+        String::from_utf8_lossy(&uniformName[..length as _]).into_owned()
     }
     
     pub fn glGetActiveUniformsiv(&self, program: u32, uniformIndices: &[u32], pname: UniformPName) -> Box<[i32]> {
         let mut params = vec![0; uniformIndices.len()].into_boxed_slice();
 
-        unsafe { self.fns.GetActiveUniformsiv(program, uniformIndices.len() as i32, uniformIndices.as_ptr() as *const u32, pname, params.as_mut_ptr()) }
+        unsafe { self.fns.GetActiveUniformsiv(program, uniformIndices.len() as _, uniformIndices.as_ptr() as _, pname, params.as_mut_ptr()) }
 
         params
     }
@@ -634,17 +634,17 @@ impl GLWrapper {
         let mut shaders = [0u32; 100];
         let mut count = 0i32;
 
-        unsafe { self.fns.GetAttachedShaders(program, 100, &mut count as *mut i32, shaders.as_mut_ptr()); }
+        unsafe { self.fns.GetAttachedShaders(program, 100, &mut count as _, shaders.as_mut_ptr()); }
 
         let mut shaders = shaders.to_vec();
-        shaders.truncate(count as usize);
+        shaders.truncate(count as _);
 
         shaders.into_boxed_slice()
     }
     
     pub fn glGetAttribLocation(&self, program: u32, name: &str) -> i32 {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetAttribLocation(program, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.GetAttribLocation(program, null_str.as_ptr() as _) }
     }
     
     pub unsafe fn glGetBooleani_v(&self, target: BufferTargetARB, index: u32, data: *mut u8) {
@@ -689,12 +689,12 @@ impl GLWrapper {
     
     pub fn glGetFragDataIndex(&self, program: u32, name: &str) -> i32 {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetFragDataIndex(program, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.GetFragDataIndex(program, null_str.as_ptr() as _) }
     }
     
     pub fn glGetFragDataLocation(&self, program: u32, name: &str) -> i32 {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetFragDataLocation(program, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.GetFragDataLocation(program, null_str.as_ptr() as _) }
     }
     
     pub unsafe fn glGetFramebufferAttachmentParameteriv(&self, target: FramebufferTarget, attachment: FramebufferAttachment, pname: FramebufferAttachmentParameterName, params: *mut i32) {
@@ -792,7 +792,7 @@ impl GLWrapper {
         let raw_str = self.fns.GetString(name);
 
         unsafe {
-            let len = libc::strlen(raw_str as *const i8);
+            let len = libc::strlen(raw_str as _);
             let slice = std::slice::from_raw_parts(raw_str, len);
             String::from_utf8_lossy(slice).to_string()
         }
@@ -802,7 +802,7 @@ impl GLWrapper {
         let raw_str = self.fns.GetStringi(name, index);
 
         unsafe {
-            let len = libc::strlen(raw_str as *const i8);
+            let len = libc::strlen(raw_str as _);
             let slice = std::slice::from_raw_parts(raw_str, len);
             String::from_utf8_lossy(slice).to_string()
         }
@@ -846,17 +846,17 @@ impl GLWrapper {
     
     pub fn glGetUniformBlockIndex(&self, program: u32, uniformBlockName: &str) -> u32 {
         let null_str = CString::new(uniformBlockName).unwrap();
-        unsafe { self.fns.GetUniformBlockIndex(program, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.GetUniformBlockIndex(program, null_str.as_ptr() as _) }
     }
     
     // NEEDS TESTING
     pub fn glGetUniformIndices(&self, program: u32, uniformNames: &CStringArray, uniformIndices: &mut [u32]) {
-        unsafe { self.fns.GetUniformIndices(program, uniformNames.len() as i32, uniformNames.as_ptr(), uniformIndices.as_mut_ptr()) }
+        unsafe { self.fns.GetUniformIndices(program, uniformNames.len() as _, uniformNames.as_ptr(), uniformIndices.as_mut_ptr()) }
     }
     
     pub fn glGetUniformLocation(&self, program: u32, name: &str) -> i32 {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as *const u8) }
+        unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as _) }
     }
     
     pub unsafe fn glGetUniformfv(&self, program: u32, location: i32, params: *mut f32) {
@@ -1172,7 +1172,7 @@ impl GLWrapper {
     }
     
     pub fn glTransformFeedbackVaryings(&self, program: u32, varyings: &CStringArray, bufferMode: TransformFeedbackBufferMode) {
-        unsafe { self.fns.TransformFeedbackVaryings(program, varyings.len() as i32, varyings.as_ptr(), bufferMode) }
+        unsafe { self.fns.TransformFeedbackVaryings(program, varyings.len() as _, varyings.as_ptr(), bufferMode) }
     }
     
     pub unsafe fn glUniform1f(&self, location: i32, v0: f32) {
@@ -1587,8 +1587,8 @@ impl GLWrapper {
         self.fns.VertexAttribP4uiv(index, type_, normalized, value)
     }
     
-    pub fn glVertexAttribPointer(&self, index: u32, size: i32, type_: VertexAttribPointerType, normalized: u8, stride: i32, offset: u32) {
-        unsafe { self.fns.VertexAttribPointer(index, size, type_, normalized, stride, offset as *const c_void) }
+    pub fn glVertexAttribPointer(&self, index: u32, size: i32, type_: VertexAttribPointerType, normalized: bool, stride: i32, offset: u32) {
+        unsafe { self.fns.VertexAttribPointer(index, size, type_, normalized as _, stride, offset as _) }
     }
     
     pub unsafe fn glViewport(&self, x: i32, y: i32, width: i32, height: i32) {
@@ -1608,7 +1608,7 @@ impl GLWrapper {
     }
     
     pub fn glDebugMessageInsert(&self, source: DebugSource, type_: DebugType, id: u32, severity: DebugSeverity, buf: &str) {
-        unsafe { self.fns.DebugMessageInsert(source, type_, id, severity, buf.len() as i32, buf.as_ptr()) }
+        unsafe { self.fns.DebugMessageInsert(source, type_, id, severity, buf.len() as _, buf.as_ptr()) }
     }
     
     pub unsafe fn glGetDebugMessageLog(&self, count: u32, bufSize: i32, sources: *mut DebugSource, types: *mut DebugType, ids: *mut u32, severities: *mut DebugSeverity, lengths: *mut i32, messageLog: *mut u8) -> u32 {
@@ -1628,11 +1628,11 @@ impl GLWrapper {
     }
     
     pub fn glObjectLabel(&self, identifier: ObjectIdentifier, name: u32, label: &str) {
-        unsafe { self.fns.ObjectLabel(identifier, name, label.len() as i32, label.as_ptr()) }
+        unsafe { self.fns.ObjectLabel(identifier, name, label.len() as _, label.as_ptr()) }
     }
     
     pub fn glObjectPtrLabel(&self, ptr: *const c_void, label: &str) {
-        unsafe { self.fns.ObjectPtrLabel(ptr, label.len() as i32, label.as_ptr()) }
+        unsafe { self.fns.ObjectPtrLabel(ptr, label.len() as _, label.as_ptr()) }
     }
     
     pub unsafe fn glPopDebugGroup(&self) {
@@ -1640,7 +1640,7 @@ impl GLWrapper {
     }
     
     pub fn glPushDebugGroup(&self, source: DebugSource, id: u32, message: &str) {
-        unsafe { self.fns.PushDebugGroup(source, id, message.len() as i32, message.as_ptr()) }
+        unsafe { self.fns.PushDebugGroup(source, id, message.len() as _, message.as_ptr()) }
     }
     
     

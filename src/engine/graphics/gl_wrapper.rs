@@ -7,6 +7,78 @@ use anyhow::{Result, anyhow};
 use gl33::*;
 use glfw::GLProc;
 
+use self::private::Sealed;
+
+mod private {
+    pub trait Sealed {}
+}
+
+pub trait GLType : Sealed {
+    fn gl_type(&self) -> GLenum;
+}
+impl Sealed for bool {}
+impl GLType for bool {
+    fn gl_type(&self) -> GLenum {
+        GL_BOOL
+    }
+}
+
+impl Sealed for i8 {}
+impl GLType for i8 {
+    fn gl_type(&self) -> GLenum {
+        GL_BYTE
+    }
+}
+
+impl Sealed for u8 {}
+impl GLType for u8 {
+    fn gl_type(&self) -> GLenum {
+        GL_UNSIGNED_BYTE
+    }
+}
+
+impl Sealed for i16 {}
+impl GLType for i16 {
+    fn gl_type(&self) -> GLenum {
+        GL_SHORT
+    }
+}
+
+impl Sealed for u16 {}
+impl GLType for u16 {
+    fn gl_type(&self) -> GLenum {
+        GL_UNSIGNED_SHORT
+    }
+}
+
+impl Sealed for i32 {}
+impl GLType for i32 {
+    fn gl_type(&self) -> GLenum {
+        GL_INT
+    }
+}
+
+impl Sealed for u32 {}
+impl GLType for u32 {
+    fn gl_type(&self) -> GLenum {
+        GL_UNSIGNED_INT
+    }
+}
+
+impl Sealed for f32 {}
+impl GLType for f32 {
+    fn gl_type(&self) -> GLenum {
+        GL_FLOAT
+    }
+}
+
+impl Sealed for f64 {}
+impl GLType for f64 {
+    fn gl_type(&self) -> GLenum {
+        GL_DOUBLE
+    }
+}
+
 pub struct Attrib {
     pub name: String,
     pub type_: AttributeType,
@@ -184,8 +256,12 @@ impl GLWrapper {
         unsafe { self.fns.BufferData(target, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _, usage) }
     }
     
-    pub fn glBufferSubData(&self, target: BufferTargetARB, offset: isize, data: &[u8]) {
-        unsafe { self.fns.BufferSubData(target, offset, data.len() as _, data.as_ptr() as _) }
+    pub fn glBufferSubData<T>(&self, target: BufferTargetARB, offset: isize, data: &[T]) {
+        unsafe { self.fns.BufferSubData(target, offset, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _) }
+    }
+
+    pub fn glBufferNull(&self, target: BufferTargetARB, size: usize, usage: BufferUsageARB) {
+        unsafe { self.fns.BufferData(target, size as _, std::ptr::null(), usage )}
     }
     
     pub fn glCheckFramebufferStatus(&self, target: FramebufferTarget) -> FramebufferStatus {

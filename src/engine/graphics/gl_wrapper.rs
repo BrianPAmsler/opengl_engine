@@ -14,67 +14,67 @@ mod private {
 }
 
 pub trait GLType : Sealed {
-    fn gl_type(&self) -> GLenum;
+    fn gl_type() -> GLenum;
 }
 impl Sealed for bool {}
 impl GLType for bool {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_BOOL
     }
 }
 
 impl Sealed for i8 {}
 impl GLType for i8 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_BYTE
     }
 }
 
 impl Sealed for u8 {}
 impl GLType for u8 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_UNSIGNED_BYTE
     }
 }
 
 impl Sealed for i16 {}
 impl GLType for i16 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_SHORT
     }
 }
 
 impl Sealed for u16 {}
 impl GLType for u16 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_UNSIGNED_SHORT
     }
 }
 
 impl Sealed for i32 {}
 impl GLType for i32 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_INT
     }
 }
 
 impl Sealed for u32 {}
 impl GLType for u32 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_UNSIGNED_INT
     }
 }
 
 impl Sealed for f32 {}
 impl GLType for f32 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_FLOAT
     }
 }
 
 impl Sealed for f64 {}
 impl GLType for f64 {
-    fn gl_type(&self) -> GLenum {
+    fn gl_type() -> GLenum {
         GL_DOUBLE
     }
 }

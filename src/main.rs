@@ -3,8 +3,9 @@
 mod engine;
 
 use anyhow::{Error, Result};
-use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{shader::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder}, BufferedMesh, Mesh, RGBColor, Vertex}};
-use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{BufferedMesh, Mesh, RGBColor, Vertex}};
+use engine::graphics::shader_program::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
+use gl33::{GL_ARRAY_BUFFER, GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 #[derive(Clone, Default)]

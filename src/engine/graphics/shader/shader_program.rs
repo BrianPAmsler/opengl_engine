@@ -1,17 +1,24 @@
 use gl33::{GL_FRAGMENT_SHADER, GL_COMPILE_STATUS, GL_VERTEX_SHADER};
 
-use super::Graphics;
+use crate::engine::graphics::Graphics;
 use anyhow::{Result, bail};
 
-pub trait ShaderTrait {
-    fn get_shader(&self) -> u32;
+use self::private::Seal;
 
+mod private {
+    pub trait Seal {}
+}
+
+pub trait ShaderTrait: private::Seal {
+    fn get_shader(&self) -> u32;
     fn add(&self, _program: u32, _gfx: &Graphics) {}
 }
 
 pub struct VertexShader {
     shader: u32
 }
+
+impl Seal for VertexShader {}
 
 impl ShaderTrait for VertexShader {
     fn get_shader(&self) -> u32 {
@@ -41,6 +48,8 @@ pub struct FragmentShader {
     shader: u32,
     frag_data: Vec<(u32, &'static str)>
 }
+
+impl Seal for FragmentShader {}
 
 impl ShaderTrait for FragmentShader {
     fn get_shader(&self) -> u32 {

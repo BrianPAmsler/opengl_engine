@@ -9,6 +9,33 @@ use crate::engine::WindowMode;
 
 use super::GLWrapper;
 
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Vertex {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct RGBColor {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct UV {
+    pub u: f32,
+    pub v: f32
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Normal {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32
+}
+
 fn get_monitor_fingerprint(monitor: &Monitor) -> u64 {
     let mut hasher = DefaultHasher::new();
     monitor.get_workarea().hash(&mut hasher);

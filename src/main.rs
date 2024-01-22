@@ -3,7 +3,7 @@
 mod engine;
 
 use anyhow::{Error, Result};
-use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{vertex_objects::ColoredVertex, shader::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder}}};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{shader::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder}, BufferedMesh, Mesh, RGBColor, Vertex}};
 use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_TRIANGLES, GL_FLOAT, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
@@ -51,12 +51,6 @@ impl Component for FPSCounter {
     }
 }
 
-const TEST_TRIANGLE: [ColoredVertex; 3] = [
-    ColoredVertex { x: 0.0, y: 1.0, z: 0.0, r: 1.0, g: 0.0, b: 0.0 },
-    ColoredVertex { x: -1.0, y: -1.0, z: 0.0, r: 0.0, g: 0.0, b: 1.0 },
-    ColoredVertex { x: 1.0, y: -1.0, z: 0.0, r: 0.0, g: 1.0, b: 0.0 },
-];
-
 const VERTEX_SHADER_SOURCE: &'static str = "
 #version 460 core
 
@@ -85,19 +79,19 @@ void main()
 
 #[derive(Clone, Default)]
 pub struct Renderer {
-    vbo: u32,
+    current_mesh_vbo: u32,
     shader_program: ShaderProgram,
-    vao: u32
+    mesh1: BufferedMesh,
+    mesh2: BufferedMesh
 }
 
 impl Component for Renderer {
     fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
-        gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        gfx.glGenBuffer(&mut self.vbo);
-        gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
-        gfx.glBufferData(GL_ARRAY_BUFFER, &TEST_TRIANGLE, GL_STATIC_DRAW);
+        self.current_mesh_vbo = self.mesh2.vbo();
+
+        gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
         let vert_shader = VertexShader::compile_shader(gfx, VERTEX_SHADER_SOURCE)?;
         let frag_shader = FragmentShader::compile_shader(gfx, FRAG_SHADER_SOURCE)?;
@@ -109,38 +103,27 @@ impl Component for Renderer {
 
         gfx.glUseProgram(self.shader_program.get_program());
 
-        gfx.glGenVertexArray(&mut self.vao);
-        gfx.glBindVertexArray(self.vao);
-
-        // Enable pos attribute pointer
-        gfx.glVertexAttribPointer(
-            0,
-            3,
-            GL_FLOAT,
-            0,
-            24,
-            0,
-        );
-        gfx.glEnableVertexAttribArray(0);
-
-        // Enable color attribute pointer
-        gfx.glVertexAttribPointer(
-            1,
-            3,
-            GL_FLOAT,
-            0,
-            24,
-            12,
-        );
-        gfx.glEnableVertexAttribArray(1);
-
         Ok(())
     }
 
     fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
+
+        let current_mesh = match (_engine.get_time() / 5.0) as i32 % 2 == 0 {
+            true => &self.mesh1,
+            false => &self.mesh2,
+        };
+
+        if self.current_mesh_vbo != current_mesh.vbo() {
+            self.current_mesh_vbo = current_mesh.vbo();
+            gfx.glBindBuffer(GL_ARRAY_BUFFER, self.current_mesh_vbo);
+            gfx.glBindVertexArray(current_mesh.vao());
+
+
+        }
+
         gfx.glClear(GL_COLOR_BUFFER_BIT);
-        gfx.glDrawArrays(GL_TRIANGLES, 0, 3);
+        gfx.glDrawArrays(GL_TRIANGLES, 0, current_mesh.len() as _);
 
         Ok(())   
     }
@@ -156,9 +139,70 @@ fn start_game() -> Result<()> {
     let _b = world.create_empty("b", a)?;
     let c = world.create_empty("c", a)?;
     let _d = world.create_empty("d", c)?;
+    let vertex_data = Box::new([
+        Vertex { x: -1.0, y: -1.0, z: 0.0 },
+        Vertex { x: -1.0, y: 1.0, z: 0.0 },
+        Vertex { x: 0.0, y: 0.0, z: 0.0 },
+    
+        Vertex { x: 1.0, y: 1.0, z: 0.0 },
+        Vertex { x: 1.0, y: -1.0, z: 0.0 },
+        Vertex { x: 0.0, y: 0.0, z: 0.0 },
+    
+        Vertex { x: -0.75, y: 1.0, z: 0.0 },
+        Vertex { x: 0.75, y: 1.0, z: 0.0 },
+        Vertex { x: 0.0, y: 0.25, z: 0.0 },
+    
+        Vertex { x: -0.75, y: -1.0, z: 0.0 },
+        Vertex { x: 0.75, y: -1.0, z: 0.0 },
+        Vertex { x: 0.0, y: -0.25, z: 0.0 },
+    ]);
+
+    let color_data_1 = Box::new([
+        RGBColor { r: 1.0, g: 0.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 1.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 0.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 1.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 0.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+    ]);
+
+    let color_data_2 = Box::new([
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 0.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 1.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 0.0, b: 1.0 },
+        
+        RGBColor { r: 1.0, g: 1.0, b: 0.0 },
+        RGBColor { r: 0.0, g: 1.0, b: 1.0 },
+        RGBColor { r: 1.0, g: 0.0, b: 1.0 },
+    ]);
+
+    let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);
+    let mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, Some(color_data_2), None, None);
+
+    let mut renderer = Renderer::default();
+    let gfx = engine.get_graphics()?;
+    renderer.mesh1 = BufferedMesh::buffer_mesh(gfx, &mesh1);
+    renderer.mesh2 = BufferedMesh::buffer_mesh(gfx, &mesh2);
 
     _d.add_component(FPSCounter::default())?;
-    a.add_component(Renderer::default())?;
+    a.add_component(renderer)?;
 
     engine.run()?;
 

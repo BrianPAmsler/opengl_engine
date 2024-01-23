@@ -1,9 +1,11 @@
 mod graphics;
 mod gl_wrapper;
 mod mesh;
-
-pub mod shader_program;
+mod shader_program;
+mod vertex_buffer;
 
 pub use graphics::*;
 pub use gl_wrapper::*;
 pub use mesh::*;
+pub use shader_program::*;
+pub use vertex_buffer::*;

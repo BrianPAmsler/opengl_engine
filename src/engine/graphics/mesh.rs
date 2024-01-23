@@ -28,6 +28,10 @@ impl CustomAttributeData {
 
         CustomAttributeData { data, type_, size, normalized }
     }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
 }
 
 #[derive(Clone, Default)]
@@ -127,6 +131,10 @@ impl Mesh {
         }
         
         &self.normal_data
+    }
+
+    pub fn get_custom_data(&self) -> &[CustomAttributeData] {
+        &self.custom_data
     }
 
     pub fn add_custom_data(&mut self, data: CustomAttributeData) {

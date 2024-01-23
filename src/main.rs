@@ -4,7 +4,7 @@ mod engine;
 
 use anyhow::{Error, Result};
 use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{BufferedMesh, Mesh, RGBColor, Vertex}};
-use engine::graphics::shader_program::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
+use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl33::{GL_ARRAY_BUFFER, GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 

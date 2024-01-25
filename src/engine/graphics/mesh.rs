@@ -9,9 +9,7 @@ pub struct CustomAttribute<T: GLType, const S: usize, const N: bool> {
 }
 
 impl<T: GLType, const S: usize, const N: bool> CustomAttribute<T, S, N> {
-    pub fn new(data: Box<[T]>) -> CustomAttribute<T, S, N> {
-        let data = data.to_vec().try_into().unwrap();
-
+    pub fn new(data: [T; S]) -> CustomAttribute<T, S, N> {
         CustomAttribute { data }
     }
 }
@@ -41,6 +39,24 @@ impl CustomAttributeData {
         unsafe {
             let raw_slice: &mut (*const u8, usize) = std::mem::transmute(&mut data);
             raw_slice.1 *= std::mem::size_of::<T>() * S;
+        }
+
+        CustomAttributeData { data, type_, size, normalized, len }
+    }
+
+    pub fn from_raw<T: GLType>(data: Box<[T]>, size: usize, normalized: bool) -> CustomAttributeData {
+        let type_ = T::gl_type();
+        let len = data.len() / size;
+
+        let mut data: Box<[u8]> = unsafe {std::mem::transmute(data) };
+
+        // This is kinda fucked up, but transmute does not adjust the length of the slice.
+        // Internally a slice is just a pointer followed by a usize, so we can transmute 
+        // it to a tuple and then multiply the usize by the size of our type to adjust
+        // the slice's length to be in bytes
+        unsafe {
+            let raw_slice: &mut (*const u8, usize) = std::mem::transmute(&mut data);
+            raw_slice.1 *= std::mem::size_of::<T>();
         }
 
         CustomAttributeData { data, type_, size, normalized, len }

@@ -173,22 +173,22 @@ fn start_game() -> Result<()> {
         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
     ]);
 
-    let color_data_2: Box<[CustomAttribute<f32, 3, true>; 12]> = Box::new([
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+    let color_data_2: Box<[CustomAttribute<f32, 3, true>]> = Box::new([
+        CustomAttribute::new([1.0, 1.0, 1.0]),
+        CustomAttribute::new([1.0, 1.0, 1.0]),
+        CustomAttribute::new([1.0, 1.0, 1.0]),
         
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+        CustomAttribute::new([1.0, 1.0, 1.0]),
+        CustomAttribute::new([1.0, 1.0, 1.0]),
+        CustomAttribute::new([1.0, 1.0, 1.0]),
         
-        CustomAttribute::new(Box::new([1.0, 0.0, 0.0])),
-        CustomAttribute::new(Box::new([0.0, 1.0, 0.0])),
-        CustomAttribute::new(Box::new([0.0, 0.0, 1.0])),
+        CustomAttribute::new([1.0, 0.0, 0.0]),
+        CustomAttribute::new([0.0, 1.0, 0.0]),
+        CustomAttribute::new([0.0, 0.0, 1.0]),
         
-        CustomAttribute::new(Box::new([0.0, 1.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 0.0, 1.0])),
-        CustomAttribute::new(Box::new([1.0, 1.0, 0.0])),
+        CustomAttribute::new([0.0, 1.0, 1.0]),
+        CustomAttribute::new([1.0, 0.0, 1.0]),
+        CustomAttribute::new([1.0, 1.0, 0.0]),
     ]);
 
     let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);

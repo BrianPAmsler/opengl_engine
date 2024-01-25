@@ -62,7 +62,7 @@ impl VBOManager {
         for data in &mesh.custom_data {
             self.custom_data += data.data().len();
         }
-        
+
         let buff = BufferedMeshHandle::new();
         self.meshes.push((mesh, buff.clone()));
 
@@ -80,13 +80,6 @@ impl VBOManager {
         let mut uv_offset = color_offset + self.color_data;
         let mut normal_offset = uv_offset + self.uv_data;
         let mut custom_offset = normal_offset + self.normal_data;
-
-        println!("Initial offsets:");
-        println!("\tinitial vertex offset: {}", vertex_offset);
-        println!("\tinitial color offset: {}", color_offset);
-        println!("\tinitial uv offset: {}", uv_offset);
-        println!("\tinitial normal offset: {}", normal_offset);
-        println!("\tinitial custom offset: {}", custom_offset);
 
         for (mesh, buff) in self.meshes {
             let mut vao = 0;
@@ -111,12 +104,6 @@ impl VBOManager {
             let mut index = 1;
             if mesh.has_color_data() {
                 gfx.glBufferSubData(GL_ARRAY_BUFFER, color_offset as _, &mesh.color_data);
-    
-                println!("Color vao for {}:\n\tindex: {}\n\tsize: {}\n\toffset: {}",
-                    mesh.name(),
-                    index,
-                    3,
-                    color_offset);
 
                 // Enable color attribute pointer
                 gfx.glVertexAttribPointer(
@@ -174,12 +161,6 @@ impl VBOManager {
     
             for data in &mesh.custom_data {
                 gfx.glBufferSubData(GL_ARRAY_BUFFER, custom_offset as _, data.data());
-
-                println!("Custom vao for {}:\n\tindex: {}\n\tsize: {}\n\toffset: {}",
-                    mesh.name(),
-                    index,
-                    data.size(),
-                    custom_offset);
     
                 // Enable normal attribute pointer
                 gfx.glVertexAttribPointer(

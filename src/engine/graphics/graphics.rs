@@ -5,7 +5,7 @@ use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Mo
 use anyhow::{Result, anyhow};
 use libc::strlen;
 
-use crate::engine::WindowMode;
+use crate::engine::{WindowMode, errors::GraphicsError};
 
 use super::GLWrapper;
 
@@ -66,22 +66,22 @@ impl Graphics {
                         let id = get_monitor_fingerprint(m);
                         if id == fingerprint {
                             let window_mode = glfw::WindowMode::FullScreen(m);
-                            return glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!("Failed to create GLFW Window!"));
+                            return glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!(GraphicsError::WindowCreationFailError));
                         }
                     }
 
                     eprintln!("Monitor not found, defaulting to primary monitor!");
-                    glfw.create_window(width, height, window_title, glfw::WindowMode::FullScreen(&Monitor::from_primary())).ok_or(anyhow!("Failed to create GLFW Window!"))
+                    glfw.create_window(width, height, window_title, glfw::WindowMode::FullScreen(&Monitor::from_primary())).ok_or(anyhow!(GraphicsError::WindowCreationFailError))
                 })?
             },
             WindowMode::FullScreen(None) => {
                 glfw.create_window(width, height, window_title, glfw::WindowMode::FullScreen(&Monitor::from_primary()))
-                .ok_or(anyhow!("Failed to create GLFW Window!"))?
+                .ok_or(anyhow!(GraphicsError::WindowCreationFailError))?
             },
-            WindowMode::Windowed => glfw.create_window(width, height, window_title, glfw::WindowMode::Windowed).ok_or(anyhow!("Failed to create GLFW Window!"))?
+            WindowMode::Windowed => glfw.create_window(width, height, window_title, glfw::WindowMode::Windowed).ok_or(anyhow!(GraphicsError::WindowCreationFailError))?
         };
 
-        // let (mut window, events) = glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!("Failed to create GLFW Window!"))?;
+        // let (mut window, events) = glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!(GraphicsError::WindowCreationFailError))?;
 
         window.make_current();
         window.set_key_polling(true);

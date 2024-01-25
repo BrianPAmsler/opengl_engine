@@ -2,11 +2,9 @@ use std::{collections::{HashSet, VecDeque}, ops::{Deref, DerefMut}, cell::{RefCe
 
 use anyhow::{Result, anyhow, Error, bail};
 
-use crate::engine::Engine;
+use crate::engine::{Engine, errors::ObjectError};
 
 use super::{World, component::{Component, ComponentRef}};
-
-pub(in crate) const DEAD_MESSAGE: &'static str = "Object has been destroyed!";
 
 #[derive(Clone)]
 pub(in crate::engine::game_object) struct _GameObject {
@@ -70,7 +68,7 @@ impl GameObject {
     fn borrow_game_object(&self) -> Result<GameObjectRef<'static>> {
         let r = self.world.obj_list.borrow();
 
-        r[self.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?;
+        r[self.id as usize].as_ref().ok_or(anyhow!(ObjectError::DeadObjectError))?;
 
         Ok(GameObjectRef { r, id: self.id as usize })
     }
@@ -78,7 +76,7 @@ impl GameObject {
     fn borrow_game_object_mut(&self) -> Result<GameObjectRefMut> {
         let r = self.world.obj_list.borrow_mut();
 
-        r[self.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?;
+        r[self.id as usize].as_ref().ok_or(anyhow!(ObjectError::DeadObjectError))?;
 
         Ok(GameObjectRefMut { r, id: self.id as usize })
     }
@@ -105,7 +103,7 @@ impl GameObject {
 
     pub fn set_parent(&self, parent: GameObject) -> Result<()> {
         if !std::ptr::eq(self.world, parent.world) {
-            return Err(anyhow!("Objects must be a part of the same World!"));
+            return Err(anyhow!(ObjectError::WorldMismatchError { other: "Objects" }));
         }
 
         self.world.set_parent(parent.id, self.id)?;
@@ -129,7 +127,7 @@ impl GameObject {
         while q.len() > 0 {
             let current = q.pop_front().unwrap();
             let temp = &obj_list[current as usize];
-            let obj = temp.as_ref().ok_or(anyhow!(DEAD_MESSAGE))?;
+            let obj = temp.as_ref().ok_or(anyhow!(ObjectError::DeadObjectError))?;
 
             q.extend(obj.children.iter());
             objects.extend(obj.children.iter());
@@ -238,11 +236,11 @@ impl GameObject {
         let mut game_object = self.borrow_game_object_mut()?;
         
         if !std::ptr::eq(self.world, component.world) || component.object_id != self.id {
-            bail!("invalid!");
+            bail!(ObjectError::ComponentMismatchError);
         }
 
         if game_object.components[component.component_index].is_none() {
-            bail!("component dead!")
+            bail!(ObjectError::DeadComponentError)
         }
 
         game_object.components[component.component_index] = None;

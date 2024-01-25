@@ -3,9 +3,9 @@ use std::{marker::PhantomData, cell::{Ref, RefMut}};
 use anyhow::{Error, Result, bail};
 use downcast_rs::{Downcast, impl_downcast};
 
-use crate::engine::{Engine, game_object::{World, GameObject, game_object::GameObjectRef}};
+use crate::engine::{Engine, game_object::{World, GameObject, game_object::GameObjectRef}, errors::ObjectError};
 
-pub trait Component: Downcast + CopyCloneRequriement {
+pub trait Component: Downcast + CopyRequriement {
     fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {Ok(())}
     fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {Ok(())}
     fn fixed_update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {Ok(())}
@@ -13,11 +13,11 @@ pub trait Component: Downcast + CopyCloneRequriement {
 
 impl_downcast!(Component);
 
-pub trait CopyCloneRequriement {
+pub trait CopyRequriement {
     fn clone_box(&self) -> Box<dyn Component>;
 }
 
-impl<T> CopyCloneRequriement for T
+impl<T> CopyRequriement for T
 where
     T: Component + Clone
 {   
@@ -54,7 +54,7 @@ impl<C: Component> ComponentRef<C> {
         let comp = &self.game_object.components[self.component_index];
 
         if comp.is_none() {
-            bail!("dead component!");
+            bail!(ObjectError::DeadComponentError);
         }
 
         let bx = comp.as_ref().unwrap().borrow();
@@ -66,7 +66,7 @@ impl<C: Component> ComponentRef<C> {
         let comp = &self.game_object.components[self.component_index];
 
         if comp.is_none() {
-            bail!("dead component!");
+            bail!(ObjectError::DeadComponentError);
         }
 
         let bx = comp.as_ref().unwrap().borrow_mut();

@@ -1,7 +1,7 @@
-use anyhow::{Result, Ok, anyhow, bail, Error};
+use anyhow::{Result, anyhow, bail, Error};
 use glfw::{WindowEvent, Key, Action, Monitor};
 
-use crate::clean_backtrace;
+use crate::{clean_backtrace, engine::errors::GraphicsError};
 
 use super::{graphics::Graphics, game_object::World};
 
@@ -27,7 +27,7 @@ impl Engine {
 
     pub fn create_window(&mut self, window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<()> {
         if self.gfx.is_some() {
-            bail!("Window already created!");
+            bail!(GraphicsError::WindowCreatedError);
         }
         
         self.gfx = Some(Graphics::init(window_title, width, height, window_mode)?);
@@ -36,7 +36,7 @@ impl Engine {
     }
 
     pub fn get_graphics(&self) -> Result<&Graphics> {
-        self.gfx.as_ref().ok_or(anyhow!("Graphics not initialized!"))
+        self.gfx.as_ref().ok_or(anyhow!(GraphicsError::GraphicsNotInitializedError))
     }
     
     pub fn get_time(&self) -> f32 {

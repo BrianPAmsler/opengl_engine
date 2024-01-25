@@ -2,7 +2,7 @@
 use std::{cell::RefCell, ptr};
 use anyhow::{Result, anyhow, bail};
 
-use crate::engine::game_object::game_object::DEAD_MESSAGE;
+use crate::engine::errors::ObjectError;
 
 use super::{GameObject, game_object::_GameObject, component::components::Transform};
 
@@ -41,9 +41,9 @@ impl World {
         let mut temp = self.obj_list.borrow_mut();
         let old_parent = temp[child as usize].as_ref().map_or(0, |t| t.parent);
         
-        temp[old_parent as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.children.remove(&child);
-        temp[parent as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.children.insert(child);
-        temp[child as usize].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?.parent = parent;
+        temp[old_parent as usize].as_mut().ok_or(anyhow!(ObjectError::DeadObjectError))?.children.remove(&child);
+        temp[parent as usize].as_mut().ok_or(anyhow!(ObjectError::DeadObjectError))?.children.insert(child);
+        temp[child as usize].as_mut().ok_or(anyhow!(ObjectError::DeadObjectError))?.parent = parent;
 
         Ok(())
     }
@@ -58,7 +58,7 @@ impl World {
 
     pub fn create_empty(&'static self, name: &str, parent: GameObject) -> Result<GameObject> {
         if !ptr::eq(self, parent.world) {
-            return Err(anyhow!("Parent from another world!"));
+            return Err(anyhow!(ObjectError::WorldMismatchError { other: "Parent" }));
         }
 
         let id = self.add_object(_GameObject::empty(name));
@@ -72,7 +72,7 @@ impl World {
 
     pub fn destroy(&self, obj: GameObject) -> Result<()> {
         if obj.id == 0 {
-            bail!("Root object cannot be deleted!");
+            bail!(ObjectError::RootObjectDeleteError);
         }
 
         let children = obj.get_children()?;
@@ -84,8 +84,8 @@ impl World {
 
         // Remove self from parent's child list
         let mut temp = self.obj_list.borrow_mut();
-        let parent = temp[obj.id as usize].as_ref().ok_or(anyhow!(DEAD_MESSAGE))?.parent as usize;
-        let parent = temp[parent].as_mut().ok_or(anyhow!(DEAD_MESSAGE))?;
+        let parent = temp[obj.id as usize].as_ref().ok_or(anyhow!(ObjectError::DeadObjectError))?.parent as usize;
+        let parent = temp[parent].as_mut().ok_or(anyhow!(ObjectError::DeadObjectError))?;
 
         parent.children.remove(&obj.id);
 

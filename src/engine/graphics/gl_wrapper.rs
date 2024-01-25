@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use std::{ffi::{c_void, CString, CStr}, ops::{Deref, DerefMut}};
+use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}, fmt::Debug};
 
 use anyhow::{Result, anyhow};
 
@@ -13,9 +13,10 @@ mod private {
     pub trait Sealed {}
 }
 
-pub trait GLType : Sealed {
+pub trait GLType : Sealed + Clone + Copy + Debug {
     fn gl_type() -> GLenum;
 }
+
 impl Sealed for bool {}
 impl GLType for bool {
     fn gl_type() -> GLenum {
@@ -849,11 +850,12 @@ impl GLWrapper {
         let mut length = 0;
         self.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &mut length);
 
-        let mut buffer = vec![0u8; length as usize + 1];
-
+        let mut buffer = vec![0u8; length as usize];
         unsafe { self.fns.GetShaderInfoLog(shader, length, std::ptr::null_mut(), buffer.as_mut_ptr()) }
+        // Trim null terminator and 2 newline characters
+        buffer.truncate(buffer.len() - 3);
 
-        CStr::from_bytes_until_nul(&buffer).unwrap().to_str().unwrap().to_owned()
+        String::from_utf8(buffer).unwrap()
     }
     
     pub unsafe fn glGetShaderSource(&self, shader: u32, bufSize: i32, length: *mut i32, source: *mut u8) {

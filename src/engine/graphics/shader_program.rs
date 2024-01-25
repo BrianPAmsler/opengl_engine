@@ -5,6 +5,19 @@ use anyhow::{Result, bail};
 
 use self::private::Seal;
 
+fn compile_shader(gfx: &Graphics, shader: u32) -> Result<()> {
+    gfx.glCompileShader(shader);
+
+    let mut status = 0;
+    gfx.glGetShaderiv(shader, GL_COMPILE_STATUS, &mut status);
+
+    if status == 0 {
+        bail!("Shader compile error\n{}", gfx.glGetShaderInfoLog(shader));
+    }
+
+    Ok(())
+}
+
 mod private {
     pub trait Seal {}
 }
@@ -31,22 +44,14 @@ impl VertexShader {
         let shader = gfx.glCreateShader(GL_VERTEX_SHADER);
 
         gfx.glShaderSource(shader, source);
-        gfx.glCompileShader(shader);
-
-        let mut status = 0;
-        gfx.glGetShaderiv(shader, GL_COMPILE_STATUS, &mut status);
-
-        if status == 0 {
-            bail!("Vertex shader error:\n{}", gfx.glGetShaderInfoLog(shader));
-        }
+        compile_shader(gfx, shader)?;
 
         Ok(VertexShader { shader })
     }
 }
 
 pub struct FragmentShader {
-    shader: u32,
-    frag_data: Vec<(u32, &'static str)>
+    shader: u32
 }
 
 impl Seal for FragmentShader {}
@@ -55,12 +60,6 @@ impl ShaderTrait for FragmentShader {
     fn get_shader(&self) -> u32 {
         self.shader 
     }
-
-    fn add(&self, program: u32, gfx: &Graphics) {
-        for (color, name) in &self.frag_data {
-            gfx.glBindFragDataLocation(program, *color, name);
-        }
-    }
 }
 
 impl FragmentShader {
@@ -68,20 +67,9 @@ impl FragmentShader {
         let shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
 
         gfx.glShaderSource(shader, source);
-        gfx.glCompileShader(shader);
+        compile_shader(gfx, shader)?;
 
-        let mut status = 0;
-        gfx.glGetShaderiv(shader, GL_COMPILE_STATUS, &mut status);
-
-        if status == 0 {
-            bail!("Fragment shader error:\n{}", gfx.glGetShaderInfoLog(shader));
-        }
-
-        Ok(FragmentShader { shader, frag_data: Vec::new() })
-    }
-
-    pub fn add_frag_data(&mut self, color: u32, name: &'static str) {
-        self.frag_data.push((color, name));
+        Ok(FragmentShader { shader })
     }
 }
 
@@ -120,7 +108,11 @@ pub struct ShaderProgram {
 }
 
 impl ShaderProgram {
-    pub fn get_program(&self) -> u32 {
+    pub fn program(&self) -> u32 {
         self.program
+    }
+
+    pub fn shaders(&self) -> &[u32] {
+        &self.shaders
     }
 }

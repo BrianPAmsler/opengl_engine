@@ -3,9 +3,9 @@
 mod engine;
 
 use anyhow::{Error, Result};
-use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{BufferedMesh, Mesh, RGBColor, Vertex}};
+use engine::{Engine, game_object::{component::Component, GameObject}, graphics::{BufferedMesh, Mesh, RGBColor, Vertex, VBOManager, CustomAttribute, CustomAttributeData}};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl33::{GL_ARRAY_BUFFER, GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
+use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 #[derive(Clone, Default)]
@@ -53,7 +53,7 @@ impl Component for FPSCounter {
 }
 
 const VERTEX_SHADER_SOURCE: &'static str = "
-#version 460 core
+#version 330 core
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 vertexColor;
@@ -67,7 +67,7 @@ void main()
 }";
 
 const FRAG_SHADER_SOURCE: &'static str = "
-#version 150 core
+#version 330 core
 
 in vec3 color;
 
@@ -80,7 +80,7 @@ void main()
 
 #[derive(Clone, Default)]
 pub struct Renderer {
-    current_mesh_vbo: u32,
+    current_vao: u32,
     shader_program: ShaderProgram,
     mesh1: BufferedMesh,
     mesh2: BufferedMesh
@@ -90,7 +90,7 @@ impl Component for Renderer {
     fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
 
-        self.current_mesh_vbo = self.mesh2.vbo();
+        self.current_vao = self.mesh2.vao();
 
         gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
@@ -102,7 +102,7 @@ impl Component for Renderer {
         program_builder.attach_shader(frag_shader);
         self.shader_program = program_builder.finish();
 
-        gfx.glUseProgram(self.shader_program.get_program());
+        gfx.glUseProgram(self.shader_program.program());
 
         Ok(())
     }
@@ -115,12 +115,9 @@ impl Component for Renderer {
             false => &self.mesh2,
         };
 
-        if self.current_mesh_vbo != current_mesh.vbo() {
-            self.current_mesh_vbo = current_mesh.vbo();
-            gfx.glBindBuffer(GL_ARRAY_BUFFER, self.current_mesh_vbo);
+        if self.current_vao != current_mesh.vao() {
+            self.current_vao = current_mesh.vao();
             gfx.glBindVertexArray(current_mesh.vao());
-
-
         }
 
         gfx.glClear(GL_COLOR_BUFFER_BIT);
@@ -176,31 +173,38 @@ fn start_game() -> Result<()> {
         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
     ]);
 
-    let color_data_2 = Box::new([
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+    let color_data_2: Box<[CustomAttribute<f32, 3, true>; 12]> = Box::new([
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
         
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 1.0, 1.0])),
         
-        RGBColor { r: 1.0, g: 0.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 0.0, b: 1.0 },
+        CustomAttribute::new(Box::new([1.0, 0.0, 0.0])),
+        CustomAttribute::new(Box::new([0.0, 1.0, 0.0])),
+        CustomAttribute::new(Box::new([0.0, 0.0, 1.0])),
         
-        RGBColor { r: 1.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 0.0, b: 1.0 },
+        CustomAttribute::new(Box::new([0.0, 1.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 0.0, 1.0])),
+        CustomAttribute::new(Box::new([1.0, 1.0, 0.0])),
     ]);
 
     let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);
-    let mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, Some(color_data_2), None, None);
+    let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None);
+    mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
 
     let mut renderer = Renderer::default();
     let gfx = engine.get_graphics()?;
-    renderer.mesh1 = BufferedMesh::buffer_mesh(gfx, &mesh1);
-    renderer.mesh2 = BufferedMesh::buffer_mesh(gfx, &mesh2);
+    
+    let mut vbo = VBOManager::new(gfx);
+    let mesh1 = vbo.add_mesh(mesh1);
+    let mesh2 = vbo.add_mesh(mesh2);
+    vbo.buffer_data(gfx);
+
+    renderer.mesh1 = mesh1.take();
+    renderer.mesh2 = mesh2.take();
 
     _d.add_component(FPSCounter::default())?;
     a.add_component(renderer)?;

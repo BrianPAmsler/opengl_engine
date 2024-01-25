@@ -8,6 +8,15 @@ pub struct CustomAttribute<T: GLType, const S: usize, const N: bool> {
     data: [T; S]
 }
 
+impl<T: GLType, const S: usize, const N: bool> Default for CustomAttribute<T, S, N>
+where
+    [T; S]: Default,
+{
+    fn default() -> Self {
+        Self { data: Default::default() }
+    }
+}
+
 impl<T: GLType, const S: usize, const N: bool> CustomAttribute<T, S, N> {
     pub fn new(data: [T; S]) -> CustomAttribute<T, S, N> {
         CustomAttribute { data }

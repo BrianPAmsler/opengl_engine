@@ -18,7 +18,7 @@ pub enum ObjectError {
 pub enum GraphicsError {
     #[error("Winow already created!")]
     WindowCreatedError,
-    #[error("Shader compile error - {src:?}\n{error_message:?}")]
+    #[error("Shader compile error - {src}\n{error_message}")]
     ShaderCompileError{ src: String, error_message: String },
     #[error("Graphics not initialized!")]
     GraphicsNotInitializedError,

@@ -8,6 +8,8 @@ use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgra
 use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
+use include_crypt_bytes::include_bytes_obfuscate;
+
 #[derive(Clone, Default)]
 pub struct FPSCounter {
     count: i64,
@@ -52,32 +54,6 @@ impl Component for FPSCounter {
     }
 }
 
-const VERTEX_SHADER_SOURCE: &'static str = "
-#version 330 core
-
-layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 vertexColor;
-
-smooth out vec3 color;
-
-void main()
-{
-    gl_Position = vec4(position, 1.0);
-    color = vertexColor;
-}";
-
-const FRAG_SHADER_SOURCE: &'static str = "
-#version 330 core
-
-in vec3 color;
-
-out vec4 outColor;
-
-void main()
-{
-    outColor = vec4(color, 1.0);
-}";
-
 #[derive(Clone, Default)]
 pub struct Renderer {
     current_vao: u32,
@@ -87,6 +63,8 @@ pub struct Renderer {
 }
 
 impl Component for Renderer {
+    // The include_bytes_obfuscate! macro generates non upper case globals and doesn't ignore the warning. wtf???
+    #[allow(non_upper_case_globals)]
     fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
 
@@ -94,8 +72,11 @@ impl Component for Renderer {
 
         gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
 
-        let vert_shader = VertexShader::compile_shader(gfx, VERTEX_SHADER_SOURCE)?;
-        let frag_shader = FragmentShader::compile_shader(gfx, FRAG_SHADER_SOURCE)?;
+        let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
+        let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
+
+        let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
+        let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
 
         let mut program_builder = ShaderProgramBuilder::new(gfx);
         program_builder.attach_shader(vert_shader);

@@ -54,7 +54,7 @@ impl Component for FPSCounter {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Renderer {
     current_vao: u32,
     shader_program: ShaderProgram,
@@ -63,25 +63,12 @@ pub struct Renderer {
 }
 
 impl Component for Renderer {
-    // The include_bytes_obfuscate! macro generates non upper case globals and doesn't ignore the warning. wtf???
-    #[allow(non_upper_case_globals)]
     fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {
         let gfx = _engine.get_graphics()?;
 
         self.current_vao = self.mesh2.vao();
 
         gfx.glClearColor(0.0, 0.0, 0.0, 1.0);
-
-        let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
-        let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
-
-        let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
-        let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
-
-        let mut program_builder = ShaderProgramBuilder::new(gfx);
-        program_builder.attach_shader(vert_shader);
-        program_builder.attach_shader(frag_shader);
-        self.shader_program = program_builder.finish();
 
         gfx.glUseProgram(self.shader_program.program());
 
@@ -108,6 +95,8 @@ impl Component for Renderer {
     }
 }
 
+// The include_bytes_obfuscate! macro generates non upper case globals and doesn't ignore the warning. wtf???
+#[allow(non_upper_case_globals)]
 fn start_game() -> Result<()> {
     let mut engine = Engine::new()?;
     engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
@@ -176,7 +165,6 @@ fn start_game() -> Result<()> {
     let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None);
     mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
 
-    let mut renderer = Renderer::default();
     let gfx = engine.get_graphics()?;
     
     let mut vbo = VBOManager::new(gfx);
@@ -184,8 +172,21 @@ fn start_game() -> Result<()> {
     let mesh2 = vbo.add_mesh(mesh2);
     vbo.buffer_data(gfx);
 
-    renderer.mesh1 = mesh1.take();
-    renderer.mesh2 = mesh2.take();
+    let mesh1 = mesh1.take();
+    let mesh2 = mesh2.take();
+
+    let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
+    let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
+
+    let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
+    let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
+
+    let mut program_builder = ShaderProgramBuilder::new(gfx);
+    program_builder.attach_shader(vert_shader);
+    program_builder.attach_shader(frag_shader);
+    let shader_program = program_builder.finish();
+
+    let renderer = Renderer { current_vao: 0, shader_program, mesh1, mesh2 };
 
     _d.add_component(FPSCounter::default())?;
     a.add_component(renderer)?;

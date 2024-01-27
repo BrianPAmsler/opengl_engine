@@ -102,7 +102,7 @@ impl ShaderProgramBuilder<'_> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct ShaderProgram {
     program: u32,
     shaders: Box<[u32]>

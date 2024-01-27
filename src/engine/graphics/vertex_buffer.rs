@@ -187,7 +187,7 @@ impl VBOManager {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct BufferedMesh {
     name: String,
     vbo: u32,

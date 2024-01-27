@@ -22,7 +22,7 @@ impl BufferedMeshHandle {
     }
 
     pub fn take(self) -> BufferedMesh {
-        self.mesh.borrow_mut().take().unwrap()
+        self.mesh.borrow_mut().take().expect("Mesh has not been buffered yet!")
     }
 }
 

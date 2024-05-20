@@ -7,7 +7,7 @@ use super::{graphics::Graphics, game_object::World};
 
 pub struct Engine {
     gfx: Option<Graphics>,
-    pub world: &'static World,
+    world: World,
     fixed_tick_duration: f64,
     error_queue: Vec<Error>
 }
@@ -43,53 +43,53 @@ impl Engine {
         self.gfx.as_ref().unwrap().get_glfw_time() as f32
     }
 
-    pub fn run(&mut self) -> Result<()> {
-        let mut last_tick = self.gfx.as_ref().unwrap().get_glfw_time();
-        let mut last_fixed_tick = last_tick;
-        let mut fixed_tick_overflow = 0.0;
+    // pub fn run(&mut self) -> Result<()> {
+    //     let mut last_tick = self.gfx.as_ref().unwrap().get_glfw_time();
+    //     let mut last_fixed_tick = last_tick;
+    //     let mut fixed_tick_overflow = 0.0;
 
-        self.init();
-        self.log_errors();
+    //     self.init();
+    //     self.log_errors();
 
-        while !self.gfx.as_ref().unwrap().should_close() {
-            let gfx = self.gfx.as_ref().unwrap();
+    //     while !self.gfx.as_ref().unwrap().should_close() {
+    //         let gfx = self.gfx.as_ref().unwrap();
 
-            gfx.poll_events();
-            for msg in gfx.flush_messages() {
-                match msg {
-                    (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-                    (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
-                    _ => ()
-                }
-            }
+    //         gfx.poll_events();
+    //         for msg in gfx.flush_messages() {
+    //             match msg {
+    //                 (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
+    //                 (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
+    //                 _ => ()
+    //             }
+    //         }
             
-            // Game tick
-            let current_time = gfx.get_glfw_time();
-            self.game_tick((current_time - last_tick) as f32);
-            last_tick = current_time;
+    //         // Game tick
+    //         let current_time = gfx.get_glfw_time();
+    //         self.game_tick((current_time - last_tick) as f32);
+    //         last_tick = current_time;
 
-            let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
+    //         let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
 
-            // Add overflow to adjust for errors in timing
-            if fixed_diff + fixed_tick_overflow >= 0.0 {
-                fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
-                self.fixed_game_tick((current_time - last_fixed_tick) as f32);
-                last_fixed_tick = current_time;
-            }
+    //         // Add overflow to adjust for errors in timing
+    //         if fixed_diff + fixed_tick_overflow >= 0.0 {
+    //             fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
+    //             self.fixed_game_tick((current_time - last_fixed_tick) as f32);
+    //             last_fixed_tick = current_time;
+    //         }
 
-            self.log_errors();
+    //         self.log_errors();
 
-            let gfx = self.gfx.as_ref().unwrap();
+    //         let gfx = self.gfx.as_ref().unwrap();
 
-            // Render
-            // gfx.render();
+    //         // Render
+    //         // gfx.render();
 
-            // Swap front and back buffers
-            gfx.swap_buffers();
-        }
+    //         // Swap front and back buffers
+    //         gfx.swap_buffers();
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     fn log_errors(&mut self) {
         // Take erorr queue from error_queue, turn it into a Box and log them
@@ -100,27 +100,27 @@ impl Engine {
         errors.into_iter().for_each(|error| eprintln!("{}", clean_backtrace(error, "opengl_engine")))
     }
 
-    fn init(&mut self) {
-        let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
+    // fn init(&mut self) {
+    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
 
-        for obj in all_objs.to_vec().into_iter() {
-            obj.init(&self).unwrap_or_else(|err| self.error_queue.push(err));
-        }
-    }
+    //     for obj in all_objs.to_vec().into_iter() {
+    //         obj.init(&self).unwrap_or_else(|err| self.error_queue.push(err));
+    //     }
+    // }
 
-    fn game_tick(&mut self, delta_time: f32) {
-        let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
+    // fn game_tick(&mut self, delta_time: f32) {
+    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
 
-        for obj in all_objs.to_vec().into_iter() {
-            obj.update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
-        }
-    }
+    //     for obj in all_objs.to_vec().into_iter() {
+    //         obj.update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
+    //     }
+    // }
 
-    fn fixed_game_tick(&mut self, delta_time: f32) {
-        let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
+    // fn fixed_game_tick(&mut self, delta_time: f32) {
+    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
 
-        for obj in all_objs.to_vec().into_iter() {
-            obj.fixed_update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
-        }
-    }
+    //     for obj in all_objs.to_vec().into_iter() {
+    //         obj.fixed_update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
+    //     }
+    // }
 }

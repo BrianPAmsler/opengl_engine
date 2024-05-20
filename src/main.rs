@@ -97,110 +97,110 @@ impl Component for Renderer {
 
 // The include_bytes_obfuscate! macro generates non upper case globals and doesn't ignore the warning. wtf???
 #[allow(non_upper_case_globals)]
-fn start_game() -> Result<()> {
-    let mut engine = Engine::new()?;
-    engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
+// fn start_game() -> Result<()> {
+//     let mut engine = Engine::new()?;
+//     engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
 
-    let world = engine.world;
+//     let world = engine.world;
 
-    let a = world.create_empty("a", world.get_root())?;
-    let _b = world.create_empty("b", a)?;
-    let c = world.create_empty("c", a)?;
-    let _d = world.create_empty("d", c)?;
-    let vertex_data = Box::new([
-        Vertex { x: -1.0, y: -1.0, z: 0.0 },
-        Vertex { x: -1.0, y: 1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.0, z: 0.0 },
+//     let a = world.create_empty("a", world.get_root())?;
+//     let _b = world.create_empty("b", a)?;
+//     let c = world.create_empty("c", a)?;
+//     let _d = world.create_empty("d", c)?;
+//     let vertex_data = Box::new([
+//         Vertex { x: -1.0, y: -1.0, z: 0.0 },
+//         Vertex { x: -1.0, y: 1.0, z: 0.0 },
+//         Vertex { x: 0.0, y: 0.0, z: 0.0 },
     
-        Vertex { x: 1.0, y: 1.0, z: 0.0 },
-        Vertex { x: 1.0, y: -1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.0, z: 0.0 },
+//         Vertex { x: 1.0, y: 1.0, z: 0.0 },
+//         Vertex { x: 1.0, y: -1.0, z: 0.0 },
+//         Vertex { x: 0.0, y: 0.0, z: 0.0 },
     
-        Vertex { x: -0.75, y: 1.0, z: 0.0 },
-        Vertex { x: 0.75, y: 1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.25, z: 0.0 },
+//         Vertex { x: -0.75, y: 1.0, z: 0.0 },
+//         Vertex { x: 0.75, y: 1.0, z: 0.0 },
+//         Vertex { x: 0.0, y: 0.25, z: 0.0 },
     
-        Vertex { x: -0.75, y: -1.0, z: 0.0 },
-        Vertex { x: 0.75, y: -1.0, z: 0.0 },
-        Vertex { x: 0.0, y: -0.25, z: 0.0 },
-    ]);
+//         Vertex { x: -0.75, y: -1.0, z: 0.0 },
+//         Vertex { x: 0.75, y: -1.0, z: 0.0 },
+//         Vertex { x: 0.0, y: -0.25, z: 0.0 },
+//     ]);
 
-    let color_data_1 = Box::new([
-        RGBColor { r: 1.0, g: 0.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 0.0, b: 1.0 },
+//     let color_data_1 = Box::new([
+//         RGBColor { r: 1.0, g: 0.0, b: 0.0 },
+//         RGBColor { r: 0.0, g: 1.0, b: 0.0 },
+//         RGBColor { r: 0.0, g: 0.0, b: 1.0 },
         
-        RGBColor { r: 1.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 0.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 0.0 },
+//         RGBColor { r: 0.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 0.0, b: 1.0 },
         
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
         
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-    ]);
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//         RGBColor { r: 1.0, g: 1.0, b: 1.0 },
+//     ]);
 
-    let color_data_2: Box<[CustomAttribute<f32, 3, true>]> = Box::new([
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
+//     let color_data_2: Box<[CustomAttribute<f32, 3, true>]> = Box::new([
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
         
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 1.0]),
         
-        CustomAttribute::new([1.0, 0.0, 0.0]),
-        CustomAttribute::new([0.0, 1.0, 0.0]),
-        CustomAttribute::new([0.0, 0.0, 1.0]),
+//         CustomAttribute::new([1.0, 0.0, 0.0]),
+//         CustomAttribute::new([0.0, 1.0, 0.0]),
+//         CustomAttribute::new([0.0, 0.0, 1.0]),
         
-        CustomAttribute::new([0.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 0.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 0.0]),
-    ]);
+//         CustomAttribute::new([0.0, 1.0, 1.0]),
+//         CustomAttribute::new([1.0, 0.0, 1.0]),
+//         CustomAttribute::new([1.0, 1.0, 0.0]),
+//     ]);
 
-    let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);
-    let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None);
-    mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
+//     let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);
+//     let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None);
+//     mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
 
-    let gfx = engine.get_graphics()?;
+//     let gfx = engine.get_graphics()?;
     
-    let mut vbo = VBOManager::new(gfx);
-    let mesh1 = vbo.add_mesh(mesh1);
-    let mesh2 = vbo.add_mesh(mesh2);
-    vbo.buffer_data(gfx);
+//     let mut vbo = VBOManager::new(gfx);
+//     let mesh1 = vbo.add_mesh(mesh1);
+//     let mesh2 = vbo.add_mesh(mesh2);
+//     vbo.buffer_data(gfx);
 
-    let mesh1 = mesh1.take();
-    let mesh2 = mesh2.take();
+//     let mesh1 = mesh1.take();
+//     let mesh2 = mesh2.take();
 
-    let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
-    let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
+//     let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
+//     let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
 
-    let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
-    let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
+//     let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
+//     let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
 
-    let mut program_builder = ShaderProgramBuilder::new(gfx);
-    program_builder.attach_shader(vert_shader);
-    program_builder.attach_shader(frag_shader);
-    let shader_program = program_builder.finish();
+//     let mut program_builder = ShaderProgramBuilder::new(gfx);
+//     program_builder.attach_shader(vert_shader);
+//     program_builder.attach_shader(frag_shader);
+//     let shader_program = program_builder.finish();
 
-    let renderer = Renderer { current_vao: 0, shader_program, mesh1, mesh2 };
+//     let renderer = Renderer { current_vao: 0, shader_program, mesh1, mesh2 };
 
-    _d.add_component(FPSCounter::default())?;
-    a.add_component(renderer)?;
+//     _d.add_component(FPSCounter::default())?;
+//     a.add_component(renderer)?;
 
-    engine.run()?;
+//     // engine.run()?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn main() {
-    match start_game() {
-        Ok(_) => {},
-        Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine"), ); }
-    }
+    // match start_game() {
+    //     Ok(_) => {},
+    //     Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine"), ); }
+    // }
 }
 
 pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {

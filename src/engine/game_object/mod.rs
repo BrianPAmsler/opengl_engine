@@ -3,5 +3,5 @@ mod world;
 
 pub mod component;
 
-pub use game_object::GameObject;
+pub use game_object::*;
 pub use world::World;

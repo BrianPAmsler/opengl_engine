@@ -119,7 +119,7 @@ impl Graphics {
         self.glfw.borrow_mut().poll_events();
     }
 
-    pub(in crate::engine) fn get_glfw_time(&self) -> f64 {
+    pub fn get_glfw_time(&self) -> f64 {
         self.glfw.borrow().get_time()
     }
 

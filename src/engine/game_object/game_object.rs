@@ -1,17 +1,12 @@
-use std::{collections::{HashSet, VecDeque}, ops::{Deref, DerefMut}, cell::{RefCell, Ref}};
+use std::collections::HashSet;
 
-use anyhow::{Result, anyhow, Error, bail};
+use super::{ComponentID, ObjectID};
 
-use crate::engine::{Engine, errors::ObjectError};
-
-use super::{World, component::Component};
 
 #[derive(Clone)]
-pub(in crate::engine::game_object) struct _GameObject {
+pub(in crate::engine::game_object) struct GameObject {
     pub name: String,
-    pub parent: usize,
-    pub components: Vec<Option<RefCell<Box<dyn Component>>>>,
-    pub children: HashSet<usize>
+    pub parent: ObjectID,
+    pub components: Vec<ComponentID>,
+    pub children: HashSet<ObjectID>
 }
-
-pub struct GameObject;

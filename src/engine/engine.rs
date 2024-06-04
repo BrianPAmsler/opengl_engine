@@ -38,58 +38,58 @@ impl Engine {
     pub fn get_graphics(&self) -> Result<&Graphics> {
         self.gfx.as_ref().ok_or(anyhow!(GraphicsError::GraphicsNotInitializedError))
     }
-    
-    pub fn get_time(&self) -> f32 {
-        self.gfx.as_ref().unwrap().get_glfw_time() as f32
+
+    pub fn get_world(&mut self) -> &mut World {
+        &mut self.world
     }
 
-    // pub fn run(&mut self) -> Result<()> {
-    //     let mut last_tick = self.gfx.as_ref().unwrap().get_glfw_time();
-    //     let mut last_fixed_tick = last_tick;
-    //     let mut fixed_tick_overflow = 0.0;
+    pub fn run(&mut self) -> Result<()> {
+        let mut last_tick = self.gfx.as_ref().unwrap().get_glfw_time();
+        let mut last_fixed_tick = last_tick;
+        let mut fixed_tick_overflow = 0.0;
 
-    //     self.init();
-    //     self.log_errors();
+        self.world.init(self.gfx.as_ref().unwrap())?;
+        self.log_errors();
 
-    //     while !self.gfx.as_ref().unwrap().should_close() {
-    //         let gfx = self.gfx.as_ref().unwrap();
+        while !self.gfx.as_ref().unwrap().should_close() {
+            let gfx = self.gfx.as_ref().unwrap();
 
-    //         gfx.poll_events();
-    //         for msg in gfx.flush_messages() {
-    //             match msg {
-    //                 (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-    //                 (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
-    //                 _ => ()
-    //             }
-    //         }
+            gfx.poll_events();
+            for msg in gfx.flush_messages() {
+                match msg {
+                    (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
+                    (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
+                    _ => ()
+                }
+            }
             
-    //         // Game tick
-    //         let current_time = gfx.get_glfw_time();
-    //         self.game_tick((current_time - last_tick) as f32);
-    //         last_tick = current_time;
+            // Game tick
+            let current_time = gfx.get_glfw_time();
+            self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32)?;
+            last_tick = current_time;
 
-    //         let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
+            let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
 
-    //         // Add overflow to adjust for errors in timing
-    //         if fixed_diff + fixed_tick_overflow >= 0.0 {
-    //             fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
-    //             self.fixed_game_tick((current_time - last_fixed_tick) as f32);
-    //             last_fixed_tick = current_time;
-    //         }
+            // Add overflow to adjust for errors in timing
+            if fixed_diff + fixed_tick_overflow >= 0.0 {
+                fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
+                self.world.fixed_update(self.gfx.as_ref().unwrap(), (current_time - last_fixed_tick) as f32)?;
+                last_fixed_tick = current_time;
+            }
 
-    //         self.log_errors();
+            self.log_errors();
 
-    //         let gfx = self.gfx.as_ref().unwrap();
+            let gfx = self.gfx.as_ref().unwrap();
 
-    //         // Render
-    //         // gfx.render();
+            // Render
+            // gfx.render();
 
-    //         // Swap front and back buffers
-    //         gfx.swap_buffers();
-    //     }
+            // Swap front and back buffers
+            gfx.swap_buffers();
+        }
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     fn log_errors(&mut self) {
         // Take erorr queue from error_queue, turn it into a Box and log them

@@ -3,12 +3,12 @@ use std::{marker::PhantomData, cell::{Ref, RefMut}};
 use anyhow::{Error, Result, bail};
 use downcast_rs::{Downcast, impl_downcast};
 
-use crate::engine::{game_object::GameObject, Engine};
+use crate::engine::{game_object::{GameObject, ObjectID}, graphics::Graphics, Engine};
 
 pub trait Component: Downcast + CloneRequirement {
-    fn init(&mut self, _engine: &Engine, _owner: GameObject) -> Result<(), Error> {Ok(())}
-    fn update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {Ok(())}
-    fn fixed_update(&mut self, _engine: &Engine, _owner: GameObject, _delta_time: f32) -> Result<(), Error> {Ok(())}
+    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<(), Error> {Ok(())}
+    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {Ok(())}
+    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {Ok(())}
 }
 
 impl_downcast!(Component);

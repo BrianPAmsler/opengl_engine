@@ -1,4 +1,4 @@
-use anyhow::{bail, Error};
+use super::error::Error;
 
 #[derive(Debug, Clone)]
 enum Slot<T> {
@@ -13,11 +13,21 @@ pub struct VecAllocator<T> {
     count: usize
 }
 
-#[derive(Clone, Copy)]
-pub struct AllocationIndex<T> {
-    ptr: *const VecAllocator<T>,
+#[derive(Clone, Copy, Hash)]
+pub struct AllocationIndex {
+    ptr: *const (),
     index: usize,
     id: usize
+}
+
+impl AllocationIndex {
+    pub fn null() -> AllocationIndex {
+        AllocationIndex { ptr: std::ptr::null(), index: 0, id: 0 }
+    }
+
+    pub fn ptr_eq<T>(&self, allocator: &VecAllocator<T>) -> bool {
+        self.ptr == allocator as *const VecAllocator<T> as *const ()
+    }
 }
 
 impl<T: Clone> VecAllocator<T> {
@@ -54,7 +64,7 @@ impl<T> VecAllocator<T> {
         VecAllocator { vec, first_hole: 0, count: 0 }
     }
 
-    pub fn insert(&mut self, value: T) -> AllocationIndex<T> {
+    pub fn insert(&mut self, value: T) -> AllocationIndex {
         match self.vec[self.first_hole] {
             Slot::Element { .. } => panic!("first_hole is invalid! This should be impossible, there is a bug somewhere!"),
             Slot::Hole { id, next } => {
@@ -69,7 +79,7 @@ impl<T> VecAllocator<T> {
                 }
 
                 // Place the new element
-                let index = AllocationIndex { ptr: self, index: self.first_hole, id };
+                let index = AllocationIndex { ptr: self as *const VecAllocator<T> as *const (), index: self.first_hole, id };
                 self.vec[self.first_hole] = new_slot;
 
                 self.first_hole = next;
@@ -80,14 +90,14 @@ impl<T> VecAllocator<T> {
         }
     }
 
-    pub fn remove(&mut self, element: AllocationIndex<T>) -> Result<(), Error> {
+    pub fn remove(&mut self, element: AllocationIndex) -> Result<(), Error> {
         let id = match self.vec[element.index] {
-            Slot::Hole { .. } => bail!("Element has been removed!"),
+            Slot::Hole { .. } => return Err(Error::ElementRemovedError),
             Slot::Element { id, value: _ } => id
         };
 
         if id != element.id {
-            bail!("Element has been removed!")
+            return Err(Error::ElementRemovedError);
         }
 
         let mut next = self.first_hole;
@@ -132,7 +142,7 @@ impl<T> VecAllocator<T> {
         Ok(())
     }
 
-    pub fn get(&self, element: AllocationIndex<T>) -> Option<&T> {
+    pub fn get(&self, element: AllocationIndex) -> Option<&T> {
         match &self.vec[element.index] {
             Slot::Element { id, value } => {
                 if *id != element.id {
@@ -145,7 +155,7 @@ impl<T> VecAllocator<T> {
         }
     }
 
-    pub fn get_mut(&mut self, element: AllocationIndex<T>) -> Option<&mut T> {
+    pub fn get_mut(&mut self, element: AllocationIndex) -> Option<&mut T> {
         match &mut self.vec[element.index] {
             Slot::Element { id, value } => {
                 if *id != element.id {
@@ -158,7 +168,33 @@ impl<T> VecAllocator<T> {
         }
     }
 
+    pub fn iter(&self) -> Iter<T> {
+        Iter { allocator: self, index: 0 }
+    }
+}
 
+pub struct Iter<'a, T> {
+    allocator: &'a VecAllocator<T>,
+    index: usize
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = (AllocationIndex, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.index < self.allocator.vec.len() {
+            match &self.allocator.vec[self.index] {
+                Slot::Element { id, value, .. } => {
+                    let index = AllocationIndex { ptr: self.allocator as *const _ as *const (), index: self.index, id: *id };
+                    self.index += 1;
+                    return Some((index, &value));
+                },
+                Slot::Hole { .. } => self.index += 1,
+            }
+        }
+
+        None
+    }
 }
 
 #[cfg(test)]

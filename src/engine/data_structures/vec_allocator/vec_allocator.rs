@@ -1,4 +1,6 @@
-use super::error::Error;
+use std::ops::Deref;
+
+use super::error::Result;
 
 #[derive(Debug, Clone)]
 enum Slot<T> {
@@ -8,12 +10,12 @@ enum Slot<T> {
 
 #[derive(Debug)]
 pub struct VecAllocator<T> {
-    vec: Vec<Slot<T>>,
+    vec: Box<Vec<Slot<T>>>, // Put vec in a box so I have a pointer that I can compare with that won't break if the VecAllocator gets moved
     first_hole: usize,
     count: usize
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct AllocationIndex {
     ptr: *const (),
     index: usize,
@@ -26,14 +28,14 @@ impl AllocationIndex {
     }
 
     pub fn ptr_eq<T>(&self, allocator: &VecAllocator<T>) -> bool {
-        self.ptr == allocator as *const VecAllocator<T> as *const ()
+        self.ptr == allocator.vec.deref() as *const Vec<Slot<T>> as *const ()
     }
 }
 
 impl<T: Clone> VecAllocator<T> {
     #[cfg(test)]
-    pub(in crate::engine::data_structures::vec_allocator) fn from_raw(slice: &[Slot<T>]) -> VecAllocator<T> {
-        let mut vec = Vec::new();
+    fn from_raw(slice: &[Slot<T>]) -> VecAllocator<T> {
+        let mut vec = Box::new(Vec::new());
         vec.extend_from_slice(slice);
 
         let mut first_hole = vec.len();
@@ -59,7 +61,7 @@ impl<T: Clone> VecAllocator<T> {
 
 impl<T> VecAllocator<T> {
     pub fn new() -> VecAllocator<T> {
-        let mut vec = Vec::new();
+        let mut vec = Box::new(Vec::new());
         vec.push(Slot::Hole { id: 0, next: 0 });
         VecAllocator { vec, first_hole: 0, count: 0 }
     }
@@ -79,7 +81,7 @@ impl<T> VecAllocator<T> {
                 }
 
                 // Place the new element
-                let index = AllocationIndex { ptr: self as *const VecAllocator<T> as *const (), index: self.first_hole, id };
+                let index = AllocationIndex { ptr: self.vec.deref() as *const Vec<Slot<T>> as *const (), index: self.first_hole, id };
                 self.vec[self.first_hole] = new_slot;
 
                 self.first_hole = next;
@@ -90,14 +92,18 @@ impl<T> VecAllocator<T> {
         }
     }
 
-    pub fn remove(&mut self, element: AllocationIndex) -> Result<(), Error> {
+    pub fn remove(&mut self, element: AllocationIndex) -> Result<()> {
+        if !element.ptr_eq(self) {
+            return Err(super::error::Error::IndexPointerMismatchError);
+        }
+
         let id = match self.vec[element.index] {
-            Slot::Hole { .. } => return Err(Error::ElementRemovedError),
+            Slot::Hole { .. } => return Err(super::error::Error::ElementRemovedError),
             Slot::Element { id, value: _ } => id
         };
 
         if id != element.id {
-            return Err(Error::ElementRemovedError);
+            return Err(super::error::Error::ElementRemovedError);
         }
 
         let mut next = self.first_hole;
@@ -142,29 +148,37 @@ impl<T> VecAllocator<T> {
         Ok(())
     }
 
-    pub fn get(&self, element: AllocationIndex) -> Option<&T> {
+    pub fn get(&self, element: AllocationIndex) -> Result<&T> {
+        if !element.ptr_eq(self) {
+            return Err(super::error::Error::IndexPointerMismatchError);
+        }
+
         match &self.vec[element.index] {
             Slot::Element { id, value } => {
                 if *id != element.id {
-                    None
+                    Err(super::error::Error::ElementRemovedError)
                 } else {
-                    Some(value)
+                    Ok(value)
                 }
             },
-            Slot::Hole { .. } => None,
+            Slot::Hole { .. } => Err(super::error::Error::ElementRemovedError),
         }
     }
 
-    pub fn get_mut(&mut self, element: AllocationIndex) -> Option<&mut T> {
+    pub fn get_mut(&mut self, element: AllocationIndex) -> Result<&mut T> {
+        if !element.ptr_eq(self) {
+            return Err(super::error::Error::IndexPointerMismatchError);
+        }
+        
         match &mut self.vec[element.index] {
             Slot::Element { id, value } => {
                 if *id != element.id {
-                    None
+                    Err(super::error::Error::ElementRemovedError)
                 } else {
-                    Some(value)
+                    Ok(value)
                 }
             },
-            Slot::Hole { .. } => None,
+            Slot::Hole { .. } => Err(super::error::Error::ElementRemovedError),
         }
     }
 

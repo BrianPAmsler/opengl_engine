@@ -99,10 +99,10 @@ fn start_game() -> Result<()> {
 
     let world = engine.get_world();
 
-    let a = world.create_game_object("a".to_owned(), world.get_root());
-    let _b = world.create_game_object("b".to_owned(), a);
-    let c = world.create_game_object("c".to_owned(), a);
-    let _d = world.create_game_object("d".to_owned(), c);
+    let a = world.create_game_object("a".to_owned(), world.get_root())?;
+    let _b = world.create_game_object("b".to_owned(), a)?;
+    let c = world.create_game_object("c".to_owned(), a)?;
+    let _d = world.create_game_object("d".to_owned(), c)?;
     let vertex_data = Box::new([
         Vertex { x: -1.0, y: -1.0, z: 0.0 },
         Vertex { x: -1.0, y: 1.0, z: 0.0 },

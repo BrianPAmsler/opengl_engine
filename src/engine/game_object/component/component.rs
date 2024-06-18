@@ -1,9 +1,8 @@
-use std::{marker::PhantomData, cell::{Ref, RefMut}};
 
-use anyhow::{Error, Result, bail};
+use anyhow::{Error, Result};
 use downcast_rs::{Downcast, impl_downcast};
 
-use crate::engine::{game_object::{GameObject, ObjectID}, graphics::Graphics, Engine};
+use crate::engine::{game_object::ObjectID, graphics::Graphics};
 
 pub trait Component: Downcast + CloneRequirement {
     fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<(), Error> {Ok(())}

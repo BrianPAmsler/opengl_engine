@@ -1,8 +1,8 @@
-use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, ops::{Deref, DerefMut}, rc::Rc};
+use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, rc::Rc};
 
-use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics, Engine};
+use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics};
 
-use super::{component::{components::Transform, Component}, GameObject};
+use super::{component::{components::Transform, Component}, game_object::GameObject};
 
 pub struct World {
     pub(in crate::engine::game_object) root: ObjectID,
@@ -10,50 +10,15 @@ pub struct World {
     pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ObjectID {
     idx: AllocationIndex
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ComponentID {
     idx: AllocationIndex,
     type_: TypeId
-}
-
-// #[self_referencing]
-// pub struct ComponentRef<'a, C: Component> {
-//     ref_outer: Ref<'a, VecAllocator<RefCell<Box<dyn Component>>>>,
-//     #[borrows(ref_outer)]
-//     #[covariant]
-//     ref_inner: Ref<'this, C>
-// }
-
-// impl<'a, C: Component> Deref for ComponentRef<'a, C> {
-//     type Target = C;
-
-//     fn deref(&self) -> &Self::Target {
-//         self.borrow_ref_inner().deref()
-//     }
-// }
-
-pub struct ComponentRefMut<'a, C: Component> {
-    ref_outer: Ref<'a, VecAllocator<RefCell<Box<dyn Component>>>>,
-    ref_inner: RefMut<'a, C>
-}
-
-impl<'a, C: Component> Deref for ComponentRefMut<'a, C> {
-    type Target = C;
-
-    fn deref(&self) -> &Self::Target {
-        self.ref_inner.deref()
-    }
-}
-
-impl<'a, C: Component> DerefMut for ComponentRefMut<'a, C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.ref_inner.deref_mut()
-    }
 }
 
 impl World {
@@ -87,7 +52,7 @@ impl World {
         }).collect();
 
         let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).ok_or(ObjectError::DeadComponentError)?;
+            let rc = self.components.get(component.idx).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -113,7 +78,7 @@ impl World {
         }).collect();
 
         let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).ok_or(ObjectError::DeadComponentError)?;
+            let rc = self.components.get(component.idx).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -139,7 +104,7 @@ impl World {
         }).collect();
 
         let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).ok_or(ObjectError::DeadComponentError)?;
+            let rc = self.components.get(component.idx).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -151,9 +116,19 @@ impl World {
         })
     }
 
-    // pub fn get_name(&self, object: ObjectID) -> Result<&str> {
+    pub fn get_name(&self, object: ObjectID) -> Result<&str> {
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
-    // }
+        Ok(&obj.name)
+    }
+
+    pub fn set_name(&mut self, object: ObjectID, name: String) -> Result<()> {
+        let obj = self.objects.get_mut(object.idx).map_err(obj_error)?;
+
+        obj.name = name;
+
+        Ok(())
+    }
 
     pub fn get_root(&self) -> ObjectID {
         self.root
@@ -162,7 +137,7 @@ impl World {
     pub fn add_component<C: Component>(&mut self, object: ObjectID, component: C) -> Result<()> {
         let idx = self.components.insert(Rc::new(RefCell::new(Box::new(component))));
 
-        let object = self.objects.get_mut(object.idx).ok_or(ObjectError::DeadObjectError)?;
+        let object = self.objects.get_mut(object.idx).map_err(obj_error)?;
 
         object.components.push(ComponentID { idx, type_: TypeId::of::<C>() });
 
@@ -170,7 +145,7 @@ impl World {
     }
 
     pub fn borrow_component<C: Component>(&self, component: ComponentID) -> Result<Ref<C>> {
-        let ref_ = self.components.get(component.idx).ok_or(ObjectError::DeadObjectError)?.borrow();
+        let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow();
 
         let downcast = Ref::filter_map(ref_, |t| {
             t.downcast_ref()
@@ -180,7 +155,7 @@ impl World {
     }
 
     pub fn borrow_component_mut<C: Component>(&self, component: ComponentID) -> Result<RefMut<C>> {
-        let ref_ = self.components.get(component.idx).ok_or(ObjectError::DeadObjectError)?.borrow_mut();
+        let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow_mut();
 
         let downcast = RefMut::filter_map(ref_, |t| {
             t.downcast_mut()
@@ -189,17 +164,20 @@ impl World {
         Ok(downcast)
     }
 
-    pub fn create_game_object(&mut self, name: String, parent: ObjectID) -> ObjectID {
-        let new_obj = GameObject { name, parent, components: Vec::new(), children: HashSet::new() };
+    pub fn create_game_object(&mut self, name: String, parent: ObjectID) -> Result<ObjectID> {
+        self.objects.get(parent.idx).map_err(obj_error)?;
+
+        let new_obj = GameObject { name, parent: self.root, components: Vec::new(), children: HashSet::new() };
         let new_obj = ObjectID { idx: self.objects.insert(new_obj) };
 
         self.add_component(new_obj, Transform::ZERO).expect("This shouldn't happen!");
+        self.set_parent(new_obj, parent).unwrap();
 
-        new_obj
+        Ok(new_obj)
     }
 
     pub fn get_component<C: Component>(&self, object: ObjectID) -> Result<ComponentID> {
-        let obj = self.objects.get(object.idx).ok_or(ObjectError::DeadObjectError)?;
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
         for c in obj.components.iter() {
             if c.type_ == TypeId::of::<C>() {
@@ -211,7 +189,7 @@ impl World {
     }
 
     pub fn get_components<C: Component>(&self, object: ObjectID) -> Result<Box<[ComponentID]>> {
-        let obj = self.objects.get(object.idx).ok_or(ObjectError::DeadObjectError)?;
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
         Ok(obj.components.iter().filter_map(|c| {
             if c.type_ == TypeId::of::<C>() {
@@ -223,8 +201,45 @@ impl World {
     }
 
     pub fn get_children(&self, object: ObjectID) -> Result<Box<[ObjectID]>> {
-        let obj = self.objects.get(object.idx).ok_or(ObjectError::DeadObjectError)?;
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
         Ok(obj.children.iter().map(|child| child.to_owned()).collect())
+    }
+
+    pub fn get_parent(&self, object: ObjectID) -> Result<ObjectID> {
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
+
+        Ok(obj.parent)
+    }
+
+    pub fn set_parent(&mut self, object: ObjectID, parent: ObjectID) -> Result<()> {
+        self.objects.get(parent.idx).map_err(obj_error)?; // Make sure parent is valid first
+        let obj = self.objects.get_mut(object.idx).map_err(obj_error)?;
+        let prev_parent = obj.parent;
+
+        // update child parent -> update previous parent's children -> update new parent's children
+        obj.parent = parent;
+
+        let prev_parent = self.objects.get_mut(prev_parent.idx).unwrap(); // This should already be valid so unwrap
+        prev_parent.children.remove(&object);
+
+        let new_parent = self.objects.get_mut(parent.idx).unwrap();
+        new_parent.children.insert(object);
+
+        Ok(())
+    }
+}
+
+fn obj_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
+    match error {
+        crate::engine::data_structures::error::Error::ElementRemovedError => ObjectError::DeadObjectError,
+        crate::engine::data_structures::error::Error::IndexPointerMismatchError => ObjectError::WorldMismatchError { other: "" },
+    }
+}
+
+fn comp_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
+    match error {
+        crate::engine::data_structures::error::Error::ElementRemovedError => ObjectError::DeadComponentError,
+        crate::engine::data_structures::error::Error::IndexPointerMismatchError => ObjectError::WorldMismatchError { other: "" },
     }
 }

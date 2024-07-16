@@ -2,8 +2,7 @@
 
 mod engine;
 
-use anyhow::{Error, Result};
-use engine::{game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOManager, Vertex}, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOManager, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
@@ -19,7 +18,7 @@ pub struct FPSCounter {
 }
 
 impl Component for FPSCounter {
-    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {
+    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
         self.count += 1;
         let current_tick = _graphics.get_glfw_time() as f32;
 
@@ -36,7 +35,7 @@ impl Component for FPSCounter {
         Ok(())
     }
 
-    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {
+    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
         self.fixed_count += 1;
         let current_tick = _graphics.get_glfw_time() as f32;
 
@@ -63,7 +62,7 @@ pub struct Renderer {
 }
 
 impl Component for Renderer {
-    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<(), Error> {
+    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<()> {
         self.current_vao = self.mesh2.vao();
 
         _graphics.glClearColor(0.0, 0.0, 0.0, 1.0);
@@ -73,7 +72,7 @@ impl Component for Renderer {
         Ok(())
     }
 
-    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {
+    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
         let current_mesh = match (_graphics.get_glfw_time() as f32 / 5.0) as i32 % 2 == 0 {
             true => &self.mesh1,
             false => &self.mesh2,
@@ -171,8 +170,8 @@ fn start_game() -> Result<()> {
     let mesh1 = mesh1.take();
     let mesh2 = mesh2.take();
 
-    let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert")?)?;
-    let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag")?)?;
+    let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert").unwrap()).unwrap();
+    let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag").unwrap()).unwrap();
 
     let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
     let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
@@ -186,6 +185,8 @@ fn start_game() -> Result<()> {
 
     let world = engine.get_world();
     
+    world.destroy(_d)?;
+
     world.add_component(_d, FPSCounter::default())?;
     world.add_component(a, renderer)?;
 
@@ -197,12 +198,12 @@ fn start_game() -> Result<()> {
 fn main() {
     match start_game() {
         Ok(_) => {},
-        Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine"), ); }
+        Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine")); }
     }
 }
 
 pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {
-    let str = format!("{}", error.backtrace());
+    let str = format!("{:?}", error.backtrace());
 
     let mut clean_str = String::new();
     clean_str.reserve(str.len());

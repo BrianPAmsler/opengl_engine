@@ -1,13 +1,12 @@
-
-use anyhow::{Error, Result};
+use crate::engine::errors::Result;
 use downcast_rs::{Downcast, impl_downcast};
 
 use crate::engine::{game_object::ObjectID, graphics::Graphics};
 
 pub trait Component: Downcast + CloneRequirement {
-    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<(), Error> {Ok(())}
-    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {Ok(())}
-    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<(), Error> {Ok(())}
+    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<()> {Ok(())}
+    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {Ok(())}
+    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {Ok(())}
 }
 
 impl_downcast!(Component);

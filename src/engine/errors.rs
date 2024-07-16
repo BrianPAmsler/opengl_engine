@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+type BT = backtrace::Backtrace;
+
 #[derive(Error, Debug)]
 pub enum ObjectError {
     #[error("Component is dead!")]
@@ -27,15 +29,52 @@ pub enum GraphicsError {
     #[error("Graphics not initialized!")]
     GraphicsNotInitializedError,
     #[error("Failed to create window!")]
-    WindowCreationFailError
+    WindowCreationFailError,
+    #[error("{msg}")]
+    GLLoadError{msg: &'static str},
+    #[error(transparent)]
+    GLInitError(#[from] glfw::InitError)
 }
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error(transparent)]
-    ObjectError(#[from] ObjectError),
-    #[error(transparent)]
-    GraphicsError(#[from] GraphicsError)
+    #[error("{source}")]
+    ObjectError {
+        source: ObjectError,
+        backtrace: BT
+    },
+    #[error("{source}")]
+    GraphicsError {
+        source: GraphicsError,
+        backtrace: BT
+    },
+}
+
+impl From<ObjectError> for Error {
+    fn from(value: ObjectError) -> Self {
+        Error::ObjectError { source: value, backtrace: BT::new() }
+    }
+}
+
+impl From<GraphicsError> for Error {
+    fn from(value: GraphicsError) -> Self {
+        Error::GraphicsError { source: value, backtrace: BT::new() }
+    }
+}
+
+impl From<glfw::InitError> for Error {
+    fn from(value: glfw::InitError) -> Self {
+        GraphicsError::from(value).into()
+    }
+}
+
+impl Error {
+    pub fn backtrace(&self) -> &impl std::fmt::Debug {
+        match &self {
+            Error::ObjectError { backtrace, .. } => backtrace,
+            Error::GraphicsError { backtrace, .. } => backtrace,
+        }
+    }
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

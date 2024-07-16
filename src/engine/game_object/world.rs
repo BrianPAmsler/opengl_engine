@@ -228,6 +228,17 @@ impl World {
 
         Ok(())
     }
+
+    pub fn destroy(&mut self, object: ObjectID) -> Result<()> {
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
+
+        let parent = self.objects.get_mut(obj.parent.idx).unwrap(); // This should already be valid so unwrap
+        parent.children.remove(&object);
+
+        self.objects.remove(object.idx).map_err(obj_error)?;
+
+        Ok(())
+    }
 }
 
 fn obj_error(error: crate::engine::data_structures::error::Error) -> ObjectError {

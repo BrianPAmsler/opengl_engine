@@ -2,7 +2,7 @@
 
 use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}, fmt::Debug};
 
-use anyhow::{Result, anyhow};
+use crate::engine::errors::{Result, GraphicsError};
 
 use gl33::*;
 use glfw::GLProc;
@@ -157,7 +157,7 @@ pub struct GLWrapper {
 
 impl GLWrapper {
     pub(in crate::engine::graphics) fn init_gl<F: Fn(*const u8) -> GLProc>(f: F) -> Result<GLWrapper> {
-        let fns = unsafe { GlFns::load_from(&f).map_err(|e| anyhow!(e))? };
+        let fns = unsafe { GlFns::load_from(&f).map_err(|e| GraphicsError::GLLoadError { msg: e })? };
 
         Ok(GLWrapper { fns })
     }

@@ -1,7 +1,6 @@
 use gl33::{GL_FRAGMENT_SHADER, GL_COMPILE_STATUS, GL_VERTEX_SHADER};
 
-use crate::engine::{graphics::Graphics, errors::GraphicsError};
-use anyhow::{Result, bail};
+use crate::engine::{graphics::Graphics, errors::{Result, GraphicsError}};
 
 use self::private::Seal;
 
@@ -13,7 +12,7 @@ fn compile_shader(gfx: &Graphics, shader: u32) -> Result<()> {
 
     if status == 0 {
         let error_message = gfx.glGetShaderInfoLog(shader);
-        bail!(GraphicsError::ShaderCompileError { src: "SHADER_FILENAME".to_owned(), error_message });
+        return Err(GraphicsError::ShaderCompileError { src: "SHADER_FILENAME".to_owned(), error_message }.into());
     }
 
     Ok(())

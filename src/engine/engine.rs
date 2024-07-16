@@ -1,7 +1,6 @@
-use anyhow::{Result, anyhow, bail, Error};
 use glfw::{WindowEvent, Key, Action, Monitor};
 
-use crate::{clean_backtrace, engine::errors::GraphicsError};
+use crate::engine::errors::{Result, Error, GraphicsError};
 
 use super::{graphics::Graphics, game_object::World};
 
@@ -27,7 +26,7 @@ impl Engine {
 
     pub fn create_window(&mut self, window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<()> {
         if self.gfx.is_some() {
-            bail!(GraphicsError::WindowCreatedError);
+            return Err(GraphicsError::WindowCreatedError.into());
         }
         
         self.gfx = Some(Graphics::init(window_title, width, height, window_mode)?);
@@ -36,7 +35,7 @@ impl Engine {
     }
 
     pub fn get_graphics(&self) -> Result<&Graphics> {
-        self.gfx.as_ref().ok_or(anyhow!(GraphicsError::GraphicsNotInitializedError))
+        self.gfx.as_ref().ok_or(GraphicsError::GraphicsNotInitializedError.into())
     }
 
     pub fn get_world(&mut self) -> &mut World {
@@ -97,7 +96,7 @@ impl Engine {
         std::mem::swap(&mut errors, &mut self.error_queue);
         let errors = errors.into_boxed_slice();
 
-        errors.into_iter().for_each(|error| eprintln!("{}", clean_backtrace(error, "opengl_engine")))
+        errors.into_iter().for_each(|error| eprintln!("{}", error))
     }
 
     // fn init(&mut self) {

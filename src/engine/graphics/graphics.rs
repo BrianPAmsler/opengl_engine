@@ -35,6 +35,13 @@ pub struct Normal {
     pub z: f32
 }
 
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Tangent {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32
+}
+
 fn get_monitor_fingerprint(monitor: &Monitor) -> u64 {
     let mut hasher = DefaultHasher::new();
     monitor.get_workarea().hash(&mut hasher);

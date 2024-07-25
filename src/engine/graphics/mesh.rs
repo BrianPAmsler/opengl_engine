@@ -1,6 +1,6 @@
 use gl33::GLenum;
 
-use super::{GLType, Normal, RGBColor, Vertex, UV};
+use super::{GLType, Normal, RGBColor, Tangent, Vertex, UV};
 
 #[derive(Clone, Copy)]
 pub struct CustomAttribute<T: GLType, const S: usize, const N: bool> {
@@ -99,11 +99,12 @@ pub struct Mesh {
     pub(in crate::engine::graphics) color_data: Box<[RGBColor]>,
     pub(in crate::engine::graphics) uv_data: Box<[UV]>,
     pub(in crate::engine::graphics) normal_data: Box<[Normal]>,
+    pub(in crate::engine::graphics) tangent_data: Box<[Tangent]>,
     pub(in crate::engine::graphics) custom_data: Vec<CustomAttributeData>
 }
 
 impl Mesh {
-    pub fn new(name: String, vertex_data: Box<[Vertex]>, color_data: Option<Box<[RGBColor]>>, uv_data: Option<Box<[UV]>>, normal_data: Option<Box<[Normal]>>) -> Mesh {
+    pub fn new(name: String, vertex_data: Box<[Vertex]>, color_data: Option<Box<[RGBColor]>>, uv_data: Option<Box<[UV]>>, normal_data: Option<Box<[Normal]>>, tangent_data: Option<Box<[Tangent]>>) -> Mesh {
         let color_data = match color_data {
             Some(data) => {
                 if data.len() != vertex_data.len() {
@@ -137,7 +138,18 @@ impl Mesh {
             None => Box::new([])
         };
 
-        Mesh { name, vertex_data, color_data, uv_data, normal_data, custom_data: Vec::new() }
+        let tangent_data = match tangent_data {
+            Some(data) => {
+                if data.len() != vertex_data.len() {
+                    panic!("All arrays must be the same length!")
+                }
+
+                data
+            },
+            None => Box::new([])
+        };
+
+        Mesh { name, vertex_data, color_data, uv_data, normal_data, tangent_data, custom_data: Vec::new() }
     }
 
     pub fn name(&self) -> &str {
@@ -158,6 +170,10 @@ impl Mesh {
 
     pub fn has_normal_data(&self) -> bool {
         self.normal_data.len() > 0
+    }
+
+    pub fn has_tangent_data(&self) -> bool {
+        self.tangent_data.len() > 0
     }
 
     pub fn add_custom_data(&mut self, data: CustomAttributeData) {

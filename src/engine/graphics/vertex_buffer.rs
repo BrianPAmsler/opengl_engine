@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_FLOAT};
 
-use super::{Graphics, Mesh, Normal, RGBColor, Vertex, UV};
+use super::{Graphics, Mesh, Normal, RGBColor, Tangent, Vertex, UV};
 
 pub struct BufferedMeshHandle {
     mesh: Rc<RefCell<Option<BufferedMesh>>>
@@ -32,6 +32,7 @@ pub struct VBOManager {
     color_data: usize,
     uv_data: usize,
     normal_data: usize,
+    tangent_data: usize,
     custom_data: usize,
     meshes: Vec<(Mesh, BufferedMeshHandle)>
 }
@@ -41,7 +42,7 @@ impl VBOManager {
         let mut vbo = 0;
         gfx.glGenBuffer(&mut vbo);
 
-        VBOManager { vbo, vertex_data: 0, color_data: 0, uv_data: 0, normal_data: 0, custom_data: 0, meshes: Vec::new() }
+        VBOManager { vbo, vertex_data: 0, color_data: 0, uv_data: 0, normal_data: 0, tangent_data: 0, custom_data: 0, meshes: Vec::new() }
     }
 
     pub fn add_mesh(&mut self, mesh: Mesh) -> BufferedMeshHandle {
@@ -57,6 +58,10 @@ impl VBOManager {
 
         if mesh.has_normal_data() {
             self.normal_data += mesh.normal_data.len() * std::mem::size_of::<Normal>();
+        }
+
+        if mesh.has_tangent_data() {
+            self.tangent_data += mesh.tangent_data.len() * std::mem::size_of::<Tangent>();
         }
 
         for data in &mesh.custom_data {
@@ -79,7 +84,8 @@ impl VBOManager {
         let mut color_offset = self.vertex_data;
         let mut uv_offset = color_offset + self.color_data;
         let mut normal_offset = uv_offset + self.uv_data;
-        let mut custom_offset = normal_offset + self.normal_data;
+        let mut tangent_offset = normal_offset + self.normal_data;
+        let mut custom_offset = normal_offset + self.tangent_data;
 
         for (mesh, buff) in self.meshes {
             let mut vao = 0;
@@ -159,10 +165,29 @@ impl VBOManager {
                 normal_offset += std::mem::size_of::<Normal>() * mesh.normal_data.len();
             }
     
+            if mesh.has_tangent_data() {
+                gfx.glBufferSubData(GL_ARRAY_BUFFER, tangent_offset as _, &mesh.tangent_data);
+    
+                // Enable tangent attribute pointer
+                gfx.glVertexAttribPointer(
+                    index,
+                    3,
+                    GL_FLOAT,
+                    true,
+                    0,
+                    tangent_offset as _,
+                );
+                
+                gfx.glEnableVertexAttribArray(index);
+                index += 1;
+
+                tangent_offset += std::mem::size_of::<Tangent>() * mesh.tangent_data.len();
+            }
+    
             for data in &mesh.custom_data {
                 gfx.glBufferSubData(GL_ARRAY_BUFFER, custom_offset as _, data.data());
     
-                // Enable normal attribute pointer
+                // Enable custom attribute pointer
                 gfx.glVertexAttribPointer(
                     index,
                     data.size() as _,

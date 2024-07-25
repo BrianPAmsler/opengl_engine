@@ -156,8 +156,8 @@ fn start_game() -> Result<()> {
         CustomAttribute::new([1.0, 1.0, 0.0]),
     ]);
 
-    let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None);
-    let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None);
+    let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None, None);
+    let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None, None);
     mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
 
     let gfx = engine.get_graphics()?;
@@ -184,8 +184,6 @@ fn start_game() -> Result<()> {
     let renderer = Renderer { current_vao: 0, shader_program, mesh1, mesh2 };
 
     let world = engine.get_world();
-    
-    world.destroy(_d)?;
 
     world.add_component(_d, FPSCounter::default())?;
     world.add_component(a, renderer)?;

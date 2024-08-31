@@ -5,6 +5,7 @@ mod engine;
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOManager, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
+use glm::{Vec2, Vec3};
 use regex::Regex;
 
 use include_crypt_bytes::include_bytes_obfuscate;
@@ -194,6 +195,8 @@ fn start_game() -> Result<()> {
 }
 
 fn main() {
+    let v4 = vec4!(vec3!(0), 1);
+
     match start_game() {
         Ok(_) => {},
         Err(err) => { eprint!("{}", clean_backtrace(&err, "opengl_engine")); }

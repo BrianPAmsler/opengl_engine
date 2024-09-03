@@ -274,10 +274,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40ecd4077b5ae9fd2e9e169b102c6c330d0605168eb0e8bf79952b256dbefffd"
 
 [[package]]
-name = "gl33"
+name = "gl46"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29b2b7ada5ed872363f5d27e54e7cae69148cb5e4d05aa3cac1a40c30519bda3"
+checksum = "a6155ed8943ffcd2a91edad40340e238a7776f8f2d04338b781aa65b7b110236"
 dependencies = [
  "chlorine",
 ]
@@ -532,7 +532,7 @@ dependencies = [
  "backtrace",
  "const_format",
  "downcast-rs",
- "gl33",
+ "gl46",
  "glfw",
  "glm",
  "include-crypt-bytes",

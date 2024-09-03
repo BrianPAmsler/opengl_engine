@@ -4,7 +4,7 @@ mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
+use gl46::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 use include_crypt_bytes::include_bytes_obfuscate;

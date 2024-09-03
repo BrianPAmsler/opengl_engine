@@ -64,6 +64,7 @@ pub struct Graphics {
 impl Graphics {
     pub fn init(window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<Graphics> {
         let mut glfw = glfw::init(fail_on_errors!())?;
+        glfw.window_hint(glfw::WindowHint::ContextVersion(4, 6));
 
         let (mut window, events) = match window_mode {
             WindowMode::FullScreen(Some(fingerprint)) => {
@@ -90,6 +91,7 @@ impl Graphics {
         // let (mut window, events) = glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!(GraphicsError::WindowCreationFailError))?;
 
         window.make_current();
+        println!("version: {:?}", window.get_context_version());
         window.set_key_polling(true);
 
         let window = RefCell::new(window);

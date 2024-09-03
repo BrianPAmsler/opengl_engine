@@ -1,4 +1,4 @@
-use crate::engine::glm::{vec3, Vec3};
+use crate::engine::glm::Vec3;
 use crate::engine::game_object::component::Component;
 
 #[derive(Clone, Copy)]

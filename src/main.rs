@@ -2,7 +2,7 @@
 
 mod engine;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOManager, Vertex}, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use glm::{Vec2, Vec3};
@@ -163,7 +163,7 @@ fn start_game() -> Result<()> {
 
     let gfx = engine.get_graphics()?;
     
-    let mut vbo = VBOManager::new(gfx);
+    let mut vbo = VBOBufferer::new(gfx);
     let mesh1 = vbo.add_mesh(mesh1);
     let mesh2 = vbo.add_mesh(mesh2);
     vbo.buffer_data(gfx);

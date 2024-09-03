@@ -26,7 +26,7 @@ impl BufferedMeshHandle {
     }
 }
 
-pub struct VBOManager {
+pub struct VBOBufferer {
     vbo: u32,
     vertex_data: usize,
     color_data: usize,
@@ -37,12 +37,12 @@ pub struct VBOManager {
     meshes: Vec<(Mesh, BufferedMeshHandle)>
 }
 
-impl VBOManager {
-    pub fn new(gfx: &Graphics) -> VBOManager {
+impl VBOBufferer {
+    pub fn new(gfx: &Graphics) -> VBOBufferer {
         let mut vbo = 0;
         gfx.glGenBuffer(&mut vbo);
 
-        VBOManager { vbo, vertex_data: 0, color_data: 0, uv_data: 0, normal_data: 0, tangent_data: 0, custom_data: 0, meshes: Vec::new() }
+        VBOBufferer { vbo, vertex_data: 0, color_data: 0, uv_data: 0, normal_data: 0, tangent_data: 0, custom_data: 0, meshes: Vec::new() }
     }
 
     pub fn add_mesh(&mut self, mesh: Mesh) -> BufferedMeshHandle {

@@ -20,7 +20,7 @@ pub struct FPSCounter {
 impl Component for FPSCounter {
     fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
         self.count += 1;
-        let current_tick = _graphics.get_glfw_time() as f32;
+        let current_tick = Engine::get_time() as f32;
 
         let delta = current_tick - self.last_update;
 
@@ -37,7 +37,7 @@ impl Component for FPSCounter {
 
     fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
         self.fixed_count += 1;
-        let current_tick = _graphics.get_glfw_time() as f32;
+        let current_tick = Engine::get_time() as f32;
 
         let delta = current_tick - self.last_fixed_update;
 
@@ -73,7 +73,7 @@ impl Component for Renderer {
     }
 
     fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
-        let current_mesh = match (_graphics.get_glfw_time() as f32 / 5.0) as i32 % 2 == 0 {
+        let current_mesh = match (Engine::get_time() as f32 / 5.0) as i32 % 2 == 0 {
             true => &self.mesh1,
             false => &self.mesh2,
         };

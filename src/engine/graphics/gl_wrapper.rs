@@ -5,7 +5,6 @@ use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}, fmt::Debug};
 use crate::engine::errors::{Result, GraphicsError};
 
 use gl46::*;
-use glfw::GLProc;
 
 use self::private::Sealed;
 
@@ -156,7 +155,7 @@ pub struct GLWrapper {
 }
 
 impl GLWrapper {
-    pub(in crate::engine::graphics) fn init_gl<F: Fn(*const u8) -> GLProc>(f: F) -> Result<GLWrapper> {
+    pub(in crate::engine::graphics) fn init_gl<F: Fn(*const u8) -> *const std::ffi::c_void>(f: F) -> Result<GLWrapper> {
         let fns = unsafe { GlFns::load_from(&f).map_err(|e| GraphicsError::GLLoadError { msg: e })? };
 
         Ok(GLWrapper { fns })

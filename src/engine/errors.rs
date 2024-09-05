@@ -31,9 +31,7 @@ pub enum GraphicsError {
     #[error("Failed to create window!")]
     WindowCreationFailError,
     #[error("{msg}")]
-    GLLoadError{msg: &'static str},
-    #[error(transparent)]
-    GLInitError(#[from] glfw::InitError)
+    GLLoadError{msg: &'static str}
 }
 
 #[derive(Error, Debug)]
@@ -59,12 +57,6 @@ impl From<ObjectError> for Error {
 impl From<GraphicsError> for Error {
     fn from(value: GraphicsError) -> Self {
         Error::GraphicsError { source: value, backtrace: BT::new() }
-    }
-}
-
-impl From<glfw::InitError> for Error {
-    fn from(value: glfw::InitError) -> Self {
-        GraphicsError::from(value).into()
     }
 }
 

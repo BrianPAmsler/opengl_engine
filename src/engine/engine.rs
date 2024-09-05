@@ -1,5 +1,3 @@
-use glfw::{WindowEvent, Key, Action, Monitor};
-
 use crate::engine::errors::{Result, Error, GraphicsError};
 
 use super::{graphics::Graphics, game_object::World};
@@ -42,28 +40,36 @@ impl Engine {
         &mut self.world
     }
 
+    pub fn get_time_64() -> f64 {
+        std::time::Instant::now().elapsed().as_nanos() as f64 / 1_000_000_000f64
+    }
+
+    pub fn get_time() -> f32 {
+        Engine::get_time() as f32
+    }
+
     pub fn run(&mut self) -> Result<()> {
-        let mut last_tick = self.gfx.as_ref().unwrap().get_glfw_time();
+        let mut last_tick = Engine::get_time_64();
         let mut last_fixed_tick = last_tick;
         let mut fixed_tick_overflow = 0.0;
 
         self.world.init(self.gfx.as_ref().unwrap())?;
         self.log_errors();
 
-        while !self.gfx.as_ref().unwrap().should_close() {
+        while true {
             let gfx = self.gfx.as_ref().unwrap();
 
-            gfx.poll_events();
-            for msg in gfx.flush_messages() {
-                match msg {
-                    (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-                    (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
-                    _ => ()
-                }
-            }
+            // gfx.poll_events();
+            // for msg in gfx.flush_messages() {
+            //     match msg {
+            //         (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
+            //         (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
+            //         _ => ()
+            //     }
+            // }
             
             // Game tick
-            let current_time = gfx.get_glfw_time();
+            let current_time = Engine::get_time_64();
             self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32)?;
             last_tick = current_time;
 

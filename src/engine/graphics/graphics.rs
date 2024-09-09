@@ -1,3 +1,4 @@
+use core::panic;
 use std::{cell::{RefCell, Ref, RefMut}, ops::Deref, hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
 
 use glutin::{dpi::LogicalSize, event_loop::{EventLoop, EventLoopBuilder}, platform::windows::EventLoopBuilderExtWindows, window::{Window, WindowBuilder}, Api, ContextBuilder, ContextWrapper, GlProfile, GlRequest, PossiblyCurrent};
@@ -52,6 +53,10 @@ pub struct Tangent {
 
 //     hasher.finish()
 // }
+
+fn unsupported_gl_function() {
+    panic!("Unsupported OpenGL function!");
+}
 
 pub struct Graphics {
     gl: GLWrapper,
@@ -109,10 +114,18 @@ impl Graphics {
             // freaking c strings...
             unsafe {
                 let len = strlen(t as *const i8);
-                let s = std::slice::from_raw_parts(t, len);
-                window.borrow_mut().get_proc_address(std::str::from_utf8_unchecked(s))
+                let s = std::str::from_utf8_unchecked(std::slice::from_raw_parts(t, len));
+                let address = window.borrow_mut().get_proc_address(s);
+
+                if address.is_null() {
+                    unsupported_gl_function as *const _
+                } else {
+                    address
+                }
             }
         })?;
+
+        todo!();
 
         loop {}
         // let glfw = RefCell::new(glfw);

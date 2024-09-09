@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gl46::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_FLOAT};
+use gl33::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_FLOAT};
 
 use super::{Graphics, Mesh, Normal, RGBColor, Tangent, Vertex, UV};
 

@@ -2,9 +2,9 @@
 
 mod engine;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl46::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
+use gl33::{GL_TRIANGLES, GL_COLOR_BUFFER_BIT};
 use regex::Regex;
 
 use include_crypt_bytes::include_bytes_obfuscate;
@@ -90,8 +90,6 @@ impl Component for Renderer {
     }
 }
 
-// The include_bytes_obfuscate! macro generates non upper case globals and doesn't ignore the warning. wtf???
-#[allow(non_upper_case_globals)]
 fn start_game() -> Result<()> {
     let mut engine = Engine::new()?;
     engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
@@ -170,11 +168,11 @@ fn start_game() -> Result<()> {
     let mesh1 = mesh1.take();
     let mesh2 = mesh2.take();
 
-    let vertex_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.vert").unwrap()).unwrap();
-    let fragment_shader_source = String::from_utf8(include_bytes_obfuscate!("src/engine/graphics/shaders/vertex_color.frag").unwrap()).unwrap();
+    let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/vertex_color.vert");
+    let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/vertex_color.frag");
 
-    let vert_shader = VertexShader::compile_shader(gfx, &vertex_shader_source)?;
-    let frag_shader = FragmentShader::compile_shader(gfx, &fragment_shader_source)?;
+    let vert_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
+    let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;
 
     let mut program_builder = ShaderProgramBuilder::new(gfx);
     program_builder.attach_shader(vert_shader);

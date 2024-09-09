@@ -15,8 +15,8 @@ struct Sprite {
 
 layout(std430, binding = 2) buffer spriteSSBO {
     int spriteCount;
-    Sprite[] sprites;
-}
+    Sprite sprites[];
+};
 
 out vec2 texCoords;
 

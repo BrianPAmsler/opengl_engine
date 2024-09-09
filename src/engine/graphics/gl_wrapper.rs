@@ -4,7 +4,7 @@ use std::{ffi::{c_void, CString}, ops::{Deref, DerefMut}, fmt::Debug};
 
 use crate::engine::errors::{Result, GraphicsError};
 
-use gl46::*;
+use gl33::*;
 use glfw::GLProc;
 
 use self::private::Sealed;

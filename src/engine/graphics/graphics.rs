@@ -1,4 +1,4 @@
-use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::Deref, os::raw::c_void};
+use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::{Deref, Not}, os::raw::c_void};
 
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
@@ -179,6 +179,10 @@ impl Graphics {
     // This will be deleted once glfw is properly wrapped
     pub fn __get_glfw_mut(&self) -> RefMut<Glfw> {
         self.glfw.borrow_mut()
+    }
+
+    pub fn is_supported(&self, gl_fn_name: &'static str) -> bool {
+        self.window.borrow_mut().get_proc_address(&gl_fn_name).is_null().not()
     }
 
     // // This will be deleted once window is properly wrapped

@@ -4,7 +4,7 @@ mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl46::{GL_COLOR_BUFFER_BIT, GL_DYNAMIC_DRAW, GL_RGBA, GL_TRIANGLES, GL_UNSIGNED_INT};
+use gl46::{GL_COLOR_BUFFER_BIT, GL_TRIANGLES};
 use regex::Regex;
 
 #[derive(Clone, Default)]
@@ -80,8 +80,6 @@ impl Component for Renderer {
             self.current_vao = current_mesh.vao();
             _graphics.glBindVertexArray(current_mesh.vao());
         }
-
-        _graphics.glGetnTexImage(GL_DYNAMIC_DRAW, 0, GL_RGBA, GL_UNSIGNED_INT, 0, std::ptr::null_mut());
 
         _graphics.glClear(GL_COLOR_BUFFER_BIT);
         _graphics.glDrawArrays(GL_TRIANGLES, 0, current_mesh.len() as _);

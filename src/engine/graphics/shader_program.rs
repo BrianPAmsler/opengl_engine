@@ -1,4 +1,4 @@
-use gl33::{GL_FRAGMENT_SHADER, GL_COMPILE_STATUS, GL_VERTEX_SHADER};
+use gl46::{GL_FRAGMENT_SHADER, GL_COMPILE_STATUS, GL_VERTEX_SHADER};
 
 use crate::engine::{graphics::Graphics, errors::{Result, GraphicsError}};
 

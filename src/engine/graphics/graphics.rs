@@ -1,8 +1,9 @@
-use std::{cell::{RefCell, Ref, RefMut}, ops::Deref, hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
+use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::Deref, os::raw::c_void};
 
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
-use libc::strlen;
+use libc::{exit, strlen};
+use libffi::high::Closure0;
 
 use crate::engine::{WindowMode, errors::{Result, Error, GraphicsError}};
 
@@ -40,6 +41,22 @@ pub struct Tangent {
     pub x: f32,
     pub y: f32,
     pub z: f32
+}
+
+unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
+    let func = Box::new(move || {
+        eprintln!("Unsupported OpenGL function: {}", name);
+
+        exit(1);
+    });
+
+    let func: &'static _ = Box::leak(func);
+    let callback = Closure0::new(func);
+
+    let &ptr = callback.code_ptr();
+    std::mem::forget(callback);
+
+    std::mem::transmute(ptr)
 }
 
 fn get_monitor_fingerprint(monitor: &Monitor) -> u64 {
@@ -100,8 +117,14 @@ impl Graphics {
             // freaking c strings...
             unsafe {
                 let len = strlen(t as *const i8);
-                let s = std::slice::from_raw_parts(t, len);
-                window.borrow_mut().get_proc_address(std::str::from_utf8_unchecked(s))
+                let s = std::str::from_utf8_unchecked(std::slice::from_raw_parts(t, len));
+                let address = window.borrow_mut().get_proc_address(s);
+
+                if address.is_null() {
+                    unsupported_opengl_function(s.to_owned())
+                } else {
+                    address
+                }
             }
         })?;
 

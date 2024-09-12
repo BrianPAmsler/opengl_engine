@@ -1,14 +1,11 @@
-use std::fmt::Pointer;
-
-use gl33::{GL_COLOR_BUFFER_BIT, GL_TRIANGLES};
+use gl46::GL_TRIANGLES;
 use glm::{Vec3, Vec4};
-use include_crypt_bytes::include_bytes_obfuscate;
 
 use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
 
 use crate::engine::errors::Result;
 
-use super::{embed_shader_source, graphics, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, VertexShader};
+use super::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, VertexShader};
 
 #[repr(align(16))]
 #[derive(Clone, Copy, PartialEq)]
@@ -90,8 +87,7 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
-    use gl33::GL_DYNAMIC_DRAW;
-    use gl46::GL_SHADER_STORAGE_BUFFER;
+    use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_UNSIGNED_INT};
     
     impl PartialEq for GLSpriteStruct {
         fn eq(&self, other: &Self) -> bool {
@@ -178,23 +174,23 @@ mod tests {
 
         const SPRITE_COUNT_ALIGNMENT: isize = 16;
 
-        gfx.glBindBuffer(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), ssbo);
+        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
         // Allocate space
-        gfx.glBufferNull(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SPRITE_COUNT_ALIGNMENT as usize, GL_DYNAMIC_DRAW); 
+        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SPRITE_COUNT_ALIGNMENT as usize, GL_DYNAMIC_DRAW); 
         // Buffer length data
-        gfx.glBufferSubData(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), 0, std::slice::from_ref(&sprite_structs.len())); 
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
         // Buffer sprite data
-        gfx.glBufferSubData(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), SPRITE_COUNT_ALIGNMENT,&sprite_structs); 
-        gfx.glBindBufferBase(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), 2, ssbo);
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SPRITE_COUNT_ALIGNMENT,&sprite_structs); 
+        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo);
 
         gfx.glUseProgram(program.program());
         renderer.render(&gfx);
 
-        unsafe { gfx.glGetBufferSubData(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), SPRITE_COUNT_ALIGNMENT, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
+        unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, SPRITE_COUNT_ALIGNMENT, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
 
         println!("{:?}", data_in); 
 
-        gfx.glBindBuffer(gl33::GLenum(GL_SHADER_STORAGE_BUFFER.0), 0); // unbind
+        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
         
         let expected = [
             GLSpriteStruct {
@@ -214,5 +210,12 @@ mod tests {
         ];
 
         assert_eq!(data_in, expected);
+    }
+
+    #[test]
+    fn test_unsupported() {
+        let gfx = Graphics::init("test_window", 1289, 720, crate::engine::WindowMode::Windowed).unwrap();
+
+        gfx.glGetnTexImage(GL_DYNAMIC_DRAW, 0, GL_RGBA, GL_UNSIGNED_INT, 0, std::ptr::null_mut());
     }
 }

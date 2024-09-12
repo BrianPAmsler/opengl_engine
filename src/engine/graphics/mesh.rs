@@ -1,4 +1,4 @@
-use gl33::GLenum;
+use gl46::GLenum;
 
 use super::{GLType, Normal, RGBColor, Tangent, Vertex, UV};
 

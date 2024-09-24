@@ -45,7 +45,13 @@ pub struct Tangent {
 
 unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
     let func = Box::new(move || {
-        eprintln!("Unsupported OpenGL function: {}", name);
+        let msg = format!("Unsupported OpenGL function: {}", name);
+
+        native_dialog::MessageDialog::new()
+            .set_text(&msg)
+            .set_title("OpenGL Error")
+            .set_type(native_dialog::MessageType::Error)
+            .show_alert().ok();
 
         exit(1);
     });

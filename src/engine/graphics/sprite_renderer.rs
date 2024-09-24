@@ -79,6 +79,10 @@ impl SpriteRenderer {
         Ok(SpriteRenderer { program, mesh })
     }
 
+    fn buffer_sprite_data(&self, gfx: &Graphics) {
+        
+    } 
+
     pub fn render(&self, gfx: &Graphics) {
         gfx.glBindVertexArray(self.mesh.vao());
         gfx.glDrawArrays(GL_TRIANGLES, 0, self.mesh.len() as _);

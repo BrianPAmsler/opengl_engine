@@ -66,7 +66,6 @@ impl Component for Renderer {
         _graphics.glClearColor(0.0, 0.0, 0.0, 1.0);
 
         _graphics.glUseProgram(self.shader_program.program());
-        _graphics.glGetnTexImage(gl46::GL_DYNAMIC_DRAW, 0, gl46::GL_RGBA, gl46::GL_UNSIGNED_INT, 0, std::ptr::null_mut());
 
         Ok(())
     }

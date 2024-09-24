@@ -139,6 +139,31 @@ impl Graphics {
         Ok(Graphics { gl, glfw, window, events })
     }
 
+    #[cfg(test)]
+    pub fn init_unsupported() -> Result<Graphics> {
+        let mut glfw = glfw::init(fail_on_errors!())?;
+
+        let (mut window, events) = glfw.create_window(100, 100, "test", glfw::WindowMode::Windowed).ok_or::<Error>(GraphicsError::WindowCreationFailError.into())?;
+        
+        window.make_current();
+        window.set_key_polling(true);
+
+        let window = RefCell::new(window);
+
+        let gl = GLWrapper::init_gl(|t| {
+            // freaking c strings...
+            unsafe {
+                let len = strlen(t as *const i8);
+                let s = std::str::from_utf8_unchecked(std::slice::from_raw_parts(t, len));
+                unsupported_opengl_function(s.to_owned())
+            }
+        })?;
+
+        let glfw = RefCell::new(glfw);
+
+        Ok(Graphics { gl, glfw, window, events })
+    }
+
     pub fn get_window_mode(&self) -> WindowMode {
         self.window.borrow().with_window_mode(|mode| {
             match mode {
@@ -208,4 +233,11 @@ impl Deref for Graphics {
     fn deref(&self) -> &Self::Target {
         &self.gl
     }
+}
+
+#[test]
+fn gl_unsupported() {
+    let gfx = Graphics::init_unsupported().unwrap();
+
+    gfx.glActiveTexture(gl46::GLenum(0));
 }

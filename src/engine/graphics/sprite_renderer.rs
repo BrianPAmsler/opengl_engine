@@ -79,8 +79,8 @@ impl SpriteRenderer {
         Ok(SpriteRenderer { program, mesh })
     }
 
-    fn buffer_sprite_data(&self, gfx: &Graphics) {
-        
+    fn buffer_sprite_data(&self, _gfx: &Graphics) {
+
     } 
 
     pub fn render(&self, gfx: &Graphics) {
@@ -91,7 +91,7 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
-    use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_UNSIGNED_INT};
+    use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER};
     
     impl PartialEq for GLSpriteStruct {
         fn eq(&self, other: &Self) -> bool {
@@ -214,12 +214,5 @@ mod tests {
         ];
 
         assert_eq!(data_in, expected);
-    }
-
-    #[test]
-    fn test_unsupported() {
-        let gfx = Graphics::init("test_window", 1289, 720, crate::engine::WindowMode::Windowed).unwrap();
-
-        gfx.glGetnTexImage(GL_DYNAMIC_DRAW, 0, GL_RGBA, GL_UNSIGNED_INT, 0, std::ptr::null_mut());
     }
 }

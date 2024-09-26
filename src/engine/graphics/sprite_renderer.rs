@@ -1,9 +1,11 @@
-use gl46::GL_TRIANGLES;
-use glm::{Vec3, Vec4};
+use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE_2D, GL_TRIANGLES, GL_UNSIGNED_BYTE};
+use glm::{Mat4, Vec3, Vec4};
 
+use crate::engine::data_structures::{AllocationIndex, VecAllocator};
 use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
 
 use crate::engine::errors::Result;
+use crate::vec4;
 
 use super::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, VertexShader};
 
@@ -23,16 +25,37 @@ struct GLSpriteStruct {
     dimensions: Vec4,
     uvs: Vec4,
     anchor: Vec3,
-    id: u32
+    id: u32,
+    enabled: u32
+}
+
+#[derive(Clone, Copy)]
+pub struct SpriteData {
+    pub position: Vec3,
+    pub dimensions: Vec4,
+    pub anchor: Vec3,
+    pub sprite_id: u32
 }
 
 pub struct SpriteRenderer {
     program: ShaderProgram,
-    mesh: BufferedMesh
+    mesh: BufferedMesh,
+    sprite_data: VecAllocator<SpriteData>,
+    view_matrix: Mat4,
+    projection_matrix: Mat4,
+    buffersize: usize,
+    ssbo: u32,
+    sprite_texture: u32,
+    sprite_map: Vec<Vec4>
+}
+
+#[derive(Clone, Copy)]
+pub struct SpriteID {
+    id: AllocationIndex
 }
 
 impl SpriteRenderer {
-    pub fn new(gfx: &Graphics) -> Result<SpriteRenderer> {
+    pub fn new(gfx: &Graphics, initial_buffer_size: usize, sprite_map_data: &[u8], width: u32, height: u32) -> Result<SpriteRenderer> {
         let mut program = ShaderProgramBuilder::new(gfx);
         
         let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite.vert");
@@ -75,17 +98,38 @@ impl SpriteRenderer {
 
         let mesh = mesh.take();
         
+        let mut ssbo = 0;
+        gfx.glGenBuffer(&mut ssbo);
+        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, initial_buffer_size, GL_DYNAMIC_DRAW);
 
-        Ok(SpriteRenderer { program, mesh })
+        let mut sprite_texture = 0;
+        gfx.glGenTexture(&mut sprite_texture);
+
+        if sprite_map_data.len() > 0 {
+            gfx.glBindTexture(GL_TEXTURE_2D, sprite_texture);
+            gfx.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &sprite_map_data);
+        }
+
+        Ok(SpriteRenderer { program, mesh, sprite_data: VecAllocator::new(), view_matrix: Mat4::new(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: Mat4::new(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, ssbo, sprite_texture, sprite_map: Vec::new() })
+    }
+
+    pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
+        self.view_matrix = view_matrix;
     }
 
     fn buffer_sprite_data(&self, _gfx: &Graphics) {
 
-    } 
+    }
+
+    pub fn add_sprite(&mut self, sprite: SpriteData) -> SpriteID {
+        let id = self.sprite_data.insert(sprite);
+
+        SpriteID { id }
+    }
 
     pub fn render(&self, gfx: &Graphics) {
         gfx.glBindVertexArray(self.mesh.vao());
-        gfx.glDrawArrays(GL_TRIANGLES, 0, self.mesh.len() as _);
+        gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.sprite_data.count() as u32);
     }
 }
 
@@ -99,7 +143,7 @@ mod tests {
         }
     }
 
-    use crate::{engine::graphics::{embed_shader_source, sprite_renderer::{GLSpriteStruct, AlignedVec3}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader}, vec3, vec4};
+    use crate::{engine::graphics::{embed_shader_source, sprite_renderer::{AlignedVec3, GLSpriteStruct}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader}, vec3, vec4};
 
     use super::SpriteRenderer;
 
@@ -111,14 +155,16 @@ mod tests {
                 dimensions: vec4!(4, 5, 6, 7),
                 uvs: vec4!(8, 9, 10, 11),
                 anchor: vec3!(12, 13, 14),
-                id: unsafe { std::mem::transmute(15f32) }
+                id: unsafe { std::mem::transmute(15f32) },
+                enabled: 1
             },
             GLSpriteStruct {
                 position: AlignedVec3(vec3!(16, 17, 18)),
                 dimensions: vec4!(19, 20, 21, 22),
                 uvs: vec4!(23, 24, 25, 26),
                 anchor: vec3!(27, 28, 29),
-                id: unsafe { std::mem::transmute(30f32) }
+                id: unsafe { std::mem::transmute(30f32) },
+                enabled: 0
             },
         ];
 
@@ -126,21 +172,30 @@ mod tests {
 
         // zero any uninitialized memory
         floats[3] = 0.0f32;
+        floats[17] = 0.0f32;
+        floats[18] = 0.0f32;
         floats[19] = 0.0f32;
+        
+        floats[3 + 20] = 0.0f32;
+        floats[17 + 20] = 0.0f32;
+        floats[18 + 20] = 0.0f32;
+        floats[19 + 20] = 0.0f32;
 
         eprintln!("{:?}", floats);
         let expected =
-            [1.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
-            16.0, 17.0, 18.0, 0.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0];
+            [1.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, unsafe{std::mem::transmute(1u32)}, 0.0, 0.0, 0.0,
+            16.0, 17.0, 18.0, 0.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, unsafe{std::mem::transmute(0u32)}, 0.0, 0.0, 0.0];
         
         assert_eq!(&floats, &expected);
     }
 
     #[test]
     pub fn sprite_struct_test() {
+        let lock = crate::engine::graphics::test_lock::LOCK.lock().unwrap();
+
         let gfx = Graphics::init("test_window", 1289, 720, crate::engine::WindowMode::Windowed).unwrap();
 
-        let renderer = SpriteRenderer::new(&gfx).unwrap();
+        let renderer = SpriteRenderer::new(&gfx, 1024, &[], 0, 0).unwrap();
 
         let mut program = ShaderProgramBuilder::new(&gfx);
         
@@ -166,6 +221,7 @@ mod tests {
             uvs: vec4!(0),
             anchor: vec3!(0),
             id: 0,
+            enabled: 0
         }; 2];
 
         let mut data_in = [GLSpriteStruct {
@@ -174,6 +230,7 @@ mod tests {
             uvs: vec4!(0),
             anchor: vec3!(0),
             id: 0,
+            enabled: 0
         }; 2];
 
         const SPRITE_COUNT_ALIGNMENT: isize = 16;
@@ -202,17 +259,21 @@ mod tests {
                 dimensions: vec4!(4, 5, 6, 7),
                 uvs: vec4!(8, 9, 10, 11),
                 anchor: vec3!(12, 13, 14),
-                id: 15
+                id: 15,
+                enabled: 1
             },
             GLSpriteStruct {
                 position: AlignedVec3(vec3!(16, 17, 18)),
                 dimensions: vec4!(19, 20, 21, 22),
                 uvs: vec4!(23, 24, 25, 26),
                 anchor: vec3!(27, 28, 29),
-                id: 30
+                id: 30,
+                enabled: 0
             }
         ];
 
         assert_eq!(data_in, expected);
+        drop(gfx);
+        drop(lock);
     }
 }

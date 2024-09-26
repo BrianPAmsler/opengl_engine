@@ -53,6 +53,9 @@ unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
             .set_type(native_dialog::MessageType::Error)
             .show_alert().ok();
 
+        #[cfg(test)]
+        exit(0); // 0 exit code for tests
+        #[cfg(not(test))]
         exit(1);
     });
 
@@ -237,7 +240,10 @@ impl Deref for Graphics {
 
 #[test]
 fn gl_unsupported() {
+    let lock = super::test_lock::LOCK.lock().unwrap();
     let gfx = Graphics::init_unsupported().unwrap();
 
     gfx.glActiveTexture(gl46::GLenum(0));
+    drop(gfx);
+    drop(lock);
 }

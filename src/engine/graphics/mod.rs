@@ -11,3 +11,10 @@ pub use gl_wrapper::*;
 pub use mesh::*;
 pub use shader_program::*;
 pub use vertex_buffer::*;
+
+#[cfg(test)]
+pub mod test_lock {
+    use std::sync::Mutex;
+
+    pub static LOCK: Mutex<()> = Mutex::new(());
+}

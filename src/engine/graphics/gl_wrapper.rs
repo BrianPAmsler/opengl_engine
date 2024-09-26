@@ -486,8 +486,8 @@ impl GLWrapper {
         unsafe { self.fns.DrawArrays(mode, first, count) }
     }
     
-    pub fn glDrawArraysInstanced(&self, mode: PrimitiveType, first: i32, count: i32, instancecount: i32) {
-        unsafe { self.fns.DrawArraysInstanced(mode, first, count, instancecount) }
+    pub fn glDrawArraysInstanced(&self, mode: PrimitiveType, first: i32, count: i32, instancecount: u32) {
+        unsafe { self.fns.DrawArraysInstanced(mode, first, count, instancecount as _) }
     }
     
     pub fn glDrawBuffer(&self, buf: DrawBufferMode) {
@@ -1194,20 +1194,20 @@ impl GLWrapper {
         self.fns.TexBuffer(target, internalformat, buffer)
     }
     
-    pub unsafe fn glTexImage1D(&self, target: TextureTarget, level: i32, internalformat: i32, width: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexImage1D(target, level, internalformat, width as _, border, format, type_, pixels)
+    pub unsafe fn glTexImage1D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
+        self.fns.TexImage1D(target, level, internalformat.0 as _, width as _, border, format, type_, pixels)
     }
     
-    pub unsafe fn glTexImage2D(&self, target: TextureTarget, level: i32, internalformat: i32, width: u32, height: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexImage2D(target, level, internalformat, width as _, height as _, border, format, type_, pixels)
+    pub fn glTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
+        unsafe { self.fns.TexImage2D(target, level, internalformat.0 as _, width as _, height as _, border, format, type_, pixels.as_ptr() as _) }
     }
     
     pub unsafe fn glTexImage2DMultisample(&self, target: TextureTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32, fixedsamplelocations: u8) {
         self.fns.TexImage2DMultisample(target, samples, internalformat, width as _, height as _, fixedsamplelocations)
     }
     
-    pub unsafe fn glTexImage3D(&self, target: TextureTarget, level: i32, internalformat: i32, width: u32, height: u32, depth: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexImage3D(target, level, internalformat, width as _, height as _, depth as _, border, format, type_, pixels)
+    pub unsafe fn glTexImage3D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
+        self.fns.TexImage3D(target, level, internalformat.0 as _, width as _, height as _, depth as _, border, format, type_, pixels)
     }
     
     pub unsafe fn glTexImage3DMultisample(&self, target: TextureTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, fixedsamplelocations: u8) {

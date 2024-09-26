@@ -11,6 +11,7 @@ struct Sprite {
     vec4 uvs;
     vec3 anchor;
     uint spriteID;
+    bool enabled;
 };
 
 layout(std430, binding=2) buffer spriteSSBO {
@@ -27,6 +28,7 @@ void main()
     sprites[0].uvs = vec4(8, 9, 10, 11);
     sprites[0].anchor = vec3(12, 13, 14);
     sprites[0].spriteID = 15;
+    sprites[0].enabled = true;
 
     sprites[1].position = vec3(16, 17, 18);
     sprites[1].position = vec3(16, 17, 18);
@@ -34,6 +36,7 @@ void main()
     sprites[1].uvs = vec4(23, 24, 25, 26);
     sprites[1].anchor = vec3(27, 28, 29);
     sprites[1].spriteID = 30;
+    sprites[1].enabled = false;
 
     gl_Position = vec4(position, 1.0);
     texCoords = uv;

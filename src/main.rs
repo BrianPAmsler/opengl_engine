@@ -2,10 +2,22 @@
 
 mod engine;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
+use std::path::Path;
+
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl46::{GL_COLOR_BUFFER_BIT, GL_TRIANGLES};
+use glm::Mat4;
+use image::ImageReader;
 use regex::Regex;
+
+fn load_texture<P: AsRef<Path>>(path: P, buffer: &mut Vec<u8>) -> Result<(u32, u32)> {
+    let img = ImageReader::open(path).map_err(|t| t.to_string())?.decode().map_err(|t| t.to_string())?;
+    let dimensions = (img.width(), img.height());
+    buffer.clone_from_slice(img.as_bytes());
+
+    Ok(dimensions)
+}
 
 #[derive(Clone, Default)]
 pub struct FPSCounter {
@@ -51,38 +63,29 @@ impl Component for FPSCounter {
     }
 }
 
-#[derive(Clone)]
 pub struct Renderer {
-    current_vao: u32,
-    shader_program: ShaderProgram,
-    mesh1: BufferedMesh,
-    mesh2: BufferedMesh
+    sprite_renderer: SpriteRenderer
 }
 
 impl Component for Renderer {
     fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<()> {
-        self.current_vao = self.mesh2.vao();
+        self.sprite_renderer.add_sprite(0, 0, 512, 512);
+        self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
 
-        _graphics.glClearColor(0.0, 0.0, 0.0, 1.0);
-
-        _graphics.glUseProgram(self.shader_program.program());
+        // // let mat = 
+        // self.sprite_renderer.update_view_matrix(view_matrix);
 
         Ok(())
     }
 
     fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
-        let current_mesh = match (_graphics.get_glfw_time() as f32 / 5.0) as i32 % 2 == 0 {
-            true => &self.mesh1,
-            false => &self.mesh2,
-        };
-
-        if self.current_vao != current_mesh.vao() {
-            self.current_vao = current_mesh.vao();
-            _graphics.glBindVertexArray(current_mesh.vao());
-        }
-
-        _graphics.glClear(GL_COLOR_BUFFER_BIT);
-        _graphics.glDrawArrays(GL_TRIANGLES, 0, current_mesh.len() as _);
+        self.sprite_renderer.queue_sprite_instance(SpriteData {
+            position: vec3!(0),
+            anchor: vec2!(0.5, 0.5),
+            dimensions: vec2!(1),
+            sprite_id: 0,
+        });
+        self.sprite_renderer.render(_graphics);
 
         Ok(())   
     }
@@ -98,86 +101,13 @@ fn start_game() -> Result<()> {
     let _b = world.create_game_object("b".to_owned(), a)?;
     let c = world.create_game_object("c".to_owned(), a)?;
     let _d = world.create_game_object("d".to_owned(), c)?;
-    let vertex_data = Box::new([
-        Vertex { x: -1.0, y: -1.0, z: 0.0 },
-        Vertex { x: -1.0, y: 1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.0, z: 0.0 },
     
-        Vertex { x: 1.0, y: 1.0, z: 0.0 },
-        Vertex { x: 1.0, y: -1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.0, z: 0.0 },
-    
-        Vertex { x: -0.75, y: 1.0, z: 0.0 },
-        Vertex { x: 0.75, y: 1.0, z: 0.0 },
-        Vertex { x: 0.0, y: 0.25, z: 0.0 },
-    
-        Vertex { x: -0.75, y: -1.0, z: 0.0 },
-        Vertex { x: 0.75, y: -1.0, z: 0.0 },
-        Vertex { x: 0.0, y: -0.25, z: 0.0 },
-    ]);
-
-    let color_data_1 = Box::new([
-        RGBColor { r: 1.0, g: 0.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 0.0, b: 1.0 },
-        
-        RGBColor { r: 1.0, g: 1.0, b: 0.0 },
-        RGBColor { r: 0.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 0.0, b: 1.0 },
-        
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-        RGBColor { r: 1.0, g: 1.0, b: 1.0 },
-    ]);
-
-    let color_data_2: Box<[CustomAttribute<f32, 3, true>]> = Box::new([
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 1.0]),
-        
-        CustomAttribute::new([1.0, 0.0, 0.0]),
-        CustomAttribute::new([0.0, 1.0, 0.0]),
-        CustomAttribute::new([0.0, 0.0, 1.0]),
-        
-        CustomAttribute::new([0.0, 1.0, 1.0]),
-        CustomAttribute::new([1.0, 0.0, 1.0]),
-        CustomAttribute::new([1.0, 1.0, 0.0]),
-    ]);
-
-    let mesh1 = Mesh::new("Test Mesh".to_owned(), vertex_data.clone(), Some(color_data_1), None, None, None);
-    let mut mesh2 = Mesh::new("Test Mesh 2".to_owned(), vertex_data, None, None, None, None);
-    mesh2.add_custom_data(CustomAttributeData::new(color_data_2));
-
     let gfx = engine.get_graphics()?;
-    
-    let mut vbo = VBOBufferer::new(gfx);
-    let mesh1 = vbo.add_mesh(mesh1);
-    let mesh2 = vbo.add_mesh(mesh2);
-    vbo.buffer_data(gfx);
 
-    let mesh1 = mesh1.take();
-    let mesh2 = mesh2.take();
-
-    let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/vertex_color.vert");
-    let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/vertex_color.frag");
-
-    let vert_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
-    let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;
-
-    let mut program_builder = ShaderProgramBuilder::new(gfx);
-    program_builder.attach_shader(vert_shader);
-    program_builder.attach_shader(frag_shader);
-    let shader_program = program_builder.finish();
-
-    let renderer = Renderer { current_vao: 0, shader_program, mesh1, mesh2 };
+    let mut sprite_map_data = Vec::new();
+    let (width, height) = load_texture("sprite_sheet.png", &mut sprite_map_data)?;
+    let sprite_renderer = SpriteRenderer::new(gfx, 1024, &sprite_map_data[..], width, height)?;
+    let renderer = Renderer { sprite_renderer };
 
     let world = engine.get_world();
 

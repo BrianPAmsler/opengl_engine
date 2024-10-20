@@ -57,7 +57,7 @@ impl Number for u64 {
 #[macro_export]
 macro_rules! vec2 {
     ($x:expr) => {
-        glm::Vec2 { x: $x as f32, $y as f32 }
+        glm::Vec2 { x: $x as f32, y: $x as f32 }
     };
     ($x:expr, $y:expr) => {
         glm::Vec2 { x: $x as f32, y: $y as f32 }

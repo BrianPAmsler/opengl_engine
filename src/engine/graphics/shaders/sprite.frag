@@ -2,9 +2,14 @@
 
 in vec2 texCoords;
 
+uniform sampler2D spriteSheet;
+
 out vec4 outColor;
 
 void main()
 {
-    outColor = vec4(vec3(0), 1.0);
+    // Offset by half a texel to avoid artifacts caused by floating-point errors
+    vec2 tex_offset = 0.5 / textureSize(spriteSheet, 0);
+
+    outColor = texture(spriteSheet, texCoords + tex_offset);
 }

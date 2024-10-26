@@ -9,32 +9,28 @@ struct Sprite {
     vec3 position;
     vec4 dimensions;
     vec4 uvs;
-    vec3 anchor;
     uint spriteID;
 };
 
 layout(std430, binding = 2) buffer spriteSSBO {
     int spriteCount;
-    Sprite[] sprites;
-}
+    Sprite sprites[];
+};
 
 out vec2 texCoords;
 
 void main()
 {
-    sprites[0].position = vec3(1, 2, 3);
-    sprites[0].dimensions = vec4(4, 5, 6, 7);
-    sprites[0].uvs = vec4(8, 9, 10, 11);
-    sprites[0].anchor = vec3(12, 13, 14);
-    sprites[0].spriteID = floatBitsToInt(15);
+    Sprite sprite = sprites[gl_InstanceID];
 
-    sprites[1].position = vec3(16, 17, 18);
-    sprites[1].position = vec3(16, 17, 18);
-    sprites[1].dimensions = vec4(19, 20, 21, 22);
-    sprites[1].uvs = vec4(23, 24, 25, 26);
-    sprites[1].anchor = vec3(27, 28, 29);
-    sprites[1].spriteID = floatBitsToInt(30);
+    vec2 anchor = sprite.dimensions.xy;
+    vec2 scale = sprite.dimensions.zw;
 
-    gl_Position = vec4(position, 1.0);
+    mat4 model = mat4(1);
+    // model[3] = vec4(sprite.position - sprite.anchor * sprite.dimensions, 1);
+
+    mat4 mvp = model * VP;
+
+    gl_Position = vec4(position, 1.0) * mvp;
     texCoords = uv;
 }

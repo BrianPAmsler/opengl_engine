@@ -1,8 +1,9 @@
-use std::{cell::{RefCell, Ref, RefMut}, ops::Deref, hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
+use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::{Deref, Not}, os::raw::c_void};
 
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
-use libc::strlen;
+use libc::{exit, strlen};
+use libffi::high::Closure0;
 
 use crate::engine::{WindowMode, errors::{Result, Error, GraphicsError}};
 
@@ -40,6 +41,31 @@ pub struct Tangent {
     pub x: f32,
     pub y: f32,
     pub z: f32
+}
+
+unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
+    let func = Box::new(move || {
+        let msg = format!("Unsupported OpenGL function: {}", name);
+
+        native_dialog::MessageDialog::new()
+            .set_text(&msg)
+            .set_title("OpenGL Error")
+            .set_type(native_dialog::MessageType::Error)
+            .show_alert().ok();
+
+        #[cfg(test)]
+        exit(0); // 0 exit code for tests
+        #[cfg(not(test))]
+        exit(1);
+    });
+
+    let func: &'static _ = Box::leak(func);
+    let callback = Closure0::new(func);
+
+    let &ptr = callback.code_ptr();
+    std::mem::forget(callback);
+
+    std::mem::transmute(ptr)
 }
 
 fn get_monitor_fingerprint(monitor: &Monitor) -> u64 {
@@ -100,8 +126,39 @@ impl Graphics {
             // freaking c strings...
             unsafe {
                 let len = strlen(t as *const i8);
-                let s = std::slice::from_raw_parts(t, len);
-                window.borrow_mut().get_proc_address(std::str::from_utf8_unchecked(s))
+                let s = std::str::from_utf8_unchecked(std::slice::from_raw_parts(t, len));
+                let address = window.borrow_mut().get_proc_address(s);
+
+                if address.is_null() {
+                    unsupported_opengl_function(s.to_owned())
+                } else {
+                    address
+                }
+            }
+        })?;
+
+        let glfw = RefCell::new(glfw);
+
+        Ok(Graphics { gl, glfw, window, events })
+    }
+
+    #[cfg(test)]
+    pub fn init_unsupported() -> Result<Graphics> {
+        let mut glfw = glfw::init(fail_on_errors!())?;
+
+        let (mut window, events) = glfw.create_window(100, 100, "test", glfw::WindowMode::Windowed).ok_or::<Error>(GraphicsError::WindowCreationFailError.into())?;
+        
+        window.make_current();
+        window.set_key_polling(true);
+
+        let window = RefCell::new(window);
+
+        let gl = GLWrapper::init_gl(|t| {
+            // freaking c strings...
+            unsafe {
+                let len = strlen(t as *const i8);
+                let s = std::str::from_utf8_unchecked(std::slice::from_raw_parts(t, len));
+                unsupported_opengl_function(s.to_owned())
             }
         })?;
 
@@ -158,6 +215,10 @@ impl Graphics {
         self.glfw.borrow_mut()
     }
 
+    pub fn is_supported(&self, gl_fn_name: &'static str) -> bool {
+        self.window.borrow_mut().get_proc_address(&gl_fn_name).is_null().not()
+    }
+
     // // This will be deleted once window is properly wrapped
     // pub fn __get_window(&self) -> &PWindow {
     //     &self.window
@@ -175,4 +236,14 @@ impl Deref for Graphics {
     fn deref(&self) -> &Self::Target {
         &self.gl
     }
+}
+
+#[test]
+fn gl_unsupported() {
+    let lock = super::test_lock::LOCK.lock().unwrap();
+    let gfx = Graphics::init_unsupported().unwrap();
+
+    gfx.glActiveTexture(gl46::GLenum(0));
+    drop(gfx);
+    drop(lock);
 }

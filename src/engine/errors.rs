@@ -48,6 +48,11 @@ pub enum Error {
         source: GraphicsError,
         backtrace: BT
     },
+    #[error("{msg}")]
+    StringError {
+        msg: String,
+        backtrace: BT
+    }
 }
 
 impl From<ObjectError> for Error {
@@ -68,11 +73,24 @@ impl From<glfw::InitError> for Error {
     }
 }
 
+impl From<String> for Error {
+    fn from(value: String) -> Self {
+        Error::StringError { msg: value, backtrace: BT::new() }
+    }
+}
+
+impl From<&'static str> for Error {
+    fn from(value: &'static str) -> Self {
+        Error::StringError { msg: value.to_owned(), backtrace: BT::new() }
+    }
+}
+
 impl Error {
     pub fn backtrace(&self) -> &impl std::fmt::Debug {
         match &self {
             Error::ObjectError { backtrace, .. } => backtrace,
             Error::GraphicsError { backtrace, .. } => backtrace,
+            Error::StringError { backtrace, .. } => backtrace
         }
     }
 }

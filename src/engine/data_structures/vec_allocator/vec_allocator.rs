@@ -27,6 +27,10 @@ impl AllocationIndex {
         AllocationIndex { ptr: std::ptr::null(), index: 0, id: 0 }
     }
 
+    pub fn as_raw(self) -> (*const(), usize, usize) {
+        (self.ptr, self.index, self.id)
+    }
+
     pub fn ptr_eq<T>(&self, allocator: &VecAllocator<T>) -> bool {
         self.ptr == allocator.vec.deref() as *const Vec<Slot<T>> as *const ()
     }
@@ -64,6 +68,14 @@ impl<T> VecAllocator<T> {
         let mut vec = Box::new(Vec::new());
         vec.push(Slot::Hole { id: 0, next: 0 });
         VecAllocator { vec, first_hole: 0, count: 0 }
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.vec.len()
+    }
+
+    pub fn count(&self) -> usize {
+        self.count
     }
 
     pub fn insert(&mut self, value: T) -> AllocationIndex {

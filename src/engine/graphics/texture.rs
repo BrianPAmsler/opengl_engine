@@ -1,4 +1,4 @@
-use gl46::{GL_RGBA, GL_TEXTURE_2D, GL_UNSIGNED_BYTE};
+use gl46::{GL_LINEAR, GL_NEAREST, GL_REPEAT, GL_RGBA, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_UNSIGNED_BYTE};
 
 use super::Graphics;
 
@@ -9,13 +9,24 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn buffer_texture(gfx: &Graphics, texture_data: &[u8], width: u32, height: u32) -> Texture {
+    pub fn new(gfx: &Graphics, texture_data: &[u8], width: u32, height: u32) -> Texture {
         let mut texture_id = 0;
         gfx.glGenTexture(&mut texture_id);
 
+        println!("texture_id: {}", texture_id);
+
         if texture_data.len() > 0 {
             gfx.glBindTexture(GL_TEXTURE_2D, texture_id);
-            gfx.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, &texture_data);
+            
+            gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+            gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+            gfx.glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data);
+            // gfx.glGenerateMipmap(GL_TEXTURE_2D);
+
+            gfx.glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         Texture { texture_id, width, height }

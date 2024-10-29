@@ -2,7 +2,7 @@ use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, ha
 
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
-use libc::{exit, strlen};
+use libc::strlen;
 use libffi::high::Closure0;
 
 use crate::engine::{WindowMode, errors::{Result, Error, GraphicsError}};
@@ -43,6 +43,10 @@ pub struct Tangent {
     pub z: f32
 }
 
+unsafe fn exit<T> (status: i32) -> T {
+    std::process::exit(status)
+}
+
 unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
     let func = Box::new(move || {
         let msg = format!("Unsupported OpenGL function: {}", name);
@@ -54,9 +58,9 @@ unsafe fn unsupported_opengl_function(name: String) -> *const c_void {
             .show_alert().ok();
 
         #[cfg(test)]
-        exit(0); // 0 exit code for tests
+        exit::<()>(0); // 0 exit code for tests
         #[cfg(not(test))]
-        exit(1);
+        exit::<()>(1);
     });
 
     let func: &'static _ = Box::leak(func);

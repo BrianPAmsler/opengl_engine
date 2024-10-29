@@ -1,11 +1,11 @@
-use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE0, GL_TEXTURE20, GL_TEXTURE_2D, GL_TRIANGLES, GL_UNSIGNED_BYTE};
-use glm::{Mat4, Vec2, Vec3, Vec4};
+use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE0, GL_TEXTURE_2D, GL_TRIANGLES};
+use gl_types::matrices::{Mat4, MatN};
+use gl_types::{mat4, vec2, vec3, vec4};
+use gl_types::vectors::{Vec2, Vec3, Vec4};
 
-use crate::engine::data_structures::{AllocationIndex, VecAllocator};
 use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
 
 use crate::engine::errors::Result;
-use crate::{vec2, vec3, vec4};
 
 use super::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, Texture, VertexShader};
 
@@ -13,7 +13,7 @@ const SSBO_OFFSET: isize = 16;
 
 #[repr(align(16))]
 #[derive(Clone, Copy, PartialEq)]
-struct AlignedVec3(glm::Vec3);
+struct AlignedVec3(gl_types::vectors::Vec3);
 
 impl std::fmt::Debug for AlignedVec3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -74,6 +74,10 @@ impl SpriteRenderer {
 
         let program = program.finish();
 
+        gfx.glUseProgram(program.program());
+
+        let sprite_sheet = Texture::new(gfx, sprite_sheet_data, width, height);
+
         let vertex_data = Box::new([
             Vertex { x: -1.0, y: -1.0, z: 0.0 }, // bottom left
             Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
@@ -111,9 +115,7 @@ impl SpriteRenderer {
         let mut spritesheet_ssbo = 0;
         gfx.glGenBuffer(&mut spritesheet_ssbo);
 
-        let sprite_sheet = Texture::buffer_texture(gfx, sprite_sheet_data, width, height);
-
-        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::new(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: Mat4::new(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, sprite_sheet, sprite_map: Vec::new() })
+        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, sprite_sheet, sprite_map: Vec::new() })
     }
 
     pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
@@ -157,6 +159,7 @@ impl SpriteRenderer {
         // Buffer sprite data
         gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue); 
         gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
+        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
     pub fn queue_sprite_instance(&mut self, sprite: SpriteData) {
@@ -176,16 +179,22 @@ impl SpriteRenderer {
 
     pub fn render(&mut self, gfx: &Graphics) {
         gfx.glBindVertexArray(self.mesh.vao());
+        gfx.glUseProgram(self.program.program());
         self.buffer_sprite_data(gfx);
         gfx.glActiveTexture(GL_TEXTURE0);
         gfx.glBindTexture(GL_TEXTURE_2D, self.sprite_sheet.texture_id());
+        let loc = gfx.glGetUniformLocation(self.program.program(), "VP");
+        unsafe { gfx.glUniformMatrix4fv(loc, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
+
         gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
+        self.render_queue.clear();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER, GL_TRIANGLES};
+    use gl_types::{vec3, vec4};
     
     impl PartialEq for GLSpriteStruct {
         fn eq(&self, other: &Self) -> bool {
@@ -193,7 +202,7 @@ mod tests {
         }
     }
 
-    use crate::{engine::graphics::{embed_shader_source, sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader}, vec2, vec3, vec4};
+    use crate::engine::graphics::{embed_shader_source, sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
 
     use super::SpriteRenderer;
 

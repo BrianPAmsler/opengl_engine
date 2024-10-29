@@ -2,19 +2,20 @@
 
 mod engine;
 
-use std::path::Path;
+use std::{io::Read, path::Path};
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, GLType, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl46::{GL_COLOR_BUFFER_BIT, GL_TRIANGLES};
-use glm::Mat4;
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_TRIANGLES};
+use gl_types::{clip_space::ortho, matrices::Mat4, transform::lookAt, vec2, vec3};
 use image::ImageReader;
 use regex::Regex;
 
 fn load_texture<P: AsRef<Path>>(path: P, buffer: &mut Vec<u8>) -> Result<(u32, u32)> {
-    let img = ImageReader::open(path).map_err(|t| t.to_string())?.decode().map_err(|t| t.to_string())?;
+    let img = ImageReader::open(path).map_err(|t| t.to_string())?.decode().map_err(|t| t.to_string())?.to_rgba8();
     let dimensions = (img.width(), img.height());
-    buffer.clone_from_slice(img.as_bytes());
+    buffer.clear();
+    buffer.extend_from_slice(&img.as_raw()[..]);
 
     Ok(dimensions)
 }
@@ -69,18 +70,24 @@ pub struct Renderer {
 
 impl Component for Renderer {
     fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<()> {
+        _graphics.glClearColor(0.75, 0.75, 0.75, 1.0);
         self.sprite_renderer.add_sprite(0, 0, 512, 512);
         self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
 
-        // // let mat = 
-        // self.sprite_renderer.update_view_matrix(view_matrix);
+        let mat = lookAt(vec3!(0, 0, -1), vec3!(0, 0, 1), vec3!(0, 1, 0)) * ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0);
+        self.sprite_renderer.update_view_matrix(mat);
+
+        self.sprite_renderer.update_sprite_map(_graphics);
+        // _graphics.glEnable(GL_CULL_FACE);
+        // _graphics.glCullFace(GL_BACK);
 
         Ok(())
     }
 
     fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
+        _graphics.glClear(GL_COLOR_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(0),
+            position: vec3!(0, 0, 0),
             anchor: vec2!(0.5, 0.5),
             dimensions: vec2!(1),
             sprite_id: 0,
@@ -106,6 +113,9 @@ fn start_game() -> Result<()> {
 
     let mut sprite_map_data = Vec::new();
     let (width, height) = load_texture("sprite_sheet.png", &mut sprite_map_data)?;
+
+    println!("first 20: {:?}", &sprite_map_data[..20]);
+    println!("img len: {}, dimensions: ({}, {})", sprite_map_data.len(), width, height);
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, &sprite_map_data[..], width, height)?;
     let renderer = Renderer { sprite_renderer };
 

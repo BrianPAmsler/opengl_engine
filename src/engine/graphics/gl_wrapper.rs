@@ -935,7 +935,7 @@ impl GLWrapper {
     
     pub fn glGetUniformLocation(&self, program: u32, name: &str) -> i32 {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as _) }
+        unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as *const  _) }
     }
     
     pub unsafe fn glGetUniformfv(&self, program: u32, location: i32, params: *mut f32) {
@@ -1230,8 +1230,8 @@ impl GLWrapper {
         self.fns.TexParameterfv(target, pname, params)
     }
     
-    pub unsafe fn glTexParameteri(&self, target: TextureTarget, pname: TextureParameterName, param: i32) {
-        self.fns.TexParameteri(target, pname, param)
+    pub fn glTexParameteri(&self, target: TextureTarget, pname: TextureParameterName, param: GLenum) {
+        unsafe { self.fns.TexParameteri(target, pname, param.0 as _) }
     }
     
     pub unsafe fn glTexParameteriv(&self, target: TextureTarget, pname: TextureParameterName, params: *const i32) {
@@ -2901,8 +2901,8 @@ impl GLWrapper {
         unsafe { self.fns.TextureParameterfv(texture, pname, param) }
     }
 
-    pub fn glTextureParameteri(&self, texture: u32, pname: TextureParameterName, param: i32) {
-        unsafe { self.fns.TextureParameteri(texture, pname, param) }
+    pub fn glTextureParameteri(&self, texture: TextureTarget, pname: TextureParameterName, param: GLenum) {
+        unsafe { self.fns.TextureParameteri(texture.0 as _, pname, param.0 as _) }
     }
 
     pub fn glTextureParameteriv(&self, texture: u32, pname: TextureParameterName, param: *const i32) {

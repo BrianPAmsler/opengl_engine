@@ -1,4 +1,5 @@
-use crate::engine::glm::Vec3;
+use gl_types::vectors::Vec3;
+
 use crate::engine::game_object::component::Component;
 
 #[derive(Clone, Copy)]
@@ -11,5 +12,5 @@ pub struct Transform {
 impl Component for Transform {}
 
 impl Transform {
-    pub const ZERO: Transform = Transform { position: Vec3 { x: 0.0, y: 0.0, z: 0.0 }, rotation: Vec3 { x: 0.0, y: 0.0, z: 0.0 }, scale: Vec3 { x: 1.0, y: 1.0, z: 1.0 } };
+    pub const ZERO: Transform = Transform { position: Vec3::ZERO, rotation: Vec3::ZERO, scale: Vec3::ZERO };
 }

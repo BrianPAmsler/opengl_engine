@@ -4,10 +4,11 @@ mod engine;
 
 use std::{io::Read, path::Path};
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, GLType, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, GLType, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, input::Input, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_TRIANGLES};
-use gl_types::{clip_space::ortho, matrices::Mat4, transform::lookAt, vec2, vec3};
+use gl_types::{clip_space::ortho, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use glfw::Key;
 use image::ImageReader;
 use regex::Regex;
 
@@ -29,9 +30,9 @@ pub struct FPSCounter {
 }
 
 impl Component for FPSCounter {
-    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
+    fn update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, _: &Input) -> Result<()> {
         self.count += 1;
-        let current_tick = _graphics.get_glfw_time() as f32;
+        let current_tick = gfx.get_glfw_time() as f32;
 
         let delta = current_tick - self.last_update;
 
@@ -46,9 +47,13 @@ impl Component for FPSCounter {
         Ok(())
     }
 
-    fn fixed_update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
+    fn fixed_update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, input: &Input) -> Result<()> {
+        if input.get_key_state(Key::Escape).press {
+            gfx.set_should_close(true);
+        }
+
         self.fixed_count += 1;
-        let current_tick = _graphics.get_glfw_time() as f32;
+        let current_tick = gfx.get_glfw_time() as f32;
 
         let delta = current_tick - self.last_fixed_update;
 
@@ -65,36 +70,60 @@ impl Component for FPSCounter {
 }
 
 pub struct Renderer {
-    sprite_renderer: SpriteRenderer
+    sprite_renderer: SpriteRenderer,
+    position: Vec3
 }
 
 impl Component for Renderer {
-    fn init(&mut self, _graphics: &Graphics, _owner: ObjectID) -> Result<()> {
-        _graphics.glClearColor(0.75, 0.75, 0.75, 1.0);
+    fn init(&mut self, gfx: &Graphics, _: ObjectID) -> Result<()> {
+        gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
         self.sprite_renderer.add_sprite(0, 0, 512, 512);
         self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
+        self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
 
-        let mat = lookAt(vec3!(0, 0, -1), vec3!(0, 0, 1), vec3!(0, 1, 0)) * ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0);
-        self.sprite_renderer.update_view_matrix(mat);
+        self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
 
-        self.sprite_renderer.update_sprite_map(_graphics);
+        self.sprite_renderer.update_sprite_map(gfx);
         // _graphics.glEnable(GL_CULL_FACE);
         // _graphics.glCullFace(GL_BACK);
 
         Ok(())
     }
 
-    fn update(&mut self, _graphics: &Graphics, _owner: ObjectID, _delta_time: f32) -> Result<()> {
-        _graphics.glClear(GL_COLOR_BUFFER_BIT);
+    fn update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, _: &Input) -> Result<()> {
+        gfx.glClear(GL_COLOR_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
             position: vec3!(0, 0, 0),
-            anchor: vec2!(0.5, 0.5),
+            anchor: vec2!(0, 0),
             dimensions: vec2!(1),
-            sprite_id: 0,
+            sprite_id: 1,
         });
-        self.sprite_renderer.render(_graphics);
+        self.sprite_renderer.render(gfx);
 
         Ok(())   
+    }
+
+    fn fixed_update(&mut self, _: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+        if input.get_key_state(Key::W).is_down {
+            self.position += vec3!(0, 0, 1) * delta_time;
+        }
+
+        if input.get_key_state(Key::A).is_down {
+            self.position += vec3!(-1, 0, 0) * delta_time;
+        }
+        if input.get_key_state(Key::S).is_down {
+            self.position += vec3!(0, 0, -1) * delta_time;
+        }
+        if input.get_key_state(Key::D).is_down {
+            self.position += vec3!(1, 0, 1) * delta_time;
+        }
+
+        let mat = lookAt(self.position, self.position + vec3!(0, 0, 1), vec3!(0, 1, 0));
+        println!("mat: {:?}", mat);
+
+        self.sprite_renderer.update_view_matrix(mat);
+
+        Ok(())
     }
 }
 
@@ -114,10 +143,8 @@ fn start_game() -> Result<()> {
     let mut sprite_map_data = Vec::new();
     let (width, height) = load_texture("sprite_sheet.png", &mut sprite_map_data)?;
 
-    println!("first 20: {:?}", &sprite_map_data[..20]);
-    println!("img len: {}, dimensions: ({}, {})", sprite_map_data.len(), width, height);
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, &sprite_map_data[..], width, height)?;
-    let renderer = Renderer { sprite_renderer };
+    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, -1) };
 
     let world = engine.get_world();
 

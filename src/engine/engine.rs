@@ -2,12 +2,14 @@ use glfw::{WindowEvent, Key, Action, Monitor};
 
 use crate::engine::errors::{Result, Error, GraphicsError};
 
-use super::{graphics::Graphics, game_object::World};
+use super::{game_object::World, graphics::Graphics, input::Input};
 
 pub struct Engine {
     gfx: Option<Graphics>,
     world: World,
     fixed_tick_duration: f64,
+    input: Input,
+    fixed_input: Input,
     error_queue: Vec<Error>
 }
 
@@ -21,7 +23,7 @@ impl Engine {
     pub fn new() -> Result<Engine> {
         let world = World::new();
         
-        Ok(Engine { gfx: None, world, fixed_tick_duration: 1.0 / 60.0, error_queue: Vec::new() })
+        Ok(Engine { gfx: None, world, fixed_tick_duration: 1.0 / 60.0, error_queue: Vec::new(), input: Input::new(), fixed_input: Input::new() })
     }
 
     pub fn create_window(&mut self, window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<()> {
@@ -56,24 +58,52 @@ impl Engine {
             gfx.poll_events();
             for msg in gfx.flush_messages() {
                 match msg {
-                    (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-                    (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
+                    (_, WindowEvent::Key(key, _, Action::Press, _)) => {
+                        let key_state = self.input.modify_key_state(key);
+                        key_state.press = true;
+                        key_state.is_down = true;
+
+                        let fixed_key_state = self.fixed_input.modify_key_state(key);
+                        fixed_key_state.press = true;
+                        fixed_key_state.is_down = true;
+                    },
+                    (_, WindowEvent::Key(key, _, Action::Release, _)) => {
+                        let key_state = self.input.modify_key_state(key);
+                        key_state.release = true;
+                        key_state.is_down = false;
+
+                        let fixed_key_state = self.fixed_input.modify_key_state(key);
+                        fixed_key_state.release = true;
+                        fixed_key_state.is_down = false;
+                    },
+                    // (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
+                    // (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
                     _ => ()
                 }
             }
             
             // Game tick
             let current_time = gfx.get_glfw_time();
-            self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32)?;
+            self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32, &self.input)?;
             last_tick = current_time;
+
+            self.input.modify_all_key_states(|key| {
+                key.press = false;
+                key.release = false;
+            });
 
             let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
 
             // Add overflow to adjust for errors in timing
             if fixed_diff + fixed_tick_overflow >= 0.0 {
                 fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
-                self.world.fixed_update(self.gfx.as_ref().unwrap(), (current_time - last_fixed_tick) as f32)?;
+                self.world.fixed_update(self.gfx.as_ref().unwrap(), (current_time - last_fixed_tick) as f32, &self.fixed_input)?;
                 last_fixed_tick = current_time;
+
+                self.fixed_input.modify_all_key_states(|key| {
+                    key.press = false;
+                    key.release = false;
+                });
             }
 
             self.log_errors();

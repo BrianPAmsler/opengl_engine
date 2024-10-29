@@ -18,7 +18,7 @@ layout(std430, binding=2) buffer spriteSSBO {
 
 layout(std430, binding=3) buffer spriteSheetSSBO {
     int spriteIDCount;
-    ivec4 spriteBounds[];
+    vec4 spriteBounds[];
 };
 
 out vec2 texCoords;

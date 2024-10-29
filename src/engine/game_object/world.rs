@@ -1,6 +1,6 @@
 use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, rc::Rc};
 
-use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics};
+use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics, input::Input};
 
 use super::{component::{components::Transform, Component}, game_object::GameObject};
 
@@ -64,7 +64,7 @@ impl World {
         })
     }
 
-    pub fn update(&mut self, graphics: &Graphics, delta_time: f32) -> Result<()> {
+    pub fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -84,13 +84,13 @@ impl World {
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().update(graphics, owner, delta_time).unwrap(); // TODO: Fix error types
+            rc.borrow_mut().update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
 
             Ok(())
         })
     }
 
-    pub fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32) -> Result<()> {
+    pub fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -110,7 +110,7 @@ impl World {
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().fixed_update(graphics, owner, delta_time).unwrap(); // TODO: Fix error types
+            rc.borrow_mut().fixed_update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
 
             Ok(())
         })

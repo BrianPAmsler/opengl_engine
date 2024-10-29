@@ -56,7 +56,9 @@ pub struct SpriteRenderer {
     sprite_ssbo: u32,
     spritesheet_ssbo: u32,
     sprite_sheet: Texture,
-    sprite_map: Vec<Vec4>
+    sprite_map: Vec<Vec4>,
+    view_location: i32,
+    projection_location: i32
 }
 
 impl SpriteRenderer {
@@ -76,26 +78,29 @@ impl SpriteRenderer {
 
         gfx.glUseProgram(program.program());
 
+        let view_location = gfx.glGetUniformLocation(program.program(), "view");
+        let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
+
         let sprite_sheet = Texture::new(gfx, sprite_sheet_data, width, height);
 
         let vertex_data = Box::new([
             Vertex { x: -1.0, y: -1.0, z: 0.0 }, // bottom left
-            Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
             Vertex { x: 1.0, y: -1.0, z: 0.0 },  // bottom right
+            Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
         
             Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
+            Vertex { x: 1.0, y: -1.0, z: 0.0 },  // bottom right
             Vertex { x: 1.0, y: 1.0, z: 0.0 },   // top right
-            Vertex { x: 1.0, y: -1.0, z: 0.0 }   // bottom right
         ]);
 
         let uv_data = Box::new([
             UV { u: 0.0 , v: 1.0 },
-            UV { u: 0.0 , v: 0.0 },
             UV { u: 1.0 , v: 1.0 },
+            UV { u: 0.0 , v: 0.0 },
 
             UV { u: 0.0 , v: 0.0 },
+            UV { u: 1.0 , v: 1.0 },
             UV { u: 1.0 , v: 0.0 },
-            UV { u: 1.0 , v: 1.0 }
         ]);
 
         let mesh = Mesh::new("Sprite Mesh".to_owned(), vertex_data, None, Some(uv_data), None, None);
@@ -115,11 +120,15 @@ impl SpriteRenderer {
         let mut spritesheet_ssbo = 0;
         gfx.glGenBuffer(&mut spritesheet_ssbo);
 
-        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, sprite_sheet, sprite_map: Vec::new() })
+        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location })
     }
 
     pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
         self.view_matrix = view_matrix;
+    }
+
+    pub fn update_projection_matrix(&mut self, projection_matrix: Mat4) {
+        self.projection_matrix = projection_matrix;
     }
 
     pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> usize {
@@ -136,12 +145,14 @@ impl SpriteRenderer {
     pub fn update_sprite_map(&self, gfx: &Graphics) {
         gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.spritesheet_ssbo);
         gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, self.sprite_map.len() * size_of::<Vec4>() + SSBO_OFFSET as usize, GL_DYNAMIC_DRAW);
+        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, self.spritesheet_ssbo);
 
         // Buffer length data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&self.sprite_map.len())); 
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, &[self.sprite_map.len()]); 
         // Buffer sprite data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.sprite_map); 
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.spritesheet_ssbo);
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.sprite_map[..]); 
+
+        println!("sprite map: {:?}", &self.sprite_map[..])
     }
 
     fn buffer_sprite_data(&mut self, gfx: &Graphics) {
@@ -155,9 +166,9 @@ impl SpriteRenderer {
         }
 
         // Buffer length data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&self.render_queue.len())); 
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, &[self.render_queue.len()]); 
         // Buffer sprite data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue); 
+        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue[..]); 
         gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
         gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
@@ -183,8 +194,9 @@ impl SpriteRenderer {
         self.buffer_sprite_data(gfx);
         gfx.glActiveTexture(GL_TEXTURE0);
         gfx.glBindTexture(GL_TEXTURE_2D, self.sprite_sheet.texture_id());
-        let loc = gfx.glGetUniformLocation(self.program.program(), "VP");
-        unsafe { gfx.glUniformMatrix4fv(loc, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
+
+        unsafe { gfx.glUniformMatrix4fv(self.view_location, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
+        unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr())}
 
         gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
         self.render_queue.clear();

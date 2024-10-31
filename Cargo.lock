@@ -627,7 +627,7 @@ dependencies = [
 [[package]]
 name = "gl_types"
 version = "0.1.0"
-source = "git+https://github.com/BrianPAmsler/gl_types.git#9b66f6add87a73be76c7766bbf0d78a33ab74be9"
+source = "git+https://github.com/BrianPAmsler/gl_types.git#3d813b523496099c1d7d0f9deba93a666100652a"
 dependencies = [
  "multi-impl",
  "nalgebra",
@@ -972,7 +972,7 @@ dependencies = [
 [[package]]
 name = "multi-impl"
 version = "0.1.0"
-source = "git+https://github.com/BrianPAmsler/gl_types.git#9b66f6add87a73be76c7766bbf0d78a33ab74be9"
+source = "git+https://github.com/BrianPAmsler/gl_types.git#3d813b523496099c1d7d0f9deba93a666100652a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1604,7 +1604,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 [[package]]
 name = "swizz"
 version = "0.1.0"
-source = "git+https://github.com/BrianPAmsler/gl_types.git#9b66f6add87a73be76c7766bbf0d78a33ab74be9"
+source = "git+https://github.com/BrianPAmsler/gl_types.git#3d813b523496099c1d7d0f9deba93a666100652a"
 dependencies = [
  "proc-macro2",
  "quote",

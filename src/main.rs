@@ -7,7 +7,7 @@ use std::{io::Read, path::Path};
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, GLType, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, input::Input, Engine};
 use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_TRIANGLES};
-use gl_types::{clip_space::ortho, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl_types::{clip_space::{ortho, perspective}, matrices::Mat4, matrix::{inverse, transpose}, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::ImageReader;
 use regex::Regex;
@@ -81,16 +81,37 @@ impl Component for Renderer {
         self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
         self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
 
-        self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
+        gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
+
+        // self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
+        self.sprite_renderer.update_projection_matrix(perspective(90.0, 2.0 / 1.5, 0.1, 100.0));
 
         self.sprite_renderer.update_sprite_map(gfx);
-        // _graphics.glEnable(GL_CULL_FACE);
-        // _graphics.glCullFace(GL_BACK);
+        gfx.glEnable(GL_CULL_FACE);
+        gfx.glCullFace(GL_BACK);
 
         Ok(())
     }
 
-    fn update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, _: &Input) -> Result<()> {
+    fn update(&mut self, gfx: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+        if input.get_key_state(Key::W).is_down {
+            self.position += vec3!(0, 0, -1) * delta_time;
+        }
+
+        if input.get_key_state(Key::A).is_down {
+            self.position += vec3!(-1, 0, 0) * delta_time;
+        }
+        if input.get_key_state(Key::S).is_down {
+            self.position += vec3!(0, 0, 1) * delta_time;
+        }
+        if input.get_key_state(Key::D).is_down {
+            self.position += vec3!(1, 0, 0) * delta_time;
+        }
+
+        let mat = lookAt(self.position, self.position + vec3!(0, 0, -1), vec3!(0, 1, 0));
+
+        self.sprite_renderer.update_view_matrix(inverse(&mat));
+
         gfx.glClear(GL_COLOR_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
             position: vec3!(0, 0, 0),
@@ -104,24 +125,6 @@ impl Component for Renderer {
     }
 
     fn fixed_update(&mut self, _: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
-        if input.get_key_state(Key::W).is_down {
-            self.position += vec3!(0, 0, 1) * delta_time;
-        }
-
-        if input.get_key_state(Key::A).is_down {
-            self.position += vec3!(-1, 0, 0) * delta_time;
-        }
-        if input.get_key_state(Key::S).is_down {
-            self.position += vec3!(0, 0, -1) * delta_time;
-        }
-        if input.get_key_state(Key::D).is_down {
-            self.position += vec3!(1, 0, 1) * delta_time;
-        }
-
-        let mat = lookAt(self.position, self.position + vec3!(0, 0, 1), vec3!(0, 1, 0));
-        println!("mat: {:?}", mat);
-
-        self.sprite_renderer.update_view_matrix(mat);
 
         Ok(())
     }
@@ -144,7 +147,7 @@ fn start_game() -> Result<()> {
     let (width, height) = load_texture("sprite_sheet.png", &mut sprite_map_data)?;
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, &sprite_map_data[..], width, height)?;
-    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, -1) };
+    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, 1) };
 
     let world = engine.get_world();
 

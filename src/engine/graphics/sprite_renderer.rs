@@ -55,6 +55,7 @@ pub struct SpriteRenderer {
     buffersize: usize,
     sprite_ssbo: u32,
     spritesheet_ssbo: u32,
+    debug_ssbo: u32,
     sprite_sheet: Texture,
     sprite_map: Vec<Vec4>,
     view_location: i32,
@@ -80,6 +81,8 @@ impl SpriteRenderer {
 
         let view_location = gfx.glGetUniformLocation(program.program(), "view");
         let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
+
+        println!("view: {}, projection: {}", view_location, projection_location);
 
         let sprite_sheet = Texture::new(gfx, sprite_sheet_data, width, height);
 
@@ -116,11 +119,18 @@ impl SpriteRenderer {
         gfx.glGenBuffer(&mut sprite_ssbo);
         gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, sprite_ssbo);
         gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, initial_buffer_size, GL_DYNAMIC_DRAW);
+        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, sprite_ssbo);
 
         let mut spritesheet_ssbo = 0;
         gfx.glGenBuffer(&mut spritesheet_ssbo);
 
-        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), projection_matrix: mat4!(vec4!(0), vec4!(0), vec4!(0), vec4!(0)), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location })
+        let mut debug_ssbo = 0;
+        gfx.glGenBuffer(&mut debug_ssbo);
+        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, debug_ssbo);
+        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, 32 * 4, GL_DYNAMIC_DRAW);
+        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, debug_ssbo);
+
+        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location })
     }
 
     pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
@@ -152,7 +162,7 @@ impl SpriteRenderer {
         // Buffer sprite data
         gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.sprite_map[..]); 
 
-        println!("sprite map: {:?}", &self.sprite_map[..])
+        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
     fn buffer_sprite_data(&mut self, gfx: &Graphics) {
@@ -163,13 +173,13 @@ impl SpriteRenderer {
             // Multiply new szie by 50% to give some wiggle room
             self.buffersize = (data_size * 3) / 2;
             gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, self.buffersize, GL_DYNAMIC_DRAW);
+            gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
         }
 
         // Buffer length data
         gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, &[self.render_queue.len()]); 
         // Buffer sprite data
         gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue[..]); 
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
         gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
@@ -197,6 +207,18 @@ impl SpriteRenderer {
 
         unsafe { gfx.glUniformMatrix4fv(self.view_location, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
         unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr())}
+
+        // let mut debug = [0.0f32; 32];
+        // gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.debug_ssbo);
+        // unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 32 * 4, debug.as_mut_ptr() as _) };
+
+        // let mat = &debug[0..16];
+        // let v1 = &debug[16..19];
+        // let v2 = &debug[20..24];
+
+        // println!("mat:\t{:?}\n\t{:?}\n\t{:?}\n\t{:?}", &mat[0..4], &mat[4..8], &mat[8..12], &mat[12..16]);
+        // println!("v1: {:?}", v1);
+        // println!("v2: {:?}\n", v2);
 
         gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
         self.render_queue.clear();

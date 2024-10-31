@@ -1,6 +1,6 @@
 use glfw::Key;
 
-static KEY_COUNT: usize = 348;
+const KEY_COUNT: usize = 348;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct KeyState {

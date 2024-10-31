@@ -1,6 +1,6 @@
 use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE0, GL_TEXTURE_2D, GL_TRIANGLES};
 use gl_types::matrices::{Mat4, MatN};
-use gl_types::{mat4, vec2, vec3, vec4};
+use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
 
 use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
@@ -124,11 +124,11 @@ impl SpriteRenderer {
         let mut spritesheet_ssbo = 0;
         gfx.glGenBuffer(&mut spritesheet_ssbo);
 
-        let mut debug_ssbo = 0;
-        gfx.glGenBuffer(&mut debug_ssbo);
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, debug_ssbo);
-        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, 32 * 4, GL_DYNAMIC_DRAW);
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, debug_ssbo);
+        let debug_ssbo = 0;
+        // gfx.glGenBuffer(&mut debug_ssbo);
+        // gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, debug_ssbo);
+        // gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, 32 * 4, GL_DYNAMIC_DRAW);
+        // gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, debug_ssbo);
 
         Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location })
     }
@@ -142,7 +142,7 @@ impl SpriteRenderer {
     }
 
     pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> usize {
-        // Convert texture coordinates to uv coordinates
+        // Convert pixel coordinates to uv coordinates
         let wh = vec2!(self.sprite_sheet.width(), self.sprite_sheet.height());
         let v = vec4!(x, y, width, height) / vec4!(wh, wh);
 
@@ -207,11 +207,6 @@ impl SpriteRenderer {
 
         unsafe { gfx.glUniformMatrix4fv(self.view_location, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
         unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr())}
-
-        // let mut debug = [0.0f32; 32];
-        // gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.debug_ssbo);
-        // unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 32 * 4, debug.as_mut_ptr() as _) };
-
         // let mat = &debug[0..16];
         // let v1 = &debug[16..19];
         // let v2 = &debug[20..24];
@@ -222,6 +217,13 @@ impl SpriteRenderer {
 
         gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
         self.render_queue.clear();
+
+        // let mut debug = [0.0f32; 32];
+        // gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.debug_ssbo);
+        // unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 32 * 4, debug.as_mut_ptr() as _) };
+
+        // println!("{:?}", debug);
+
     }
 }
 

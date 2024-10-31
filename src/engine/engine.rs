@@ -1,4 +1,4 @@
-use glfw::{WindowEvent, Key, Action, Monitor};
+use glfw::{WindowEvent, Action};
 
 use crate::engine::errors::{Result, Error, GraphicsError};
 
@@ -126,7 +126,7 @@ impl Engine {
         std::mem::swap(&mut errors, &mut self.error_queue);
         let errors = errors.into_boxed_slice();
 
-        errors.into_iter().for_each(|error| eprintln!("{}", error))
+        errors.iter().for_each(|error| eprintln!("{}", error))
     }
 
     // fn init(&mut self) {

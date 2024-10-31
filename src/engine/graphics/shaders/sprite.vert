@@ -25,12 +25,13 @@ layout(std430, binding=3) buffer spriteSheetSSBO {
 };
 
 layout(std430, binding=4) buffer debugSSBO {
-    mat4 view_debug;
-    vec3 pos;
-    vec4 center_debug;
+    vec2 padding;
+    vec2 tex_offset_debug;
+    vec2 tex_size;
 };
 
 out vec2 texCoords;
+flat out int spriteID;
 
 void main()
 {
@@ -40,9 +41,6 @@ void main()
     vec2 scale = sprite.dimensions.zw;
 
     vec4 center = view * vec4(sprite.position, 1);
-    view_debug = view;
-    pos = sprite.position;
-    center_debug = center;
 
     vec3 translated = position - vec3(anchor, 0);
     vec3 scaled = translated * vec3(scale, 1);
@@ -51,9 +49,6 @@ void main()
 
     gl_Position = projection * view_space;
 
-    // Offset by half a texel to avoid artifacts caused by floating-point errors
-    vec2 tex_offset = 0.5 / textureSize(spriteSheet, 0);
-
-    vec4 bounds = spriteBounds[sprite.spriteID] + vec4(tex_offset, -tex_offset);
+    vec4 bounds = spriteBounds[sprite.spriteID];
     texCoords = bounds.xy + uv * bounds.zw;
 }

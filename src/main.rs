@@ -2,12 +2,11 @@
 
 mod engine;
 
-use std::{io::Read, path::Path};
+use std::path::Path;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{embed_shader_source, sprite_renderer::{SpriteData, SpriteRenderer}, BufferedMesh, CustomAttribute, CustomAttributeData, GLType, Graphics, Mesh, RGBColor, VBOBufferer, Vertex}, input::Input, Engine};
-use engine::graphics::{VertexShader, FragmentShader, ShaderProgram, ShaderProgramBuilder};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_TRIANGLES};
-use gl_types::{clip_space::{ortho, perspective}, matrices::Mat4, matrix::{inverse, transpose}, transform::lookAt, vec2, vec3, vectors::Vec3};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE};
+use gl_types::{angle_trig::radians, clip_space::perspective, matrix::inverse, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::ImageReader;
 use regex::Regex;
@@ -84,7 +83,7 @@ impl Component for Renderer {
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
         // self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
-        self.sprite_renderer.update_projection_matrix(perspective(90.0, 2.0 / 1.5, 0.1, 100.0));
+        self.sprite_renderer.update_projection_matrix(perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0));
 
         self.sprite_renderer.update_sprite_map(gfx);
         gfx.glEnable(GL_CULL_FACE);
@@ -94,18 +93,19 @@ impl Component for Renderer {
     }
 
     fn update(&mut self, gfx: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+        let speed = 0.1;
         if input.get_key_state(Key::W).is_down {
-            self.position += vec3!(0, 0, -1) * delta_time;
+            self.position += vec3!(0, 0, -1) * delta_time * speed;
         }
 
         if input.get_key_state(Key::A).is_down {
-            self.position += vec3!(-1, 0, 0) * delta_time;
+            self.position += vec3!(-1, 0, 0) * delta_time * speed;
         }
         if input.get_key_state(Key::S).is_down {
-            self.position += vec3!(0, 0, 1) * delta_time;
+            self.position += vec3!(0, 0, 1) * delta_time * speed;
         }
         if input.get_key_state(Key::D).is_down {
-            self.position += vec3!(1, 0, 0) * delta_time;
+            self.position += vec3!(1, 0, 0) * delta_time * speed;
         }
 
         let mat = lookAt(self.position, self.position + vec3!(0, 0, -1), vec3!(0, 1, 0));
@@ -122,11 +122,6 @@ impl Component for Renderer {
         self.sprite_renderer.render(gfx);
 
         Ok(())   
-    }
-
-    fn fixed_update(&mut self, _: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
-
-        Ok(())
     }
 }
 

@@ -93,7 +93,7 @@ impl Component for Renderer {
     }
 
     fn update(&mut self, gfx: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
-        let speed = 0.1;
+        let speed = 1.0;
         if input.get_key_state(Key::W).is_down {
             self.position += vec3!(0, 0, -1) * delta_time * speed;
         }
@@ -110,7 +110,7 @@ impl Component for Renderer {
 
         let mat = lookAt(self.position, self.position + vec3!(0, 0, -1), vec3!(0, 1, 0));
 
-        self.sprite_renderer.update_view_matrix(inverse(&mat));
+        self.sprite_renderer.update_view_matrix(inverse(mat));
 
         gfx.glClear(GL_COLOR_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
@@ -118,6 +118,12 @@ impl Component for Renderer {
             anchor: vec2!(0, 0),
             dimensions: vec2!(1),
             sprite_id: 1,
+        });
+        self.sprite_renderer.queue_sprite_instance(SpriteData {
+            position: vec3!(2, 0, 0),
+            anchor: vec2!(0, 0),
+            dimensions: vec2!(2),
+            sprite_id: 0,
         });
         self.sprite_renderer.render(gfx);
 

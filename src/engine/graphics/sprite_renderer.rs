@@ -87,13 +87,13 @@ impl SpriteRenderer {
         let sprite_sheet = Texture::new(gfx, sprite_sheet_data, width, height);
 
         let vertex_data = Box::new([
-            Vertex { x: -1.0, y: -1.0, z: 0.0 }, // bottom left
-            Vertex { x: 1.0, y: -1.0, z: 0.0 },  // bottom right
-            Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
+            Vertex { x: -0.5, y: -0.5, z: 0.0 }, // bottom left
+            Vertex { x: 0.5, y: -0.5, z: 0.0 },  // bottom right
+            Vertex { x: -0.5, y: 0.5, z: 0.0 },  // top left
         
-            Vertex { x: -1.0, y: 1.0, z: 0.0 },  // top left
-            Vertex { x: 1.0, y: -1.0, z: 0.0 },  // bottom right
-            Vertex { x: 1.0, y: 1.0, z: 0.0 },   // top right
+            Vertex { x: -0.5, y: 0.5, z: 0.0 },  // top left
+            Vertex { x: 0.5, y: -0.5, z: 0.0 },  // bottom right
+            Vertex { x: 0.5, y: 0.5, z: 0.0 },   // top right
         ]);
 
         let uv_data = Box::new([

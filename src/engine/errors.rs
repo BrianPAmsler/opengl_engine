@@ -1,3 +1,4 @@
+use image::ImageError;
 use thiserror::Error;
 
 type BT = backtrace::Backtrace;
@@ -48,6 +49,16 @@ pub enum Error {
         source: GraphicsError,
         backtrace: BT
     },
+    #[error("{source}")]
+    ImageError {
+        source: image::ImageError,
+        backtrace: BT
+    },
+    #[error("{source}")]
+    IoError {
+        source: std::io::Error,
+        backtrace: BT
+    },
     #[error("{msg}")]
     StringError {
         msg: String,
@@ -64,6 +75,18 @@ impl From<ObjectError> for Error {
 impl From<GraphicsError> for Error {
     fn from(value: GraphicsError) -> Self {
         Error::GraphicsError { source: value, backtrace: BT::new() }
+    }
+}
+
+impl From<ImageError> for Error {
+    fn from(value: ImageError) -> Self {
+        Error::ImageError { source: value, backtrace: BT::new() }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(value: std::io::Error) -> Self {
+        Error::IoError { source: value, backtrace: BT::new() }
     }
 }
 
@@ -90,7 +113,9 @@ impl Error {
         match &self {
             Error::ObjectError { backtrace, .. } => backtrace,
             Error::GraphicsError { backtrace, .. } => backtrace,
-            Error::StringError { backtrace, .. } => backtrace
+            Error::StringError { backtrace, .. } => backtrace,
+            Error::ImageError { backtrace, .. } => backtrace,
+            Error::IoError { backtrace, .. } => backtrace
         }
     }
 }

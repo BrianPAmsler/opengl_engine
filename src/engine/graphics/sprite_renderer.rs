@@ -7,6 +7,7 @@ use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
 
 use crate::engine::errors::Result;
 
+use super::image::Image;
 use super::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, Texture, VertexShader};
 
 const SSBO_OFFSET: isize = 16;
@@ -63,7 +64,7 @@ pub struct SpriteRenderer {
 }
 
 impl SpriteRenderer {
-    pub fn new(gfx: &Graphics, initial_buffer_size: usize, sprite_sheet_data: &[u8], width: u32, height: u32) -> Result<SpriteRenderer> {
+    pub fn new(gfx: &Graphics, initial_buffer_size: usize, sprite_sheet: Image) -> Result<SpriteRenderer> {
         let mut program = ShaderProgramBuilder::new(gfx);
         
         let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite.vert");
@@ -84,7 +85,7 @@ impl SpriteRenderer {
 
         println!("view: {}, projection: {}", view_location, projection_location);
 
-        let sprite_sheet = Texture::new(gfx, sprite_sheet_data, width, height);
+        let sprite_sheet = sprite_sheet.as_texture(gfx);
 
         let vertex_data = Box::new([
             Vertex { x: -1.0, y: -1.0, z: 0.0 }, // bottom left
@@ -238,7 +239,7 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{embed_shader_source, sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
+    use crate::engine::graphics::{embed_shader_source, image::Image, sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
 
     use super::SpriteRenderer;
 
@@ -248,7 +249,7 @@ mod tests {
 
         let gfx = Graphics::init("test_window", 1289, 720, crate::engine::WindowMode::Windowed).unwrap();
 
-        let renderer = SpriteRenderer::new(&gfx, 1024, &[], 0, 0).unwrap();
+        let renderer = SpriteRenderer::new(&gfx, 1024, Image::empty(0, 0)).unwrap();
 
         let mut program = ShaderProgramBuilder::new(&gfx);
         

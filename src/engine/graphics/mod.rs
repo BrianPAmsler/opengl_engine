@@ -6,6 +6,7 @@ mod vertex_buffer;
 mod texture;
 
 pub mod sprite_renderer;
+pub mod image;
 
 pub use graphics::*;
 pub use gl_wrapper::*;

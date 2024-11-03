@@ -4,21 +4,13 @@ mod engine;
 
 use std::path::Path;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE};
 use gl_types::{angle_trig::radians, clip_space::perspective, matrix::inverse, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::ImageReader;
 use regex::Regex;
 
-fn load_texture<P: AsRef<Path>>(path: P, buffer: &mut Vec<u8>) -> Result<(u32, u32)> {
-    let img = ImageReader::open(path).map_err(|t| t.to_string())?.decode().map_err(|t| t.to_string())?.to_rgba8();
-    let dimensions = (img.width(), img.height());
-    buffer.clear();
-    buffer.extend_from_slice(&img.as_raw()[..]);
-
-    Ok(dimensions)
-}
 
 #[derive(Clone, Default)]
 pub struct FPSCounter {
@@ -144,10 +136,9 @@ fn start_game() -> Result<()> {
     
     let gfx = engine.get_graphics()?;
 
-    let mut sprite_map_data = Vec::new();
-    let (width, height) = load_texture("sprite_sheet.png", &mut sprite_map_data)?;
+    let sprite_map = Image::load_from_file("sprite_sheet.png")?;
 
-    let sprite_renderer = SpriteRenderer::new(gfx, 1024, &sprite_map_data[..], width, height)?;
+    let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, 1) };
 
     let world = engine.get_world();

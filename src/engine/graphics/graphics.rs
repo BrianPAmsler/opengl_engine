@@ -1,5 +1,6 @@
 use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::{Deref, Not}, os::raw::c_void};
 
+use gl46::GL_MAX_TEXTURE_SIZE;
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
 use libc::strlen;

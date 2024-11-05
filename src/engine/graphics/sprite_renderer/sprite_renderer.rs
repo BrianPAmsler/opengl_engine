@@ -3,12 +3,10 @@ use gl_types::matrices::{Mat4, MatN};
 use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
 
-use crate::engine::graphics::{Mesh, VBOBufferer, Vertex, UV};
+use crate::engine::graphics::image::Image;
+use crate::engine::graphics::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader, UV};
 
 use crate::engine::errors::Result;
-
-use super::image::Image;
-use super::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, ShaderProgram, ShaderProgramBuilder, Texture, VertexShader};
 
 const SSBO_OFFSET: isize = 16;
 
@@ -239,7 +237,7 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{embed_shader_source, image::Image, sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
+    use crate::engine::graphics::{embed_shader_source, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
 
     use super::SpriteRenderer;
 

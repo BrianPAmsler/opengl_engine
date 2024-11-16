@@ -28,10 +28,10 @@ impl Image {
 
     pub fn pixel(&self, x: u32, y: u32) -> &(u8, u8, u8, u8) {
         if x >= self.width {
-            panic!("x >= width");
+            panic!("x >= width ({} >= {})", x, self.width);
         }
         if y >= self.height {
-            panic!("y >= height");
+            panic!("y >= height ({} >= {})", y, self.height);
         }
         
         // I'm not 100% sure this works in all cases, but it seems to work
@@ -42,10 +42,10 @@ impl Image {
 
     pub fn pixel_mut(&mut self, x: u32, y: u32) -> &mut (u8, u8, u8, u8) {
         if x >= self.width {
-            panic!("x >= width");
+            panic!("x >= width ({} >= {})", x, self.width);
         }
         if y >= self.height {
-            panic!("y >= height");
+            panic!("y >= height ({} >= {})", y, self.height);
         }
         
         // I'm not 100% sure this works in all cases, but it seems to work
@@ -71,8 +71,8 @@ impl Image {
     }
 
     pub fn blit(&mut self, src: &Image, x: u32, y: u32) {
-        for r in 0..src.width {
-            for c in 0..src.height {
+        for r in 0..src.height {
+            for c in 0..src.width {
                 let src_pixel = src.pixel(c, r);
 
                 let new_x = x + c;
@@ -122,17 +122,15 @@ pub fn pad_sprite(image: &Image, width: u32) -> Image {
 #[cfg(test)]
 mod test {
     use function_name::named;
+    use pathbuf::pathbuf;
 
     use crate::engine::graphics::image::{pad_sprite, Image};
 
     macro_rules! assert_img {
         ($a:expr, $b:expr) => {
             if $a.data != $b.data {
-                let mut path = std::path::PathBuf::new();
-                path.push("exclude");
-                path.push(function_name!().to_owned() + "_error.png");
+                let path = pathbuf!("test_files", "output", &(function_name!().to_owned() + "_error.png"));
 
-                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
                 let mut outfile = std::fs::OpenOptions::new()
                     .write(true)
                     .create(true)
@@ -149,7 +147,7 @@ mod test {
 
     #[test]
     fn image_test() -> crate::Result<()> {
-        let img = Image::load_from_file("test_image.png")?;
+        let img = Image::load_from_file(pathbuf!("test_files", "input", "test_image.png"))?;
 
         assert_eq!(img.pixel(645, 213), &(65, 134, 212, 255));
         assert_eq!(img.pixel(764, 844), &(121, 65, 68, 255));
@@ -160,10 +158,10 @@ mod test {
     #[test]
     #[named]
     fn image_blit_test() -> crate::Result<()> {
-        let mut bg = Image::load_from_file("test_image.png")?;
-        let overlay = Image::load_from_file("test_small_image.png")?;
+        let mut bg = Image::load_from_file(pathbuf!("test_files", "input", "test_image.png"))?;
+        let overlay = Image::load_from_file(pathbuf!("test_files", "input", "test_small_image.png"))?;
 
-        let expected = Image::load_from_file("blit_test.png")?;
+        let expected = Image::load_from_file(pathbuf!("test_files", "input", "blit_test.png"))?;
 
         bg.blit(&overlay, 54, 24);
 
@@ -175,10 +173,10 @@ mod test {
     #[test]
     #[named]
     fn image_pad_test() -> crate::Result<()>{
-        let img = Image::load_from_file("test_small_image.png")?;
+        let img = Image::load_from_file(pathbuf!("test_files", "input", "test_small_image.png"))?;
 
-        let expected_1 = Image::load_from_file("test_pad_1.png")?;
-        let expected_5 = Image::load_from_file("test_pad_5.png")?;
+        let expected_1 = Image::load_from_file(pathbuf!("test_files", "input", "test_pad_1.png"))?;
+        let expected_5 = Image::load_from_file(pathbuf!("test_files", "input", "test_pad_5.png"))?;
 
         let pad_1 = pad_sprite(&img, 1);
         let pad_5 = pad_sprite(&img, 5);

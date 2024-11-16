@@ -1,0 +1,3 @@
+misc/**
+output/**
+!misc/test_sprites

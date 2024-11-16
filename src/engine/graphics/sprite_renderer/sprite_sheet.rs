@@ -391,7 +391,7 @@ mod tests {
     #[test]
     #[ignore="output must be manually verified"]
     fn spritesheet_build() {
-        let dir = std::fs::read_dir(pathbuf!("test_files", "misc", "test_sprites")).unwrap();
+        let dir = std::fs::read_dir(pathbuf!("test_files", "input", "test_sprites")).unwrap();
         let mut files = Vec::new();
         for file in dir {
             match file {

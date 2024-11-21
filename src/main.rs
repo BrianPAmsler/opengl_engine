@@ -4,7 +4,7 @@ mod engine;
 
 use std::path::Path;
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE};
 use gl_types::{angle_trig::radians, clip_space::perspective, matrix::inverse, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
@@ -21,7 +21,7 @@ pub struct FPSCounter {
 }
 
 impl Component for FPSCounter {
-    fn update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, _: &Input) -> Result<()> {
+    fn update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, _: f32, _: &Input) -> Result<()> {
         self.count += 1;
         let current_tick = gfx.get_glfw_time() as f32;
 
@@ -38,7 +38,7 @@ impl Component for FPSCounter {
         Ok(())
     }
 
-    fn fixed_update(&mut self, gfx: &Graphics, _: ObjectID, _: f32, input: &Input) -> Result<()> {
+    fn fixed_update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, _: f32, input: &Input) -> Result<()> {
         if input.get_key_state(Key::Escape).press {
             gfx.set_should_close(true);
         }
@@ -66,7 +66,7 @@ pub struct Renderer {
 }
 
 impl Component for Renderer {
-    fn init(&mut self, gfx: &Graphics, _: ObjectID) -> Result<()> {
+    fn init(&mut self, gfx: &Graphics, _: &World, _: ObjectID) -> Result<()> {
         gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
         self.sprite_renderer.add_sprite(0, 0, 512, 512);
         self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
@@ -84,7 +84,7 @@ impl Component for Renderer {
         Ok(())
     }
 
-    fn update(&mut self, gfx: &Graphics, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+    fn update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
         let speed = 1.0;
         if input.get_key_state(Key::W).is_down {
             self.position += vec3!(0, 0, -1) * delta_time * speed;

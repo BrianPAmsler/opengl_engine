@@ -106,6 +106,10 @@ impl Component for Renderer {
             self.position += vec3!(1, 0, 0) * delta_time * speed;
         }
 
+        if input.get_key_state(Key::Escape).is_down {
+            engine.get_graphics()?.set_should_close(true);
+        }
+
         let mat = lookAt(self.position, self.position + vec3!(0, 0, -1), vec3!(0, 1, 0));
 
         self.sprite_renderer.update_view_matrix(inverse(mat));

@@ -5,20 +5,20 @@ use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{O
 use super::{component::{components::Transform, Component}, game_object::GameObject};
 
 pub struct World {
-    pub(in crate::engine::game_object) root: ObjectID,
-    pub(in crate::engine::game_object) objects: VecAllocator<GameObject>,
-    pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>
+    pub(in crate::engine) root: ObjectID,
+    pub(in crate::engine) objects: VecAllocator<GameObject>,
+    pub(in crate::engine) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ObjectID {
-    idx: AllocationIndex
+    pub(in crate::engine) idx: AllocationIndex
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ComponentID {
-    idx: AllocationIndex,
-    type_: TypeId
+    pub(in crate::engine) idx: AllocationIndex,
+    pub(in crate::engine) type_: TypeId
 }
 
 impl World {
@@ -36,28 +36,6 @@ impl World {
         world.add_component(world.root, Transform::ZERO).expect("This also shouldn't happen!");
 
         world
-    }
-
-    pub(in crate::engine) fn get_all_components(&mut self) -> Result<Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)>> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
-
-        Ok(components)
     }
 
     pub fn get_name(&self, object: ObjectID) -> Result<&str> {
@@ -185,14 +163,14 @@ impl World {
     }
 }
 
-fn obj_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
+pub(in crate::engine) fn obj_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
     match error {
         crate::engine::data_structures::error::Error::ElementRemovedError => ObjectError::DeadObjectError,
         crate::engine::data_structures::error::Error::IndexPointerMismatchError => ObjectError::WorldMismatchError { other: "" },
     }
 }
 
-fn comp_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
+pub(in crate::engine) fn comp_error(error: crate::engine::data_structures::error::Error) -> ObjectError {
     match error {
         crate::engine::data_structures::error::Error::ElementRemovedError => ObjectError::DeadComponentError,
         crate::engine::data_structures::error::Error::IndexPointerMismatchError => ObjectError::WorldMismatchError { other: "" },

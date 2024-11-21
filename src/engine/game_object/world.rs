@@ -1,6 +1,6 @@
 use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, rc::Rc};
 
-use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics, input::Input};
+use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}};
 
 use super::{component::{components::Transform, Component}, game_object::GameObject};
 
@@ -38,7 +38,7 @@ impl World {
         world
     }
 
-    pub fn init(&mut self, graphics: &Graphics) -> Result<()> {
+    pub(in crate::engine) fn get_all_components(&mut self) -> Result<Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)>> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -57,63 +57,7 @@ impl World {
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().init(graphics, owner).unwrap(); // TODO: Fix error types
-
-            Ok(())
-        })
-    }
-
-    pub fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
-
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
-
-            Ok(())
-        })
-    }
-
-    pub fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
-
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().fixed_update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
-
-            Ok(())
-        })
+        Ok(components)
     }
 
     pub fn get_name(&self, object: ObjectID) -> Result<&str> {

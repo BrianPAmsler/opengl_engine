@@ -1,13 +1,13 @@
-use crate::engine::{errors::Result, input::Input};
+use crate::engine::{errors::Result, input::Input, Engine};
 use downcast_rs::{Downcast, impl_downcast};
 
 use crate::engine::{game_object::ObjectID, graphics::Graphics};
 
 #[allow(unused)]
 pub trait Component: Downcast {
-    fn init(&mut self, gfx: &Graphics, owner: ObjectID) -> Result<()> {Ok(())}
-    fn update(&mut self, gfx: &Graphics, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
-    fn fixed_update(&mut self, gfx: &Graphics, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
+    fn init(&mut self, engine: &Engine, owner: ObjectID) -> Result<()> {Ok(())}
+    fn update(&mut self, engine: &Engine, owner: ObjectID, delta_time: f32) -> Result<()> {Ok(())}
+    fn fixed_update(&mut self, engine: &Engine, owner: ObjectID, delta_time: f32) -> Result<()> {Ok(())}
 }
 
 impl_downcast!(Component);

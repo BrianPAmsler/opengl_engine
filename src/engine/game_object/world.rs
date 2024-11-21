@@ -58,7 +58,7 @@ impl World {
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().init(graphics, owner).unwrap(); // TODO: Fix error types
+            rc.borrow_mut().init(graphics, owner)?; 
 
             Ok(())
         })
@@ -84,7 +84,7 @@ impl World {
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
+            rc.borrow_mut().update(graphics, owner, delta_time, input)?; 
 
             Ok(())
         })
@@ -110,7 +110,7 @@ impl World {
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().fixed_update(graphics, owner, delta_time, input).unwrap(); // TODO: Fix error types
+            rc.borrow_mut().fixed_update(graphics, owner, delta_time, input)?; 
 
             Ok(())
         })

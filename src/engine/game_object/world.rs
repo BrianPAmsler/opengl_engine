@@ -7,7 +7,12 @@ use super::{component::{components::Transform, Component}, game_object::GameObje
 pub struct World {
     pub(in crate::engine::game_object) root: ObjectID,
     pub(in crate::engine::game_object) objects: VecAllocator<GameObject>,
-    pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>
+    pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<ComponentCell>>>
+}
+
+pub(in crate::engine::game_object) struct ComponentCell {
+    owner: ObjectID,
+    component: Box<dyn Component>
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -39,78 +44,36 @@ impl World {
     }
 
     pub fn init(&mut self, graphics: &Graphics) -> Result<()> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
+        let components: Vec<(ObjectID, Rc<RefCell<ComponentCell>>)> = self.components.iter().map(|(owner, component)| {
+            Ok::<(ObjectID, Rc<RefCell<ComponentCell>>), ObjectError>((ObjectID { idx: owner }, component.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().init(graphics, &self, owner)?; 
+            rc.borrow_mut().component.init(graphics, &self, owner)?; 
 
             Ok(())
         })
     }
 
     pub fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
+        let components: Vec<(ObjectID, Rc<RefCell<ComponentCell>>)> = self.components.iter().map(|(owner, component)| {
+            Ok::<(ObjectID, Rc<RefCell<ComponentCell>>), ObjectError>((ObjectID { idx: owner }, component.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().update(graphics, &self, owner, delta_time, input)?; 
+            rc.borrow_mut().component.update(graphics, &self, owner, delta_time, input)?; 
 
             Ok(())
         })
     }
 
     pub fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
-        // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
-        }).collect();
-
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
-
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
+        let components: Vec<(ObjectID, Rc<RefCell<ComponentCell>>)> = self.components.iter().map(|(owner, component)| {
+            Ok::<(ObjectID, Rc<RefCell<ComponentCell>>), ObjectError>((ObjectID { idx: owner }, component.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
 
         components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().fixed_update(graphics, &self, owner, delta_time, input)?; 
+            rc.borrow_mut().component.fixed_update(graphics, &self, owner, delta_time, input)?; 
 
             Ok(())
         })
@@ -135,7 +98,7 @@ impl World {
     }
 
     pub fn add_component<C: Component>(&mut self, object: ObjectID, component: C) -> Result<()> {
-        let idx = self.components.insert(Rc::new(RefCell::new(Box::new(component))));
+        let idx = self.components.insert(Rc::new(RefCell::new(ComponentCell{ owner: object, component: Box::new(component) })));
 
         let object = self.objects.get_mut(object.idx).map_err(obj_error)?;
 
@@ -148,7 +111,7 @@ impl World {
         let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow();
 
         let downcast = Ref::filter_map(ref_, |t| {
-            t.downcast_ref()
+            t.component.downcast_ref()
         }).map_err(|_| ObjectError::ComponentDowncastError { type_name: std::any::type_name::<C>().to_owned() })?;
 
         Ok(downcast)
@@ -158,7 +121,7 @@ impl World {
         let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow_mut();
 
         let downcast = RefMut::filter_map(ref_, |t| {
-            t.downcast_mut()
+            t.component.downcast_mut()
         }).map_err(|_| ObjectError::ComponentDowncastError { type_name: std::any::type_name::<C>().to_owned() })?;
 
         Ok(downcast)

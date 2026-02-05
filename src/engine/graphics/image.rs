@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use image::ImageReader;
+use image::{ImageBuffer, ImageReader, Rgba};
 
 use super::{Graphics, Texture};
 
@@ -16,8 +16,7 @@ impl Image {
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> crate::Result<Image> {
-        let mut img = ImageReader::open(path)?.decode()?.to_rgba8();
-        image::imageops::flip_vertical_in_place(&mut img);
+        let img = ImageReader::open(path)?.decode()?.to_rgba8();
         let (width, height) = (img.width(), img.height());
         let data = img.into_raw().into_boxed_slice();
         if data.len() % 4 != 0 {
@@ -67,7 +66,11 @@ impl Image {
         &self.data
     }
     
-    pub fn as_texture(self, gfx: &Graphics) -> Texture {
+    pub fn as_texture(mut self, gfx: &Graphics) -> Texture {
+        let mut image: ImageBuffer<Rgba<u8>, _> = ImageBuffer::from_raw(self.width, self.height, &mut self.data[..]).unwrap();
+
+        // Flip image since OpenGL expects the first pixel to be bottom-left
+        image::imageops::flip_vertical_in_place(&mut image);
         Texture::new(gfx, &self.data, self.width as u32, self.height as u32)
     }
 

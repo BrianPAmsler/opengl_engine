@@ -3,13 +3,17 @@ name = "opengl_engine"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["gl_types", "gl_types/multi-impl", "gl_types/swizz"]
+resolver = "3"
+
 [dependencies]
+gl_types = { path = "./gl_types" }
 backtrace = "0.3.73"
 const_format = "0.2.32"
 downcast-rs = "1.2.0"
 function_name = "0.3.0"
 gl46 = "0.2.1"
-gl_types = { git = "https://github.com/BrianPAmsler/gl_types.git", version = "0.1.0" }
 glfw = "0.54.0"
 image = "0.25.4"
 include-crypt-bytes = "0.1.3"

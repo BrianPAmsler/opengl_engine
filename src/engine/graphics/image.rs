@@ -4,6 +4,9 @@ use image::{ImageBuffer, ImageReader, Rgba};
 
 use super::{Graphics, Texture};
 
+// I'm honestly not sure why I decided to create my own image struct instead of just using an ImageBuffer.
+// I need to rethink this at some pont.
+
 pub struct Image {
     data: Box<[u8]>,
     width: u32,
@@ -65,12 +68,18 @@ impl Image {
     pub fn data(&self) -> &[u8] {
         &self.data
     }
+
+    pub fn image_buffer<'a>(&'a self) -> ImageBuffer<Rgba<u8>, &'a [u8]> {
+        ImageBuffer::from_raw(self.width, self.height, &self.data[..]).unwrap()
+    }
+
+    pub fn image_buffer_mut<'a>(&'a mut self) -> ImageBuffer<Rgba<u8>, &'a mut [u8]> {
+        ImageBuffer::from_raw(self.width, self.height, &mut self.data[..]).unwrap()
+    }
     
     pub fn as_texture(mut self, gfx: &Graphics) -> Texture {
-        let mut image: ImageBuffer<Rgba<u8>, _> = ImageBuffer::from_raw(self.width, self.height, &mut self.data[..]).unwrap();
-
         // Flip image since OpenGL expects the first pixel to be bottom-left
-        image::imageops::flip_vertical_in_place(&mut image);
+        image::imageops::flip_vertical_in_place(&mut self.image_buffer_mut());
         Texture::new(gfx, &self.data, self.width as u32, self.height as u32)
     }
 

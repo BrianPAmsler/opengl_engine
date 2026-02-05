@@ -5,7 +5,7 @@ mod engine;
 use std::path::Path;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE};
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER, GL_LESS};
 use gl_types::{angle_trig::radians, clip_space::perspective, matrix::inverse, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::ImageReader;
@@ -62,7 +62,8 @@ impl Component for FPSCounter {
 
 pub struct Renderer {
     sprite_renderer: SpriteRenderer,
-    position: Vec3
+    position: Vec3,
+    sprite_position: Vec3
 }
 
 impl Component for Renderer {
@@ -78,8 +79,11 @@ impl Component for Renderer {
         self.sprite_renderer.update_projection_matrix(perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0));
 
         self.sprite_renderer.update_sprite_map(gfx);
-        gfx.glEnable(GL_CULL_FACE);
-        gfx.glCullFace(GL_BACK);
+        // gfx.glEnable(GL_CULL_FACE);
+        gfx.glEnable(GL_DEPTH_TEST);
+        gfx.glDepthFunc(GL_GREATER);
+        gfx.glClearDepth(0.0);
+        // gfx.glCullFace(GL_BACK);
 
         Ok(())
     }
@@ -87,33 +91,59 @@ impl Component for Renderer {
     fn update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
         let speed = 1.0;
         if input.get_key_state(Key::W).is_down {
-            self.position += vec3!(0, 0, -1) * delta_time * speed;
+            self.position += vec3!(0, 0, 1) * delta_time * speed;
         }
 
         if input.get_key_state(Key::A).is_down {
             self.position += vec3!(-1, 0, 0) * delta_time * speed;
         }
         if input.get_key_state(Key::S).is_down {
-            self.position += vec3!(0, 0, 1) * delta_time * speed;
+            self.position += vec3!(0, 0, -1) * delta_time * speed;
         }
         if input.get_key_state(Key::D).is_down {
             self.position += vec3!(1, 0, 0) * delta_time * speed;
         }
+        if input.get_key_state(Key::Space).is_down {
+            self.position += vec3!(0, 1, 0) * delta_time * speed;
+        }
+        if input.get_key_state(Key::LeftControl).is_down {
+            self.position += vec3!(0, -1, 0) * delta_time * speed;
+        }
 
-        let mat = lookAt(self.position, self.position + vec3!(0, 0, -1), vec3!(0, 1, 0));
+        if input.get_key_state(Key::Up).is_down {
+            self.sprite_position += vec3!(0, 0, 1) * delta_time * speed;
+        }
 
-        self.sprite_renderer.update_view_matrix(inverse(mat));
+        if input.get_key_state(Key::Left).is_down {
+            self.sprite_position += vec3!(-1, 0, 0) * delta_time * speed;
+        }
+        if input.get_key_state(Key::Down).is_down {
+            self.sprite_position += vec3!(0, 0, -1) * delta_time * speed;
+        }
+        if input.get_key_state(Key::Right).is_down {
+            self.sprite_position += vec3!(1, 0, 0) * delta_time * speed;
+        }
+        if input.get_key_state(Key::RightShift).is_down {
+            self.sprite_position += vec3!(0, 1, 0) * delta_time * speed;
+        }
+        if input.get_key_state(Key::RightControl).is_down {
+            self.sprite_position += vec3!(0, -1, 0) * delta_time * speed;
+        }
 
-        gfx.glClear(GL_COLOR_BUFFER_BIT);
+        let mat = lookAt(self.position, self.position + vec3!(0, 0, 1), vec3!(0, 1, 0));
+
+        self.sprite_renderer.update_view_matrix(mat);
+
+        gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
             position: vec3!(0, 0, 0),
-            anchor: vec2!(0, 0),
+            anchor: vec2!(0.5, 0.5),
             dimensions: vec2!(1),
             sprite_id: 1,
         });
         self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(2, 0, 0),
-            anchor: vec2!(0, 0),
+            position: self.sprite_position,
+            anchor: vec2!(0.5, 0.5),
             dimensions: vec2!(2),
             sprite_id: 0,
         });
@@ -139,7 +169,7 @@ fn start_game() -> Result<()> {
     let sprite_map = Image::load_from_file("sprite_sheet.png")?;
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
-    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, 1) };
+    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, -5), sprite_position: vec3!(2, 0, 0) };
 
     let world = engine.get_world();
 

@@ -58,7 +58,8 @@ pub struct SpriteRenderer {
     sprite_sheet: Texture,
     sprite_map: Vec<Vec4>,
     view_location: i32,
-    projection_location: i32
+    projection_location: i32,
+    texel_offset_location: i32
 }
 
 impl SpriteRenderer {
@@ -69,7 +70,7 @@ impl SpriteRenderer {
         let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite.frag");
 
         let vert_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
-        let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;
+        let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?; 
 
         program.attach_shader(vert_shader);
         program.attach_shader(frag_shader);
@@ -80,29 +81,30 @@ impl SpriteRenderer {
 
         let view_location = gfx.glGetUniformLocation(program.program(), "view");
         let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
+        let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
 
         println!("view: {}, projection: {}", view_location, projection_location);
 
         let sprite_sheet = sprite_sheet.as_texture(gfx);
 
         let vertex_data = Box::new([
-            Vertex { x: -0.5, y: -0.5, z: 0.0 }, // bottom left
-            Vertex { x: 0.5, y: -0.5, z: 0.0 },  // bottom right
-            Vertex { x: -0.5, y: 0.5, z: 0.0 },  // top left
+            Vertex { x: 0.0, y: 0.0, z: 0.0 }, // bottom left
+            Vertex { x: 1.0, y: 0.0, z: 0.0 },  // bottom right
+            Vertex { x: 0.0, y: 1.0, z: 0.0 },  // top left
         
-            Vertex { x: -0.5, y: 0.5, z: 0.0 },  // top left
-            Vertex { x: 0.5, y: -0.5, z: 0.0 },  // bottom right
-            Vertex { x: 0.5, y: 0.5, z: 0.0 },   // top right
+            Vertex { x: 0.0, y: 1.0, z: 0.0 },  // top left
+            Vertex { x: 1.0, y: 0.0, z: 0.0 },  // bottom right
+            Vertex { x: 1.0, y: 1.0, z: 0.0 },   // top right
         ]);
 
         let uv_data = Box::new([
-            UV { u: 0.0 , v: 1.0 },
-            UV { u: 1.0 , v: 1.0 },
             UV { u: 0.0 , v: 0.0 },
-
-            UV { u: 0.0 , v: 0.0 },
-            UV { u: 1.0 , v: 1.0 },
             UV { u: 1.0 , v: 0.0 },
+            UV { u: 0.0 , v: 1.0 },
+
+            UV { u: 0.0 , v: 1.0 },
+            UV { u: 1.0 , v: 0.0 },
+            UV { u: 1.0 , v: 1.0 },
         ]);
 
         let mesh = Mesh::new("Sprite Mesh".to_owned(), vertex_data, None, Some(uv_data), None, None);
@@ -112,7 +114,7 @@ impl SpriteRenderer {
 
         vbo.buffer_data(gfx);
 
-        let mesh = mesh.take();
+        let mesh = mesh.take(); 
         
         let mut sprite_ssbo = 0;
         gfx.glGenBuffer(&mut sprite_ssbo);
@@ -129,7 +131,7 @@ impl SpriteRenderer {
         // gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, 32 * 4, GL_DYNAMIC_DRAW);
         // gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, debug_ssbo);
 
-        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location })
+        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location, texel_offset_location })
     }
 
     pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
@@ -143,7 +145,7 @@ impl SpriteRenderer {
     pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> usize {
         // Convert pixel coordinates to uv coordinates
         let wh = vec2!(self.sprite_sheet.width(), self.sprite_sheet.height());
-        let v = vec4!(x, y, width, height) / vec4!(wh, wh);
+        let v = vec4!(x, self.sprite_sheet.height() - y - height, width, height) / vec4!(wh, wh);
 
         let index = self.sprite_map.len();
         self.sprite_map.push(v);
@@ -204,8 +206,11 @@ impl SpriteRenderer {
         gfx.glActiveTexture(GL_TEXTURE0);
         gfx.glBindTexture(GL_TEXTURE_2D, self.sprite_sheet.texture_id());
 
+        let texel_offset = vec2!(1.0) / (vec2!(self.sprite_sheet.width(), self.sprite_sheet.height()) * 2.0);
+
         unsafe { gfx.glUniformMatrix4fv(self.view_location, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
-        unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr())}
+        unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr()) };
+        unsafe { gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y()) };
         // let mat = &debug[0..16];
         // let v1 = &debug[16..19];
         // let v2 = &debug[20..24];

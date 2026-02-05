@@ -16,7 +16,8 @@ impl Image {
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> crate::Result<Image> {
-        let img = ImageReader::open(path)?.decode()?.to_rgba8();
+        let mut img = ImageReader::open(path)?.decode()?.to_rgba8();
+        image::imageops::flip_vertical_in_place(&mut img);
         let (width, height) = (img.width(), img.height());
         let data = img.into_raw().into_boxed_slice();
         if data.len() % 4 != 0 {

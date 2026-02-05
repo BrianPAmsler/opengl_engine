@@ -5,6 +5,7 @@ layout(location = 1) in vec2 uv;
 
 uniform mat4 view;
 uniform mat4 projection;
+uniform vec2 texelOffset;
 
 struct Sprite {
     vec3 position;
@@ -40,15 +41,29 @@ void main()
     vec2 anchor = sprite.dimensions.xy;
     vec2 scale = sprite.dimensions.zw;
 
-    vec4 center = view * vec4(sprite.position, 1);
+    // Map 0 to 1 and 1 to -1.
+    // Offset direction based on the position of the mesh vertex.
+    // This makes sure the half-texel offset stays inside the bounds of the texture.
+    // The half-texel offset prevents texture bleed at the edges of a sprtite due to floating point precision issues.
+    // This is inteded for a square mesh with vertices (0, 0), (0, 1), (1, 0), (1, 1).
+    // Any other mesh will have unexpected resutls
+    vec2 offsetDirection = -((position.xy - 0.5) * 2);
 
-    vec3 translated = position - vec3(anchor, 0);
-    vec3 scaled = translated * vec3(scale, 1);
+    vec3 translation = sprite.position - vec3(anchor * scale, 0);
 
-    vec4 view_space = vec4(scaled, 0) + center;
+    mat4 inverseView = mat4(inverse(mat3(view)));
 
-    gl_Position = projection * view_space;
+    mat4 model = transpose(mat4(
+        scale.x,    0,          0,  translation.x,
+        0,          scale.y,    0,  translation.y,
+        0,          0,          1,  translation.z,
+        0,          0,          0,  1
+    ));
+
+    model = inverseView * model;
+
+    gl_Position = projection * view * model * vec4(position, 1);
 
     vec4 bounds = spriteBounds[sprite.spriteID];
-    texCoords = bounds.xy + uv * bounds.zw;
+    texCoords = bounds.xy + uv * bounds.zw + texelOffset * offsetDirection;
 }

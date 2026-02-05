@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, pin::Pin};
 
 use super::error::Result;
 
@@ -10,7 +10,7 @@ enum Slot<T> {
 
 #[derive(Debug)]
 pub struct VecAllocator<T> {
-    vec: Box<Vec<Slot<T>>>, // Put vec in a box so I have a pointer that I can compare with that won't break if the VecAllocator gets moved
+    vec: Pin<Box<Vec<Slot<T>>>>,
     first_hole: usize,
     count: usize
 }
@@ -36,10 +36,10 @@ impl AllocationIndex {
     }
 }
 
-impl<T: Clone> VecAllocator<T> {
+impl<T: Clone + Unpin> VecAllocator<T> {
     #[cfg(test)]
     fn from_raw(slice: &[Slot<T>]) -> VecAllocator<T> {
-        let mut vec = Box::new(Vec::new());
+        let mut vec = Box::pin(Vec::new());
         vec.extend_from_slice(slice);
 
         let mut first_hole = vec.len();
@@ -63,9 +63,9 @@ impl<T: Clone> VecAllocator<T> {
     }
 }
 
-impl<T> VecAllocator<T> {
+impl<T: Unpin> VecAllocator<T> {
     pub fn new() -> VecAllocator<T> {
-        let mut vec = Box::new(Vec::new());
+        let mut vec = Box::pin(Vec::new());
         vec.push(Slot::Hole { id: 0, next: 0 });
         VecAllocator { vec, first_hole: 0, count: 0 }
     }

@@ -144,7 +144,7 @@ impl World {
         Ok(())
     }
 
-    pub fn borrow_component<C: Component>(&self, component: ComponentID) -> Result<Ref<C>> {
+    pub fn borrow_component<'a, C: Component>(&'a self, component: ComponentID) -> Result<Ref<'a, C>> {
         let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow();
 
         let downcast = Ref::filter_map(ref_, |t| {
@@ -154,7 +154,7 @@ impl World {
         Ok(downcast)
     }
 
-    pub fn borrow_component_mut<C: Component>(&self, component: ComponentID) -> Result<RefMut<C>> {
+    pub fn borrow_component_mut<'a, C: Component>(&'a self, component: ComponentID) -> Result<RefMut<'a, C>> {
         let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow_mut();
 
         let downcast = RefMut::filter_map(ref_, |t| {

@@ -2,13 +2,10 @@
 
 mod engine;
 
-use std::path::Path;
-
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER, GL_LESS};
-use gl_types::{angle_trig::radians, clip_space::perspective, matrix::inverse, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER};
+use gl_types::{angle_trig::radians, clip_space::perspective, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
-use image::ImageReader;
 use regex::Regex;
 
 
@@ -79,11 +76,11 @@ impl Component for Renderer {
         self.sprite_renderer.update_projection_matrix(perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0));
 
         self.sprite_renderer.update_sprite_map(gfx);
-        // gfx.glEnable(GL_CULL_FACE);
+        gfx.glEnable(GL_CULL_FACE);
         gfx.glEnable(GL_DEPTH_TEST);
         gfx.glDepthFunc(GL_GREATER);
         gfx.glClearDepth(0.0);
-        // gfx.glCullFace(GL_BACK);
+        gfx.glCullFace(GL_BACK);
 
         Ok(())
     }

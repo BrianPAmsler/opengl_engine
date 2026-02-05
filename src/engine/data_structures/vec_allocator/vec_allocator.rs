@@ -194,7 +194,7 @@ impl<T> VecAllocator<T> {
         }
     }
 
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         Iter { allocator: self, index: 0 }
     }
 }

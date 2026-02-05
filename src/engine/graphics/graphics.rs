@@ -1,6 +1,5 @@
 use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::{Deref, Not}, os::raw::c_void};
 
-use gl46::GL_MAX_TEXTURE_SIZE;
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
 use libc::strlen;
@@ -211,12 +210,12 @@ impl Graphics {
     }
 
     // This will be deleted once glfw is properly wrapped
-    pub fn __get_glfw(&self) -> Ref<Glfw> {
+    pub fn __get_glfw<'a>(&'a self) -> Ref<'a, Glfw> {
         self.glfw.borrow()
     }
 
     // This will be deleted once glfw is properly wrapped
-    pub fn __get_glfw_mut(&self) -> RefMut<Glfw> {
+    pub fn __get_glfw_mut<'a>(&'a self) -> RefMut<'a, Glfw> {
         self.glfw.borrow_mut()
     }
 

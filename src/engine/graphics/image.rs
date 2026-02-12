@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use gl46::{GL_RGBA, InternalFormat};
 use image::{ImageBuffer, ImageReader, Rgba};
 
 use super::{Graphics, Texture};
@@ -15,21 +16,18 @@ pub struct Image {
 
 impl Image {
     pub fn empty(width: u32, height: u32) -> Image {
-        Image { data: vec![0; (width * height * 4) as usize].into_boxed_slice(), width, height }
+        Image { data: vec![0; (width * height) as usize * 4].into_boxed_slice(), width, height }
     }
 
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> crate::Result<Image> {
         let img = ImageReader::open(path)?.decode()?.to_rgba8();
         let (width, height) = (img.width(), img.height());
         let data = img.into_raw().into_boxed_slice();
-        if data.len() % 4 != 0 {
-            panic!("length not divisible by 4");
-        }
 
         Ok(Image { data, width, height })
     }
 
-    pub fn pixel(&self, x: u32, y: u32) -> &(u8, u8, u8, u8) {
+    pub fn pixel(&self, x: u32, y: u32) -> &[u8; 4] {
         if x >= self.width {
             panic!("x >= width ({} >= {})", x, self.width);
         }
@@ -37,13 +35,15 @@ impl Image {
             panic!("y >= height ({} >= {})", y, self.height);
         }
         
-        // I'm not 100% sure this works in all cases, but it seems to work
-        let tuples = (&self.data).as_ptr() as *const (u8, u8, u8, u8);
+        let i = y * self.width + x;
+        let byte_offset = i as usize * 4;
 
-        unsafe { tuples.wrapping_add((x + y * self.width) as usize).as_ref().unwrap() }
+        let pixel_slice = &self.data[byte_offset..byte_offset + 4];
+
+        pixel_slice.try_into().unwrap()
     }
 
-    pub fn pixel_mut(&mut self, x: u32, y: u32) -> &mut (u8, u8, u8, u8) {
+    pub fn pixel_mut(&mut self, x: u32, y: u32) -> &mut [u8; 4] {
         if x >= self.width {
             panic!("x >= width ({} >= {})", x, self.width);
         }
@@ -51,10 +51,12 @@ impl Image {
             panic!("y >= height ({} >= {})", y, self.height);
         }
         
-        // I'm not 100% sure this works in all cases, but it seems to work
-        let tuples = (&mut self.data).as_ptr() as *mut (u8, u8, u8, u8);
+        let i = y * self.width + x;
+        let byte_offset = i as usize * 4;
 
-        unsafe { tuples.wrapping_add((x + y * self.width) as usize).as_mut().unwrap() }
+        let pixel_slice = &mut self.data[byte_offset..byte_offset + 4];
+
+        pixel_slice.try_into().unwrap()
     }
 
     pub fn width(&self) -> u32 {
@@ -77,10 +79,10 @@ impl Image {
         ImageBuffer::from_raw(self.width, self.height, &mut self.data[..]).unwrap()
     }
     
-    pub fn as_texture(mut self, gfx: &Graphics) -> Texture {
+    pub fn as_texture(mut self, gfx: &Graphics, internal_format: InternalFormat) -> Texture {
         // Flip image since OpenGL expects the first pixel to be bottom-left
         image::imageops::flip_vertical_in_place(&mut self.image_buffer_mut());
-        Texture::new(gfx, &self.data, self.width as u32, self.height as u32)
+        Texture::new(gfx, &self.data, self.width as u32, self.height as u32, internal_format, GL_RGBA)
     }
 
     pub fn blit(&mut self, src: &Image, x: u32, y: u32) {
@@ -162,8 +164,8 @@ mod test {
     fn image_test() -> crate::Result<()> {
         let img = Image::load_from_file(pathbuf!("test_files", "input", "test_image.png"))?;
 
-        assert_eq!(img.pixel(645, 213), &(65, 134, 212, 255));
-        assert_eq!(img.pixel(764, 844), &(121, 65, 68, 255));
+        assert_eq!(img.pixel(645, 213), &[65, 134, 212, 255]);
+        assert_eq!(img.pixel(764, 844), &[121, 65, 68, 255]);
 
         Ok(())
     }

@@ -1,5 +1,6 @@
 use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, ops::DerefMut};
 
+use gl46::GL_RGBA;
 use lazy_static::lazy_static;
 
 use crate::engine::graphics::{image::Image, Graphics, Texture};
@@ -366,7 +367,7 @@ pub struct SpriteSheet {
 
 impl SpriteSheet {
     pub fn as_texture(self, gfx: &Graphics) -> Texture {
-        Texture::new(gfx, self.sheet.data(), self.sheet.width(), self.sheet.height())
+        Texture::new(gfx, self.sheet.data(), self.sheet.width(), self.sheet.height(), GL_RGBA, GL_RGBA)
     }
 
     pub fn image(&self) -> &Image {

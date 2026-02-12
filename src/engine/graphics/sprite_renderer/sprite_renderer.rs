@@ -1,4 +1,4 @@
-use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE0, GL_TEXTURE_2D, GL_TRIANGLES};
+use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE_2D, GL_TEXTURE0, GL_TRIANGLES};
 use gl_types::matrices::{Mat4, MatN};
 use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
@@ -85,7 +85,7 @@ impl SpriteRenderer {
 
         println!("view: {}, projection: {}", view_location, projection_location);
 
-        let sprite_sheet = sprite_sheet.as_texture(gfx);
+        let sprite_sheet = sprite_sheet.as_texture(gfx, GL_RGBA);
 
         let vertex_data = Box::new([
             Vertex { x: 0.0, y: 0.0, z: 0.0 }, // bottom left

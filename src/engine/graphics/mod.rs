@@ -7,6 +7,7 @@ mod texture;
 
 pub mod sprite_renderer;
 pub mod image;
+pub mod terrain;
 
 pub use graphics::*;
 pub use gl_wrapper::*;

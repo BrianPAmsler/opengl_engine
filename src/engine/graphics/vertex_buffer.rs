@@ -26,6 +26,24 @@ impl BufferedMeshHandle {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct VBO(u32);
+
+impl VBO {
+    pub fn vbo(&self) -> u32 {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct VAO(u32);
+
+impl VAO {
+    pub fn vao(&self) -> u32 {
+        self.0
+    }
+}
+
 pub struct VBOBufferer {
     vbo: u32,
     vertex_data: usize,
@@ -74,7 +92,7 @@ impl VBOBufferer {
         buff 
     }
 
-    pub fn buffer_data(self, gfx: &Graphics) -> u32 {
+    pub fn buffer_data(self, gfx: &Graphics) -> VBO {
         let total_size = self.vertex_data + self.color_data + self.uv_data + self.normal_data + self.custom_data;
 
         gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
@@ -90,7 +108,7 @@ impl VBOBufferer {
         for (mesh, buff) in self.meshes {
             let mut vao = 0;
             gfx.glGenVertexArray(&mut vao);
-            gfx.glBindVertexArray(vao);
+            gfx.glBindVertexArray(VAO(vao));
     
             gfx.glBufferSubData(GL_ARRAY_BUFFER, vertex_offset as isize, &mesh.vertex_data);
     
@@ -208,7 +226,7 @@ impl VBOBufferer {
             (*buff.mesh.borrow_mut()) = Some(buffered_mesh);
         }
 
-        self.vbo
+        VBO(self.vbo)
     }
 }
 
@@ -229,11 +247,11 @@ impl BufferedMesh {
         self.len
     }
 
-    pub fn vbo(&self) -> u32 {
-        self.vbo
+    pub fn vbo(&self) -> VBO {
+        VBO(self.vbo)
     }
 
-    pub fn vao(&self) -> u32 {
-        self.vao
+    pub fn vao(&self) -> VAO {
+        VAO(self.vao)
     }
 }

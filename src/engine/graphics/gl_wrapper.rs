@@ -2,8 +2,9 @@
 
 use std::{ffi::{c_void, CString}, fmt::Debug, ops::{Deref, DerefMut}};
 
-use crate::engine::errors::{Result, GraphicsError};
+use crate::engine::{errors::{GraphicsError, Result}, graphics::VAO};
 
+use gl_types::matrices::{Mat4, MatN};
 use gl46::*;
 use glfw::GLProc;
 
@@ -79,6 +80,9 @@ impl GLType for f64 {
         GL_DOUBLE
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct GlUniformLocation(i32);
 
 pub struct Attrib {
     pub name: String,
@@ -225,8 +229,8 @@ impl GLWrapper {
         unsafe { self.fns.BindTexture(target, texture) }
     }
     
-    pub fn glBindVertexArray(&self, array: u32) {
-        self.fns.BindVertexArray(array)
+    pub fn glBindVertexArray(&self, array: VAO) {
+        self.fns.BindVertexArray(array.vao())
     }
     
     pub fn glBlendColor(&self, red: f32, green: f32, blue: f32, alpha: f32) {
@@ -506,8 +510,8 @@ impl GLWrapper {
         unsafe { self.fns.DrawElementsBaseVertex(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, basevertex) }
     }
     
-    pub fn glDrawElementsInstanced(&self, mode: PrimitiveType, indices: &[u32], instancecount: i32) {
-        unsafe { self.fns.DrawElementsInstanced(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount) }
+    pub fn glDrawElementsInstanced(&self, mode: PrimitiveType, indices: &[u32], instancecount: u32) {
+        unsafe { self.fns.DrawElementsInstanced(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount as i32) }
     }
     
     pub fn glDrawElementsInstancedBaseVertex(&self, mode: PrimitiveType, indices: &[u32], instancecount: i32, basevertex: i32) {
@@ -933,9 +937,9 @@ impl GLWrapper {
         unsafe { self.fns.GetUniformIndices(program, uniformNames.len() as _, uniformNames.as_ptr(), uniformIndices.as_mut_ptr()) }
     }
     
-    pub fn glGetUniformLocation(&self, program: u32, name: &str) -> i32 {
+    pub fn glGetUniformLocation(&self, program: u32, name: &str) -> GlUniformLocation {
         let null_str = CString::new(name).unwrap();
-        unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as *const  _) }
+        GlUniformLocation(unsafe { self.fns.GetUniformLocation(program, null_str.as_ptr() as *const  _) })
     }
     
     pub unsafe fn glGetUniformfv(&self, program: u32, location: i32, params: *mut f32) {
@@ -1198,8 +1202,8 @@ impl GLWrapper {
         self.fns.TexImage1D(target, level, internalformat.0 as _, width as _, border, format, type_, pixels)
     }
     
-    pub fn glTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
-        unsafe { self.fns.TexImage2D(target, level, internalformat.0 as _, width as _, height as _, border, format, type_, pixels.as_ptr() as _) }
+    pub unsafe fn glTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
+        self.fns.TexImage2D(target, level, internalformat.0 as _, width as _, height as _, border, format, type_, pixels.as_ptr() as _)
     }
     
     pub unsafe fn glTexImage2DMultisample(&self, target: TextureTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32, fixedsamplelocations: u8) {
@@ -1255,8 +1259,8 @@ impl GLWrapper {
         unsafe { self.fns.TransformFeedbackVaryings(program, varyings.len() as _, varyings.as_ptr(), bufferMode) }
     }
     
-    pub unsafe fn glUniform1f(&self, location: i32, v0: f32) {
-        self.fns.Uniform1f(location, v0)
+    pub fn glUniform1f(&self, location: GlUniformLocation, v0: f32) {
+        unsafe { self.fns.Uniform1f(location.0, v0) }
     }
     
     pub unsafe fn glUniform1fv(&self, location: i32, count: i32, value: *const f32) {
@@ -1279,8 +1283,8 @@ impl GLWrapper {
         self.fns.Uniform1uiv(location, count, value)
     }
     
-    pub unsafe fn glUniform2f(&self, location: i32, v0: f32, v1: f32) {
-        self.fns.Uniform2f(location, v0, v1)
+    pub fn glUniform2f(&self, location: GlUniformLocation, v0: f32, v1: f32) {
+        unsafe { self.fns.Uniform2f(location.0, v0, v1) }
     }
     
     pub unsafe fn glUniform2fv(&self, location: i32, count: i32, value: *const f32) {
@@ -1295,16 +1299,16 @@ impl GLWrapper {
         self.fns.Uniform2iv(location, count, value)
     }
     
-    pub unsafe fn glUniform2ui(&self, location: i32, v0: u32, v1: u32) {
-        self.fns.Uniform2ui(location, v0, v1)
+    pub fn glUniform2ui(&self, location: GlUniformLocation, v0: u32, v1: u32) {
+        unsafe { self.fns.Uniform2ui(location.0, v0, v1) }
     }
     
     pub unsafe fn glUniform2uiv(&self, location: i32, count: i32, value: *const u32) {
         self.fns.Uniform2uiv(location, count, value)
     }
     
-    pub unsafe fn glUniform3f(&self, location: i32, v0: f32, v1: f32, v2: f32) {
-        self.fns.Uniform3f(location, v0, v1, v2)
+    pub fn glUniform3f(&self, location: GlUniformLocation, v0: f32, v1: f32, v2: f32) {
+        unsafe { self.fns.Uniform3f(location.0, v0, v1, v2) }
     }
     
     pub unsafe fn glUniform3fv(&self, location: i32, count: i32, value: *const f32) {
@@ -1379,8 +1383,12 @@ impl GLWrapper {
         self.fns.UniformMatrix3x4fv(location, count, transpose, value)
     }
     
-    pub unsafe fn glUniformMatrix4fv(&self, location: i32, count: i32, transpose: u8, value: *const f32) {
-        self.fns.UniformMatrix4fv(location, count, transpose, value)
+    pub fn glUniformMatrix4f(&self, location: GlUniformLocation, transpose: bool, value: &Mat4) {
+        unsafe { self.fns.UniformMatrix4fv(location.0, 1, transpose as u8, value.as_slice()[0].as_ptr() as _) };    
+    }
+    
+    pub fn glUniformMatrix4fv(&self, location: GlUniformLocation, transpose: bool, value: &[Mat4]) {
+        unsafe { self.fns.UniformMatrix4fv(location.0, value.len() as _, transpose as u8, value.as_ptr() as _) };    
     }
     
     pub unsafe fn glUniformMatrix4x2fv(&self, location: i32, count: i32, transpose: u8, value: *const f32) {
@@ -2930,19 +2938,16 @@ impl GLWrapper {
         unsafe { self.fns.TextureStorage3DMultisample(texture, samples as _, internalformat, width as _, height as _, depth as _, fixedsamplelocations as _) }
     }
 
-    pub fn glTextureSubImage1D(&self, texture: u32, level: i32, xoffset: i32, width: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        // Unreviewed
-        unsafe { self.fns.TextureSubImage1D(texture, level, xoffset, width as _, format, type_, pixels) }
+    pub unsafe fn glTextureSubImage1D(&self, texture: u32, level: i32, xoffset: i32, width: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
+        self.fns.TextureSubImage1D(texture, level, xoffset, width as _, format, type_, pixels.as_ptr() as _)
     }
 
-    pub fn glTextureSubImage2D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        // Unreviewed
-        unsafe { self.fns.TextureSubImage2D(texture, level, xoffset, yoffset, width as _, height as _, format, type_, pixels) }
+    pub unsafe fn glTextureSubImage2D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
+        self.fns.TextureSubImage2D(texture, level, xoffset, yoffset, width as _, height as _, format, type_, pixels.as_ptr() as _)
     }
 
-    pub fn glTextureSubImage3D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        // Unreviewed
-        unsafe { self.fns.TextureSubImage3D(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, pixels) }
+    pub unsafe fn glTextureSubImage3D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
+        self.fns.TextureSubImage3D(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, pixels.as_ptr() as _)
     }
 
     pub fn glTextureView(&self, texture: u32, target: TextureTarget, origtexture: u32, internalformat: InternalFormat, minlevel: u32, numlevels: u32, minlayer: u32, numlayers: u32) {
@@ -3235,4 +3240,37 @@ impl GLWrapper {
         // Unreviewed
         unsafe { self.fns.VertexAttribL1ui64vARB(index, v) }
     }
-} 
+}
+
+#[cfg(test)]
+mod tests {
+    use gl_types::matrices::{Mat4, MatN};
+
+    #[test]
+    pub fn gl_mat4_array() {
+        let a = Mat4::from_array([
+            [1.0, 2.0, 3.0, 4.0],
+            [5.0, 6.0, 7.0, 8.0],
+            [9.0, 10., 11., 12.],
+            [13., 14., 15., 16.]
+        ]);
+        let b = Mat4::from_array([
+            [17., 18., 19., 20.],
+            [21., 22., 23., 24.],
+            [25., 26., 27., 28.],
+            [29., 30., 31., 32.]
+        ]);
+        let c = Mat4::from_array([
+            [33., 34., 35., 36.],
+            [37., 38., 39., 40.],
+            [41., 42., 43., 44.],
+            [45., 46., 47., 48.]
+        ]);
+
+        let arr = [a, b, c];
+
+        let floats: &[f32; 48] = unsafe { std::mem::transmute(&arr) };
+        assert_eq!(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0, 41.0, 42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0],
+            floats);
+    }
+}

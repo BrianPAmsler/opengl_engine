@@ -55,6 +55,7 @@ pub fn generate_swizzles(item: TokenStream) -> TokenStream {
             if n > 1 {
                 fns.push(
                     quote! {
+                        #[doc(hidden)]
                         pub fn #name(&self) -> #vecn {
                             #vecn::_new(#constructor)
                         }

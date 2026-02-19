@@ -4,9 +4,11 @@ mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER};
-use gl_types::{angle_trig::radians, clip_space::perspective, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl_types::{angle_trig::radians, clip_space::perspective, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use regex::Regex;
+
+use crate::engine::graphics::terrain::{Terrain, terrain_renderer::{self, TerrainRenderer}};
 
 
 #[derive(Clone, Default)]
@@ -59,8 +61,14 @@ impl Component for FPSCounter {
 
 pub struct Renderer {
     sprite_renderer: SpriteRenderer,
+    terrain_renderer: TerrainRenderer,
+    terrain: Terrain,
+    view_matrix: Mat4,
+    projection_matrix: Mat4,
     position: Vec3,
-    sprite_position: Vec3
+    sprite_position: Vec3,
+    rot_y: f32,
+    rot_x: f32
 }
 
 impl Component for Renderer {
@@ -73,7 +81,7 @@ impl Component for Renderer {
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
         // self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
-        self.sprite_renderer.update_projection_matrix(perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0));
+        self.projection_matrix = perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0);
 
         self.sprite_renderer.update_sprite_map(gfx);
         gfx.glEnable(GL_CULL_FACE);
@@ -127,13 +135,23 @@ impl Component for Renderer {
             self.sprite_position += vec3!(0, -1, 0) * delta_time * speed;
         }
 
-        let mat = lookAt(self.position, self.position + vec3!(0, 0, 1), vec3!(0, 1, 0));
+        if input.get_key_state(Key::Q).is_down {
+            self.rot_y -= 0.5 * delta_time;
+        }
 
-        self.sprite_renderer.update_view_matrix(mat);
+        if input.get_key_state(Key::E).is_down {
+            self.rot_y += 0.5 * delta_time;
+        }
+
+        let offset = vec3!(-f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
+        println!("{:?}", offset);
+        let mat = lookAt(self.position, self.position + offset, vec3!(0, 1, 0));
+
+        self.view_matrix = mat;
 
         gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(0, 0, 0),
+            position: vec3!(-1, 0, 0),
             anchor: vec2!(0.5, 0.5),
             dimensions: vec2!(1),
             sprite_id: 1,
@@ -144,7 +162,8 @@ impl Component for Renderer {
             dimensions: vec2!(2),
             sprite_id: 0,
         });
-        self.sprite_renderer.render(gfx);
+        self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
+        // self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
 
         Ok(())   
     }
@@ -166,7 +185,9 @@ fn start_game() -> Result<()> {
     let sprite_map = Image::load_from_file("sprite_sheet.png")?;
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
-    let renderer = Renderer { sprite_renderer, position: vec3!(0, 0, -5), sprite_position: vec3!(2, 0, 0) };
+    let terrain_renderer = TerrainRenderer::new(gfx)?;
+    let terrain = Terrain::new(gfx, 100, 100);
+    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(0, 0, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();
 

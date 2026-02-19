@@ -367,7 +367,7 @@ pub struct SpriteSheet {
 
 impl SpriteSheet {
     pub fn as_texture(self, gfx: &Graphics) -> Texture {
-        Texture::new(gfx, self.sheet.data(), self.sheet.width(), self.sheet.height(), GL_RGBA, GL_RGBA)
+        self.sheet.as_texture(gfx, GL_RGBA)
     }
 
     pub fn image(&self) -> &Image {

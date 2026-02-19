@@ -9,7 +9,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(gfx: &Graphics, texture_data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> Texture {
+    pub unsafe fn from_raw_pixels(gfx: &Graphics, texture_data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> Texture {
         let mut texture_id = 0;
         gfx.glGenTexture(&mut texture_id);
 
@@ -18,6 +18,8 @@ impl Texture {
         if texture_data.len() > 0 {
             gfx.glBindTexture(GL_TEXTURE_2D, texture_id);
             
+            // TODO: Make this customizable
+            // use a factory struct perhaps?
             gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
             gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
             gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -30,6 +32,13 @@ impl Texture {
         }
 
         Texture { texture_id, width, height }
+    }
+
+    pub unsafe fn update_texture(&self, gfx: &Graphics, texture_data: &[u8], format: PixelFormat) {
+
+        gfx.glBindTexture(GL_TEXTURE_2D, self.texture_id);
+        gfx.glTextureSubImage2D(self.texture_id, 0, 0, 0, self.width, self.height, format, GL_UNSIGNED_BYTE, texture_data);
+        gfx.glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     pub fn texture_id(&self) -> u32 {

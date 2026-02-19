@@ -82,7 +82,8 @@ impl Image {
     pub fn as_texture(mut self, gfx: &Graphics, internal_format: InternalFormat) -> Texture {
         // Flip image since OpenGL expects the first pixel to be bottom-left
         image::imageops::flip_vertical_in_place(&mut self.image_buffer_mut());
-        Texture::new(gfx, &self.data, self.width as u32, self.height as u32, internal_format, GL_RGBA)
+        // This is safe because we know the underlying image data is the correct length for the RGBA pixel format
+        unsafe { Texture::from_raw_pixels(gfx, &self.data, self.width as u32, self.height as u32, internal_format, GL_RGBA) }
     }
 
     pub fn blit(&mut self, src: &Image, x: u32, y: u32) {

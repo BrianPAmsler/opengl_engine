@@ -49,7 +49,7 @@ void main()
     // Any other mesh will have unexpected resutls
     vec2 offsetDirection = -((position.xy - 0.5) * 2);
 
-    vec3 translation = sprite.position - vec3(anchor * scale, 0);
+    vec3 translation = sprite.position;//- vec3(anchor * scale, 0);
 
     mat4 inverseView = mat4(inverse(mat3(view)));
 
@@ -60,7 +60,7 @@ void main()
         0,          0,          0,  1
     ));
 
-    model = inverseView * model;
+    // model = inverseView * model;
 
     gl_Position = projection * view * model * vec4(position, 1);
 

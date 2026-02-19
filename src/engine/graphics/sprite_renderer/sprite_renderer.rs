@@ -4,7 +4,7 @@ use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
 
 use crate::engine::graphics::image::Image;
-use crate::engine::graphics::{embed_shader_source, BufferedMesh, FragmentShader, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader, UV};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader, embed_shader_source};
 
 use crate::engine::errors::Result;
 
@@ -49,17 +49,15 @@ pub struct SpriteRenderer {
     program: ShaderProgram,
     mesh: BufferedMesh,
     render_queue: Vec<GLSpriteStruct>,
-    view_matrix: Mat4,
-    projection_matrix: Mat4,
     buffersize: usize,
     sprite_ssbo: u32,
     spritesheet_ssbo: u32,
     debug_ssbo: u32,
     sprite_sheet: Texture,
     sprite_map: Vec<Vec4>,
-    view_location: i32,
-    projection_location: i32,
-    texel_offset_location: i32
+    view_location: GlUniformLocation,
+    projection_location: GlUniformLocation,
+    texel_offset_location: GlUniformLocation
 }
 
 impl SpriteRenderer {
@@ -82,8 +80,6 @@ impl SpriteRenderer {
         let view_location = gfx.glGetUniformLocation(program.program(), "view");
         let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
         let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
-
-        println!("view: {}, projection: {}", view_location, projection_location);
 
         let sprite_sheet = sprite_sheet.as_texture(gfx, GL_RGBA);
 
@@ -131,15 +127,7 @@ impl SpriteRenderer {
         // gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, 32 * 4, GL_DYNAMIC_DRAW);
         // gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, debug_ssbo);
 
-        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location, texel_offset_location })
-    }
-
-    pub fn update_view_matrix(&mut self, view_matrix: Mat4) {
-        self.view_matrix = view_matrix;
-    }
-
-    pub fn update_projection_matrix(&mut self, projection_matrix: Mat4) {
-        self.projection_matrix = projection_matrix;
+        Ok(SpriteRenderer { program, mesh, render_queue: Vec::new(), buffersize: initial_buffer_size, sprite_ssbo, spritesheet_ssbo, debug_ssbo, sprite_sheet, sprite_map: Vec::new(), view_location, projection_location, texel_offset_location })
     }
 
     pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> usize {
@@ -199,7 +187,7 @@ impl SpriteRenderer {
         self.render_queue.push(sprite_data);
     }
 
-    pub fn render(&mut self, gfx: &Graphics) {
+    pub fn render(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) {
         gfx.glBindVertexArray(self.mesh.vao());
         gfx.glUseProgram(self.program.program());
         self.buffer_sprite_data(gfx);
@@ -208,9 +196,9 @@ impl SpriteRenderer {
 
         let texel_offset = vec2!(1.0) / (vec2!(self.sprite_sheet.width(), self.sprite_sheet.height()) * 2.0);
 
-        unsafe { gfx.glUniformMatrix4fv(self.view_location, 1, 0, self.view_matrix.as_slice()[0].as_ptr()) };
-        unsafe { gfx.glUniformMatrix4fv(self.projection_location, 1, 0, self.projection_matrix.as_slice()[0].as_ptr()) };
-        unsafe { gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y()) };
+        gfx.glUniformMatrix4f(self.view_location, false, &view_matrix);
+        gfx.glUniformMatrix4f(self.projection_location, false, &projection_matrix);
+        gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y()); 
         // let mat = &debug[0..16];
         // let v1 = &debug[16..19];
         // let v2 = &debug[20..24];

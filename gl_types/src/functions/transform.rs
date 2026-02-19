@@ -5,22 +5,18 @@ use crate::{matrices::Mat4, vectors::Vec3};
 use super::geometric::{cross, dot, normalize};
 
 pub fn lookAt(eye: Vec3, center: Vec3, up: Vec3) -> Mat4 {
-    let back = normalize(eye - center);
-    let right = normalize(cross(back, up));
-    let up = cross(right, back);
+    let z_axis = normalize(center - eye);
+    let x_axis = normalize(cross(up, z_axis));
+    let y_axis = cross(z_axis, x_axis);
 
-    let [rx, ry, rz] = right.0.data.0[0];
-    let [fx, fy, fz] = back.0.data.0[0];
-    let [ux, uy, uz] = up.0.data.0[0];
-
-    let tx = dot(eye, right);
-    let ty = dot(eye, up);
-    let tz = dot(eye, back * -1);
+    let tx = -dot(x_axis, eye);
+    let ty = -dot(y_axis, eye);
+    let tz = -dot(z_axis, eye   );
 
     Mat4::_new(
-        rx, ry, rz, -tx,
-        ux, uy, uz, -ty,
-        fx, fy, fz, -tz,
+        x_axis.x(), x_axis.y(), x_axis.z(), tx,
+        y_axis.x(), y_axis.y(), y_axis.z(), ty,
+        z_axis.x(), z_axis.y(), z_axis.z(), tz,
         0.0, 0.0, 0.0, 1.0
     )
 }

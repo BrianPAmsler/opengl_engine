@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign}};
+use std::{fmt::Debug, ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign}};
 
 use multi_impl::multi_impl;
 use nalgebra::{Matrix2, Vector2};

@@ -3,7 +3,7 @@ use std::{fmt::Debug, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub,
 use multi_impl::multi_impl;
 use nalgebra::Vector4;
 
-use crate::{inner_matrix::InnerMatrix, matrix_arithmetic, private::Seal, GLScalar, Make};
+use crate::{inner_matrix::InnerMatrix, vector_arithmetic, private::Seal, GLScalar, Make};
 
 use super::{Vec2, Vec3};
 
@@ -26,7 +26,7 @@ impl Vec4 {
     }
 }
 
-matrix_arithmetic!(Vec4);
+vector_arithmetic!(Vec4);
 
 impl Seal for Vec4 {}
 

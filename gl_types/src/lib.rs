@@ -43,7 +43,7 @@ impl GLScalar for u64 {}
 impl GLScalar for f32 {}
 impl GLScalar for f64 {}
 
-macro_rules! matrix_arithmetic {
+macro_rules! vector_arithmetic {
     ($t:tt) => {
         impl Add for $t {
             type Output = Self;
@@ -165,4 +165,113 @@ macro_rules! matrix_arithmetic {
     };
 }
 
+macro_rules! matrix_arithmetic {
+    ($t:tt) => {
+        impl Add for $t {
+            type Output = Self;
+        
+            fn add(self, rhs: Self) -> Self::Output {
+                Self(self.0 + rhs.0)
+            }
+        }
+        
+        impl Sub for $t {
+            type Output = Self;
+        
+            fn sub(self, rhs: Self) -> Self::Output {
+                Self(self.0 - rhs.0)
+            }
+        }
+        
+        impl Mul for $t {
+            type Output = Self;
+        
+            fn mul(self, rhs: Self) -> Self::Output {
+                Self(self.0 * rhs.0)
+            }
+        }
+        
+        impl AddAssign for $t {
+            fn add_assign(&mut self, rhs: Self) {
+                self.0 += rhs.0;
+            }
+        }
+        
+        impl SubAssign for $t {
+            fn sub_assign(&mut self, rhs: Self) {
+                self.0 -= rhs.0;
+            }
+        }
+        
+        impl MulAssign for $t {
+            fn mul_assign(&mut self, rhs: Self) {
+                self.0 *= rhs.0;
+            }
+        }
+        
+        // Scalar-Vector Operators
+        
+        impl<T: GLScalar> Add<T> for $t {
+            type Output = Self;
+        
+            fn add(self, rhs: T) -> Self::Output {
+                let rhs: f32 = rhs.as_();
+                Self(self.0.add_scalar(rhs))
+            }
+        }
+        
+        impl<T: GLScalar> Sub<T> for $t {
+            type Output = Self;
+        
+            fn sub(self, rhs: T) -> Self::Output {
+                let rhs: f32 = rhs.as_();
+                Self(self.0.add_scalar(-rhs))
+            }
+        }
+        
+        impl<T: GLScalar> Mul<T> for $t {
+            type Output = Self;
+        
+            fn mul(self, rhs: T) -> Self::Output {
+                let rhs: f32 = rhs.as_();
+                Self(self.0 * rhs)
+            }
+        }
+        
+        impl<T: GLScalar> Div<T> for $t {
+            type Output = Self;
+        
+            fn div(self, rhs: T) -> Self::Output {
+                let rhs: f32 = rhs.as_();
+                Self(self.0 / rhs)
+            }
+        }
+        
+        multi_impl! (Add<$t> for (i32, u32, i64, u64, f32, f64) {
+            type Output = $t;
+        
+            fn add(self, rhs: $t) -> Self::Output {
+                rhs + self
+            }
+        });
+        
+        multi_impl! (Sub<$t> for (i32, u32, i64, u64, f32, f64) {
+            type Output = $t;
+        
+            fn sub(self, rhs: $t) -> Self::Output {
+                rhs + self
+            }
+        });
+        
+        multi_impl! (Mul<$t> for (i32, u32, i64, u64, f32, f64) {
+            type Output = $t;
+        
+            fn mul(self, rhs: $t) -> Self::Output {
+                rhs + self
+            }
+        });
+    };
+}
+
+pub(crate) use vector_arithmetic;
 pub(crate) use matrix_arithmetic;

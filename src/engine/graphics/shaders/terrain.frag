@@ -39,5 +39,6 @@ void main()
 
     vec3 final = diffuse + ambient + specular;
 
-    outColor = vec4(final, 1);
+    // outColor = vec4(final, 1);
+    outColor = vec4(1, 0, 0, 1);
 }

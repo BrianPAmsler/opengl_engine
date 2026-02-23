@@ -3,6 +3,8 @@
 layout(location = 0) in vec3 position;
 
 uniform mat4 vp;
+uniform mat4 a;
+uniform mat4 b;
 uniform uvec2 terrainDimensions;
 uniform float heightScale;
 
@@ -67,16 +69,17 @@ void main()
 
         float medianHeight = median(a, b, c, d) * heightScale;
 
-        outPosition += vec3(0, medianHeight, 0);
+        // outPosition += vec3(0, medianHeight, 0);
     } else {
         // Offset index based on the corner
         uvec2 offset = offsets[gl_VertexID];
 
         float height = texture(heightTex, uvFromIndex(cellIndex + offset)).r * heightScale;
 
-        outPosition += vec3(0, height, 0);
+        // outPosition += vec3(0, height, 0);
     }
 
-    gl_Position = vp * vec4(outPosition, 1);
+    gl_Position = a * b * vec4(position, 1);
     fragPos = outPosition;
+    color = vec3(1, 1, 1);
 }

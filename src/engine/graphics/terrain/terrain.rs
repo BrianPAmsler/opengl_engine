@@ -11,19 +11,19 @@ pub enum Corner {
 }
 
 pub struct TerrainCell<'a> {
-    top_left: &'a u8,
-    top_right: &'a u8,
-    bottom_left: &'a u8,
-    bottom_right: &'a u8,
-    color: &'a [u8; 3]
+    pub top_left: &'a u8,
+    pub top_right: &'a u8,
+    pub bottom_left: &'a u8,
+    pub bottom_right: &'a u8,
+    pub color: &'a [u8; 3]
 }
 
 pub struct TerrainCellMut<'a> {
-    top_left: &'a mut u8,
-    top_right: &'a mut u8,
-    bottom_left: &'a mut u8,
-    bottom_right: &'a mut u8,
-    color: &'a mut [u8; 3]
+    pub top_left: &'a mut u8,
+    pub top_right: &'a mut u8,
+    pub bottom_left: &'a mut u8,
+    pub bottom_right: &'a mut u8,
+    pub color: &'a mut [u8; 3]
 }
 
 pub struct Terrain {
@@ -65,7 +65,7 @@ impl Terrain {
     }
 
     pub fn get_cell<'a>(&'a self, x: u32, z: u32) -> Option<TerrainCell<'a>> {
-        if x > self.width || z > self.height {
+        if x >= self.width || z >= self.height {
             return None;
         }
 
@@ -89,24 +89,29 @@ impl Terrain {
     }
 
     pub fn get_cell_mut<'a>(&'a mut self, x: u32, z: u32) -> Option<TerrainCellMut<'a>> {
-        if x > self.width || z > self.height {
+        if x >= self.width || z >= self.height {
             return None;
         }
 
         let i = (x + z * self.width) as usize * 3;
         let color = (&mut self.color_data[i..i + 3]).try_into().unwrap();
 
+        let height_data_width = self.width + 1;
+
         // I wish rust had a smipler way of borrowing multiple elements mutably at the same time
         // It might be worth doing this using unsafe code to make it more readable
-        let (a, b) = self.height_data[..].split_at_mut(((z + 1) * self.width) as usize);
-        let current_row = &mut a[(z * self.width) as usize..(z * self.width) as usize + self.width as usize];
-        let next_row = &mut b[..self.width as usize];
+        let mid = ((z + 1) * height_data_width) as usize;
+        let (a, b) = self.height_data[..].split_at_mut(((z + 1) * height_data_width) as usize);
+        let range = (z * height_data_width) as usize..(z * height_data_width) as usize + height_data_width as usize;
+        let current_row = &mut a[range];
+        let range = ..height_data_width as usize;
+        let next_row = &mut b[range];
 
-        let (a, b) = next_row.split_at_mut((self.width + 1) as usize);
-        let (top_left, top_right) = (&mut a[self.width as usize], &mut b[0]);
+        let (a, b) = next_row.split_at_mut((x + 1) as usize);
+        let (top_left, top_right) = (&mut a[x as usize], &mut b[0]);
 
-        let (a, b) = current_row.split_at_mut((self.width + 1) as usize);
-        let (bottom_left, bottom_right) = (&mut a[self.width as usize], &mut b[0]);
+        let (a, b) = current_row.split_at_mut((x + 1) as usize);
+        let (bottom_left, bottom_right) = (&mut a[x as usize], &mut b[0]);
 
         Some(TerrainCellMut { top_left, top_right, bottom_left, bottom_right, color })
     }

@@ -143,15 +143,14 @@ impl Component for Renderer {
             self.rot_y += 0.5 * delta_time;
         }
 
-        let offset = vec3!(-f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
-        println!("{:?}", offset);
-        let mat = lookAt(self.position, self.position + offset, vec3!(0, 1, 0));
+        let offset = vec3!(f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
+        let mat = lookAt(self.position, self.sprite_position, vec3!(0, 1, 0));
 
         self.view_matrix = mat;
 
         gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(-1, 0, 0),
+            position: vec3!(0, 0, 0),
             anchor: vec2!(0.5, 0.5),
             dimensions: vec2!(1),
             sprite_id: 1,
@@ -163,7 +162,7 @@ impl Component for Renderer {
             sprite_id: 0,
         });
         self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
-        // self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
+        self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
 
         Ok(())   
     }
@@ -186,8 +185,9 @@ fn start_game() -> Result<()> {
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
-    let terrain = Terrain::new(gfx, 100, 100);
-    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(0, 0, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
+    let mut terrain = Terrain::new(gfx, 100, 100);
+    *terrain.get_cell_mut(1, 1).unwrap().color = [255, 0, 0];
+    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(0, 10, -10), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();
 

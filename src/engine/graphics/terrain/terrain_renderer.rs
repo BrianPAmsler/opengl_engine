@@ -1,6 +1,7 @@
 use gl_types::matrices::Mat4;
 use gl_types::vectors::Vec3;
 use gl46::{GL_TEXTURE_2D, GL_TEXTURE0, GL_TRIANGLES};
+use libc::AF_LOCAL;
 
 use crate::engine::graphics::terrain::Terrain;
 use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader, embed_shader_source};
@@ -47,6 +48,8 @@ pub struct TerrainRenderer {
     shader_program: ShaderProgram,
     mesh: BufferedMesh,
     vp_location: GlUniformLocation,
+    a_loc: GlUniformLocation,
+    b_loc: GlUniformLocation,
     terrain_dimensions_location: GlUniformLocation,
     height_scale_location: GlUniformLocation,
     view_pos_location: GlUniformLocation
@@ -70,6 +73,8 @@ impl TerrainRenderer {
         gfx.glUseProgram(shader_program.program());
 
         let vp_location = gfx.glGetUniformLocation(shader_program.program(), "vp");
+        let a_loc = gfx.glGetUniformLocation(shader_program.program(), "a");
+        let b_loc = gfx.glGetUniformLocation(shader_program.program(), "b");
         let terrain_dimensions_location = gfx.glGetUniformLocation(shader_program.program(), "terrainDimensions");
         let height_scale_location = gfx.glGetUniformLocation(shader_program.program(), "heightScale");
         let view_pos_location = gfx.glGetUniformLocation(shader_program.program(), "viewPos");
@@ -83,17 +88,20 @@ impl TerrainRenderer {
 
         let mesh = mesh.take();
 
-        Ok(TerrainRenderer { shader_program, mesh, vp_location, terrain_dimensions_location, height_scale_location, view_pos_location })
+        Ok(TerrainRenderer { shader_program, mesh, vp_location, terrain_dimensions_location, height_scale_location, view_pos_location, a_loc, b_loc })
     }
 
     pub fn render(&self, gfx: &Graphics, terrain: &mut Terrain, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
-        terrain.update_textures(gfx);
         gfx.glBindVertexArray(self.mesh.vao());
-        terrain.bind_textures(gfx);
+        gfx.glUseProgram(self.shader_program.program());
+        terrain.update_textures(gfx);
+        terrain.bind_textures(gfx); 
 
         // uniform mat4 vp;
         let vp = projection_matrix * view_matrix;
-        gfx.glUniformMatrix4f(self.vp_location, true, &vp);
+        gfx.glUniformMatrix4f(self.vp_location, false, &vp);
+        gfx.glUniformMatrix4f(self.a_loc, false, &projection_matrix);
+        gfx.glUniformMatrix4f(self.b_loc, false, &view_matrix);
         // uniform uvec2 terrainDimensions;
         gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width(), terrain.height());
         // uniform float heightScale;
@@ -101,7 +109,7 @@ impl TerrainRenderer {
         // uniform vec3 viewPos;
         gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
 
-        gfx.glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width() * terrain.height());
+        gfx.glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, 1);
 
         // todo!()
     }

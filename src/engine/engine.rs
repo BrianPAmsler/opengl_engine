@@ -1,4 +1,4 @@
-use glfw::{WindowEvent, Action};
+use glfw::{Action, Key, WindowEvent};
 
 use crate::engine::errors::{Result, Error, GraphicsError};
 

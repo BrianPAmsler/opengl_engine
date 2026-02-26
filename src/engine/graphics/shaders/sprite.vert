@@ -51,16 +51,24 @@ void main()
 
     vec3 translation = sprite.position - vec3(anchor * scale, 0);
 
-    mat4 inverseView = mat4(inverse(mat3(view)));
+    mat4 scaleMatrix = transpose(mat4(
+        scale.x,    0,          0,  0,
+        0,          scale.y,    0,  0,
+        0,          0,          1,  0,
+        0,          0,          0,  1
+    ));
 
-    mat4 model = transpose(mat4(
-        scale.x,    0,          0,  translation.x,
-        0,          scale.y,    0,  translation.y,
+    // Inverse of view matrix
+    mat4 rotationMatrix = mat4(inverse(mat3(view)));
+
+    mat4 translationMatrix = transpose(mat4(
+        1,          0,          0,  translation.x,
+        0,          1,          0,  translation.y,
         0,          0,          1,  translation.z,
         0,          0,          0,  1
     ));
 
-    // model = inverseView * model;
+    mat4 model = translationMatrix * rotationMatrix * scaleMatrix;
 
     gl_Position = projection * view * model * vec4(position, 1);
 

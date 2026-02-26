@@ -3,8 +3,8 @@
 mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER};
-use gl_types::{angle_trig::radians, clip_space::perspective, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER, GL_UNPACK_ALIGNMENT};
+use gl_types::{angle_trig::radians, clip_space::{ortho, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use regex::Regex;
 
@@ -80,8 +80,8 @@ impl Component for Renderer {
 
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
-        // self.sprite_renderer.update_projection_matrix(ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 100.0));
-        self.projection_matrix = perspective(radians(90.0), 2.0 / 1.5, 0.1, 100.0);
+        // self.projection_matrix  = ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 1000.0);
+        self.projection_matrix = perspective(radians(90.0), 2.0 / 1.5, 0.1, 1000.0);
 
         self.sprite_renderer.update_sprite_map(gfx);
         gfx.glEnable(GL_CULL_FACE);
@@ -143,8 +143,30 @@ impl Component for Renderer {
             self.rot_y += 0.5 * delta_time;
         }
 
+        let change = if input.get_key_state(Key::LeftShift).is_down {
+            -1
+        } else {
+            1
+        };
+        // let mut cell = self.terrain.get_cell_mut(2, 2).unwrap();
+        // if input.get_key_state(Key::Kp1).press {
+        //     *cell.bottom_left = cell.bottom_left.saturating_add_signed(change);
+        // }
+        // if input.get_key_state(Key::Kp2).press {
+        //     *cell.bottom_right = cell.bottom_right.saturating_add_signed(change);
+        // }
+        // if input.get_key_state(Key::Kp4).press {
+        //     let mut top_left = cell.top_left();
+        //     *top_left.height() = top_left.height().saturating_add_signed(change);
+        // }
+        // if input.get_key_state(Key::Kp5).press {
+        //     *cell.top_right = cell.top_right.saturating_add_signed(change);
+        // }
+
+        // println!("Cell:\t{}, {}\n\t{}, {}", cell.top_left, cell.top_right, cell.bottom_left, cell.bottom_right);
+
         let offset = vec3!(f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
-        let mat = lookAt(self.position, self.sprite_position, vec3!(0, 1, 0));
+        let mat = lookAt(self.position, vec3!(1, 0, 1), vec3!(0, 1, 0));
 
         self.view_matrix = mat;
 
@@ -161,7 +183,7 @@ impl Component for Renderer {
             dimensions: vec2!(2),
             sprite_id: 0,
         });
-        self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
+        // self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
         self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
 
         Ok(())   
@@ -181,13 +203,43 @@ fn start_game() -> Result<()> {
     
     let gfx = engine.get_graphics()?;
 
+
+    unsafe { gfx.glPixelStorei(GL_UNPACK_ALIGNMENT, 1) };
+
     let sprite_map = Image::load_from_file("sprite_sheet.png")?;
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
-    let mut terrain = Terrain::new(gfx, 100, 100);
-    *terrain.get_cell_mut(1, 1).unwrap().color = [255, 0, 0];
-    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(0, 10, -10), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
+    let mut terrain = Terrain::new(gfx, 200, 200);
+    for x in 0..terrain.width() {
+        for z in 0..terrain.height() {
+            let mut cell = terrain.get_cell_mut(x, z).unwrap();
+            *cell.top_left().color() = [63, 155, 11];
+
+            let mut cell = terrain.get_cell_mut(x, z).unwrap();
+            *cell.bottom_left().color() = [63, 155, 11];
+
+            let mut cell = terrain.get_cell_mut(x, z).unwrap();
+            *cell.top_right().color() = [63, 155, 11];
+
+            let mut cell = terrain.get_cell_mut(x, z).unwrap();
+            *cell.bottom_right().color() = [63, 155, 11];
+        }
+    }
+
+    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
+    *cell.bottom_left().color() = [155, 118, 83];
+
+    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
+    *cell.bottom_right().color() = [155, 118, 83];
+
+    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
+    *cell.top_left().color() = [155, 118, 83];
+
+    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
+    *cell.top_right().color() = [155, 118, 83];
+
+    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();
 

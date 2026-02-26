@@ -1,12 +1,12 @@
 #version 430 core
 
-uniform float ambientIntensity = 0.1;
+uniform float ambientIntensity = 0.2;
 uniform float specularStrength = 0.5;
 uniform float shininess = 32;
-uniform vec3 lightPos = vec3(-1, 1, -1);
+uniform vec3 globalLightDir = vec3(-1, -1, -1);
 uniform vec3 viewPos;
 
-in vec3 color;
+smooth in vec3 color;
 in vec3 fragPos;
 
 out vec4 outColor;
@@ -19,16 +19,16 @@ void main()
     vec3 tangentY = dFdy(fragPos);
 
     // The cross product of the tangents gives the surface normal
-    vec3 normal = normalize(cross(tangentX, tangentY));
+    vec3 normal = normalize(cross(tangentY, tangentX));
 
     // Diffuse
-    vec3 lightDir = normalize(lightPos - fragPos);  
+    vec3 lightDir = normalize(-globalLightDir);  
 
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * color;
 
     // Ambient
-    vec3 ambient = vec3(ambientIntensity);
+    vec3 ambient = vec3(ambientIntensity) * color;
 
     // Specular
     vec3 viewDir = normalize(viewPos - fragPos);
@@ -39,6 +39,5 @@ void main()
 
     vec3 final = diffuse + ambient + specular;
 
-    // outColor = vec4(final, 1);
-    outColor = vec4(1, 0, 0, 1);
+    outColor = vec4(final, 1);
 }

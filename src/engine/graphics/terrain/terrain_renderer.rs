@@ -48,8 +48,6 @@ pub struct TerrainRenderer {
     shader_program: ShaderProgram,
     mesh: BufferedMesh,
     vp_location: GlUniformLocation,
-    a_loc: GlUniformLocation,
-    b_loc: GlUniformLocation,
     terrain_dimensions_location: GlUniformLocation,
     height_scale_location: GlUniformLocation,
     view_pos_location: GlUniformLocation
@@ -73,8 +71,6 @@ impl TerrainRenderer {
         gfx.glUseProgram(shader_program.program());
 
         let vp_location = gfx.glGetUniformLocation(shader_program.program(), "vp");
-        let a_loc = gfx.glGetUniformLocation(shader_program.program(), "a");
-        let b_loc = gfx.glGetUniformLocation(shader_program.program(), "b");
         let terrain_dimensions_location = gfx.glGetUniformLocation(shader_program.program(), "terrainDimensions");
         let height_scale_location = gfx.glGetUniformLocation(shader_program.program(), "heightScale");
         let view_pos_location = gfx.glGetUniformLocation(shader_program.program(), "viewPos");
@@ -88,7 +84,7 @@ impl TerrainRenderer {
 
         let mesh = mesh.take();
 
-        Ok(TerrainRenderer { shader_program, mesh, vp_location, terrain_dimensions_location, height_scale_location, view_pos_location, a_loc, b_loc })
+        Ok(TerrainRenderer { shader_program, mesh, vp_location, terrain_dimensions_location, height_scale_location, view_pos_location })
     }
 
     pub fn render(&self, gfx: &Graphics, terrain: &mut Terrain, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
@@ -100,16 +96,14 @@ impl TerrainRenderer {
         // uniform mat4 vp;
         let vp = projection_matrix * view_matrix;
         gfx.glUniformMatrix4f(self.vp_location, false, &vp);
-        gfx.glUniformMatrix4f(self.a_loc, false, &projection_matrix);
-        gfx.glUniformMatrix4f(self.b_loc, false, &view_matrix);
         // uniform uvec2 terrainDimensions;
         gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width(), terrain.height());
         // uniform float heightScale;
-        gfx.glUniform1f(self.height_scale_location, 255.0);
+        gfx.glUniform1f(self.height_scale_location, 50.0);
         // uniform vec3 viewPos;
         gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
 
-        gfx.glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, 1);
+        gfx.glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width() * terrain.height());
 
         // todo!()
     }

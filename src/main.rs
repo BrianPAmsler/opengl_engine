@@ -2,10 +2,13 @@
 
 mod engine;
 
+use std::fs::File;
+
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER, GL_UNPACK_ALIGNMENT};
 use gl_types::{angle_trig::radians, clip_space::{ortho, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
+use image::imageops;
 use regex::Regex;
 
 use crate::engine::graphics::terrain::{Terrain, terrain_renderer::{self, TerrainRenderer}};
@@ -207,38 +210,13 @@ fn start_game() -> Result<()> {
     unsafe { gfx.glPixelStorei(GL_UNPACK_ALIGNMENT, 1) };
 
     let sprite_map = Image::load_from_file("sprite_sheet.png")?;
+    let grid = image::ImageReader::open("ground.png")?.decode()?;
+    let mut grid = grid.to_rgb8();
+    imageops::flip_vertical_in_place(&mut grid);
 
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
-    let mut terrain = Terrain::new(gfx, 200, 200);
-    for x in 0..terrain.width() {
-        for z in 0..terrain.height() {
-            let mut cell = terrain.get_cell_mut(x, z).unwrap();
-            *cell.top_left().color() = [63, 155, 11];
-
-            let mut cell = terrain.get_cell_mut(x, z).unwrap();
-            *cell.bottom_left().color() = [63, 155, 11];
-
-            let mut cell = terrain.get_cell_mut(x, z).unwrap();
-            *cell.top_right().color() = [63, 155, 11];
-
-            let mut cell = terrain.get_cell_mut(x, z).unwrap();
-            *cell.bottom_right().color() = [63, 155, 11];
-        }
-    }
-
-    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
-    *cell.bottom_left().color() = [155, 118, 83];
-
-    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
-    *cell.bottom_right().color() = [155, 118, 83];
-
-    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
-    *cell.top_left().color() = [155, 118, 83];
-
-    let mut cell = terrain.get_cell_mut(1, 1).unwrap();
-    *cell.top_right().color() = [155, 118, 83];
-
+    let terrain = Terrain::from_raw(gfx, vec![0; 201 * 201].into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
     let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();

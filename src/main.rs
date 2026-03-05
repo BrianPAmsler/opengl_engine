@@ -206,9 +206,6 @@ fn start_game() -> Result<()> {
     
     let gfx = engine.get_graphics()?;
 
-
-    unsafe { gfx.glPixelStorei(GL_UNPACK_ALIGNMENT, 1) };
-
     let sprite_map = Image::load_from_file("sprite_sheet.png")?;
     let grid = image::ImageReader::open("ground.png")?.decode()?;
     let mut grid = grid.to_rgb8();

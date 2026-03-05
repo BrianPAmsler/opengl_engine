@@ -1,5 +1,6 @@
 use std::{cell::{Ref, RefCell, RefMut}, collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, ops::{Deref, Not}, os::raw::c_void};
 
+use gl46::GL_UNPACK_ALIGNMENT;
 use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Monitor};
 
 use libc::strlen;
@@ -141,6 +142,8 @@ impl Graphics {
         })?;
 
         let glfw = RefCell::new(glfw);
+
+        unsafe { gl.glPixelStorei(GL_UNPACK_ALIGNMENT, 1) };
 
         Ok(Graphics { gl, glfw, window, events })
     }

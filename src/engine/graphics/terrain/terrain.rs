@@ -1,6 +1,6 @@
 use gl46::{GL_R8, GL_RED, GL_RGB, GL_RGB8, GL_TEXTURE_2D, GL_TEXTURE0, GL_TEXTURE1, GL_UNPACK_ALIGNMENT};
 
-use crate::engine::graphics::{Graphics, Texture, Vertex};
+use crate::engine::graphics::{Graphics, Texture, Vertex, builder::{self, TextureBuilder}};
 
 pub enum Corner {
     TopLeft,
@@ -94,8 +94,14 @@ impl Terrain {
     } 
 
     pub unsafe fn from_raw_unchecked(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
-        let height_texture = unsafe { Texture::from_raw_pixels(gfx, &height_data, width + 1, height + 1, GL_RED, GL_RED) };
-        let color_texture = unsafe { Texture::from_raw_pixels(gfx, &color_data, width * 2, height * 2, GL_RGB, GL_RGB) };
+        let height_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&height_data, width + 1, height + 1, GL_RED, GL_RED) }
+            .min_filter(builder::GLTextureMinFilter::Nearest)
+            .mag_filter(builder::GLTextureMagFilter::Nearest)
+            .finish(gfx);
+        let color_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&color_data, width * 2, height * 2, GL_RGB, GL_RGB) }
+            .min_filter(builder::GLTextureMinFilter::Nearest)
+            .mag_filter(builder::GLTextureMagFilter::Nearest)
+            .finish(gfx);
 
         Terrain { height_data, color_data, width, height, height_texture, color_texture, height_dirty: false, color_dirty: false }
     }

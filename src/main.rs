@@ -2,16 +2,14 @@
 
 mod engine;
 
-use std::fs::File;
-
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_CULL_FACE, GL_DEPTH_BUFFER_BIT, GL_DEPTH_TEST, GL_GREATER, GL_UNPACK_ALIGNMENT};
+use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
 use gl_types::{angle_trig::radians, clip_space::{ortho, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::imageops;
 use regex::Regex;
 
-use crate::engine::graphics::terrain::{Terrain, terrain_renderer::{self, TerrainRenderer}};
+use crate::engine::graphics::{gl_enums::{DepthFunction, EnableCap}, terrain::{Terrain, terrain_renderer::{TerrainRenderer}}};
 
 
 #[derive(Clone, Default)]
@@ -87,9 +85,9 @@ impl Component for Renderer {
         self.projection_matrix = perspective(radians(90.0), 2.0 / 1.5, 0.1, 1000.0);
 
         self.sprite_renderer.update_sprite_map(gfx);
-        gfx.glEnable(GL_CULL_FACE);
-        gfx.glEnable(GL_DEPTH_TEST);
-        gfx.glDepthFunc(GL_GREATER);
+        gfx.glEnable(EnableCap::GL_CULL_FACE);
+        gfx.glEnable(EnableCap::GL_DEPTH_TEST);
+        gfx.glDepthFunc(DepthFunction::GL_GREATER);
         gfx.glClearDepth(0.0);
         gfx.glCullFace(GL_BACK);
 

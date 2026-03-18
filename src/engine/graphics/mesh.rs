@@ -1,4 +1,4 @@
-use gl46::GLenum;
+use crate::engine::graphics::gl_enums::VertexAttribPointerType;
 
 use super::{GLType, Normal, RGBColor, Tangent, Vertex, UV};
 
@@ -26,7 +26,7 @@ impl<T: GLType, const S: usize, const N: bool> CustomAttribute<T, S, N> {
 #[derive(Clone)]
 pub struct CustomAttributeData {
     data: Box<[u8]>,
-    type_: GLenum,
+    type_: VertexAttribPointerType,
     size: usize,
     len: usize,
     normalized: bool
@@ -75,7 +75,7 @@ impl CustomAttributeData {
         &self.data
     }
 
-    pub fn type_(&self) -> GLenum {
+    pub fn type_(&self) -> VertexAttribPointerType {
         self.type_
     }
 

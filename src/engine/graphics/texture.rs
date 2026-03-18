@@ -1,4 +1,4 @@
-use gl46::{GL_CLAMP_TO_EDGE, GL_LINEAR, GL_NEAREST, GL_REPEAT, GL_RGBA, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_UNSIGNED_BYTE, InternalFormat, PixelFormat};
+use crate::engine::graphics::gl_enums::{PixelFormat, PixelType, TextureTarget};
 
 use super::Graphics;
 
@@ -11,9 +11,9 @@ pub struct Texture {
 impl Texture {
     pub unsafe fn update_texture(&self, gfx: &Graphics, texture_data: &[u8], format: PixelFormat) {
 
-        gfx.glBindTexture(GL_TEXTURE_2D, self.texture_id);
-        gfx.glTextureSubImage2D(self.texture_id, 0, 0, 0, self.width, self.height, format, GL_UNSIGNED_BYTE, texture_data);
-        gfx.glBindTexture(GL_TEXTURE_2D, 0);
+        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.texture_id);
+        gfx.glTextureSubImage2D(self.texture_id, 0, 0, 0, self.width, self.height, format, PixelType::GL_UNSIGNED_BYTE, texture_data);
+        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, 0);
     }
 
     pub fn texture_id(&self) -> u32 {
@@ -30,34 +30,7 @@ impl Texture {
 }
 
 pub mod builder {
-    use gl46::{GL_RGBA, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_UNSIGNED_BYTE, InternalFormat, PixelFormat};
-
-    use crate::engine::graphics::{Graphics, Texture};
-
-    #[repr(u32)]
-    pub enum GLTextureMinFilter {
-        Nearest = gl46::GL_NEAREST.0,
-        Linear = gl46::GL_LINEAR.0,
-        NearestMipmapNearest = gl46::GL_NEAREST_MIPMAP_NEAREST.0,
-        LinearMipmapNearest = gl46::GL_LINEAR_MIPMAP_NEAREST.0,
-        NearestMipmapLinear = gl46::GL_NEAREST_MIPMAP_LINEAR.0,
-        LinearMipmapLinear = gl46::GL_LINEAR_MIPMAP_LINEAR.0
-    }
-
-    #[repr(u32)]
-    pub enum GLTextureMagFilter {
-        Nearest = gl46::GL_NEAREST.0,
-        Linear = gl46::GL_LINEAR.0
-    }
-
-    #[repr(u32)]
-    pub enum GLTextureWrap {
-        ClampToEdge = gl46::GL_CLAMP_TO_EDGE.0,
-        ClampToBorder = gl46::GL_CLAMP_TO_BORDER.0,
-        MirroredRepeat = gl46::GL_MIRRORED_REPEAT.0,
-        Repeat = gl46::GL_REPEAT.0, 
-        MirrorClampToEdge = gl46::GL_MIRROR_CLAMP_TO_EDGE.0
-    }
+    use crate::engine::graphics::{Graphics, Texture, gl_enums::{InternalFormat, PixelFormat, PixelType, TextureMagFilter, TextureMinFilter, TextureParameterName, TextureTarget, TextureWrapMode}};
 
     pub struct TextureBuilder<'a> {
         data: &'a [u8],
@@ -65,49 +38,49 @@ pub mod builder {
         height: u32,
         internal_format: InternalFormat,
         format: PixelFormat,
-        wrap_s: GLTextureWrap,
-        wrap_t: GLTextureWrap,
-        min_filter: GLTextureMinFilter,
-        mag_filter: GLTextureMagFilter,
+        wrap_s: TextureWrapMode,
+        wrap_t: TextureWrapMode,
+        min_filter: TextureMinFilter,
+        mag_filter: TextureMagFilter,
     }
 
     impl<'a> TextureBuilder<'a> {
-        pub unsafe fn from_raw_pixels_unchecked(data: &'a [u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder {
+        pub unsafe fn from_raw_pixels_unchecked(data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder<'_> {
             TextureBuilder {
                 data,
                 width,
                 height,
                 internal_format,
                 format,
-                wrap_s: GLTextureWrap::Repeat,
-                wrap_t: GLTextureWrap::Repeat,
-                min_filter: GLTextureMinFilter::Linear,
-                mag_filter: GLTextureMagFilter::Linear,
+                wrap_s: TextureWrapMode::GL_REPEAT,
+                wrap_t: TextureWrapMode::GL_REPEAT,
+                min_filter: TextureMinFilter::GL_LINEAR,
+                mag_filter: TextureMagFilter::GL_LINEAR,
             }
         }
 
-        pub fn from_raw_pixels(data: &'a [u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder {
+        pub fn from_raw_pixels(data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder<'_> {
             let _ignore = (data, width, height, internal_format, format);
             let todo = todo!("Cannot be implemented until pixel format enums are properly wrapped.");
             // unsafe { Self::from_raw_data(data, width, height) }
         }
 
-        pub fn wrap_s(mut self, wrap_s: GLTextureWrap) -> Self {
+        pub fn wrap_s(mut self, wrap_s: TextureWrapMode) -> Self {
             self.wrap_s = wrap_s;
             self
         }
 
-        pub fn wrap_t(mut self, wrap_t: GLTextureWrap) -> Self {
+        pub fn wrap_t(mut self, wrap_t: TextureWrapMode) -> Self {
             self.wrap_t = wrap_t;
             self
         }
 
-        pub fn min_filter(mut self, min_filter: GLTextureMinFilter) -> Self {
+        pub fn min_filter(mut self, min_filter: TextureMinFilter) -> Self {
             self.min_filter = min_filter;
             self
         }
 
-        pub fn mag_filter(mut self, mag_filter: GLTextureMagFilter) -> Self {
+        pub fn mag_filter(mut self, mag_filter: TextureMagFilter) -> Self {
             self.mag_filter = mag_filter;
             self
         }
@@ -119,18 +92,18 @@ pub mod builder {
             gfx.glGenTexture(&mut texture_id);
 
             if data.len() > 0 {
-                gfx.glBindTexture(GL_TEXTURE_2D, texture_id);
+                gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, texture_id);
 
-                gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl46::GLenum(wrap_s as u32));	
-                gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl46::GLenum(wrap_t as u32));
-                gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl46::GLenum(min_filter as u32));
-                gfx.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl46::GLenum(mag_filter as u32));
+                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_WRAP_S, gl46::GLenum(wrap_s as u32));	
+                gfx.glTexParameteri( TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_WRAP_T, gl46::GLenum(wrap_t as u32));
+                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_MIN_FILTER, gl46::GLenum(min_filter as u32));
+                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_MAG_FILTER, gl46::GLenum(mag_filter as u32));
 
-                unsafe { gfx.glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, data) };
+                unsafe { gfx.glTexImage2D(TextureTarget::GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, PixelType::GL_UNSIGNED_BYTE, data) };
                 // TODO: mipmaps
                 // gfx.glGenerateMipmap(GL_TEXTURE_2D);
 
-                gfx.glBindTexture(GL_TEXTURE_2D, 0);
+                gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, 0);
             }
 
             Texture { texture_id, width, height }

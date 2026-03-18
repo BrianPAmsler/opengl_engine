@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_upper_case_globals)]
 
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TraceMaskMESA {
     GL_TRACE_OPERATIONS_BIT_MESA = 0x00000001,
     GL_TRACE_PRIMITIVES_BIT_MESA = 0x00000002,
@@ -11,6 +12,7 @@ pub enum TraceMaskMESA {
     GL_TRACE_ALL_BITS_MESA = 0x0000FFFF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureMagFilter {
     GL_NEAREST = 0x00002600,
     GL_LINEAR = 0x00002601,
@@ -26,16 +28,19 @@ pub enum TextureMagFilter {
     GL_PIXEL_TEX_GEN_Q_FLOOR_SGIX = 0x00008186,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MinmaxTarget {
     GL_MINMAX = 0x0000802E,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelStoreResampleMode {
     GL_RESAMPLE_DECIMATE_SGIX = 0x00008430,
     GL_RESAMPLE_REPLICATE_SGIX = 0x00008433,
     GL_RESAMPLE_ZERO_FILL_SGIX = 0x00008434,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SeparableTargetEXT {
     GL_SEPARABLE_2D = 0x00008012,
 }
@@ -43,6 +48,7 @@ impl SeparableTargetEXT {
     pub const GL_SEPARABLE_2D_EXT: SeparableTargetEXT = SeparableTargetEXT::GL_SEPARABLE_2D;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderColorModMaskATI {
     GL_2X_BIT_ATI = 0x00000001,
     GL_COMP_BIT_ATI = 0x00000002,
@@ -50,27 +56,44 @@ pub enum FragmentShaderColorModMaskATI {
     GL_BIAS_BIT_ATI = 0x00000008,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PreserveModeATI {
     GL_PRESERVE_ATI = 0x00008762,
     GL_DISCARD_ATI = 0x00008763,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MemoryObjectParameterName {
     GL_DEDICATED_MEMORY_OBJECT_EXT = 0x00009581,
     GL_PROTECTED_MEMORY_OBJECT_EXT = 0x0000959B,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FenceConditionNV {
     GL_ALL_COMPLETED_NV = 0x000084F2,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GraphicsResetStatus {
     GL_NO_ERROR = 0x00000000,
     GL_GUILTY_CONTEXT_RESET = 0x00008253,
     GL_INNOCENT_CONTEXT_RESET = 0x00008254,
     GL_UNKNOWN_CONTEXT_RESET = 0x00008255,
 }
+impl TryFrom<u32> for GraphicsResetStatus {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0x00000000 | 0x00008253 | 0x00008254 | 0x00008255 => {
+                Ok(unsafe { std::mem::transmute(value) })
+            }
+            _ => Err(()),
+        }
+    }
+}
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerRegisterNV {
     GL_TEXTURE0_ARB = 0x000084C0,
     GL_TEXTURE1_ARB = 0x000084C1,
@@ -81,6 +104,7 @@ pub enum CombinerRegisterNV {
     GL_DISCARD_NV = 0x00008530,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ExternalHandleType {
     GL_HANDLE_TYPE_OPAQUE_FD_EXT = 0x00009586,
     GL_HANDLE_TYPE_OPAQUE_WIN32_EXT = 0x00009587,
@@ -92,6 +116,7 @@ pub enum ExternalHandleType {
     GL_HANDLE_TYPE_D3D12_FENCE_EXT = 0x00009594,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum AlphaFunction {
     GL_NEVER = 0x00000200,
     GL_LESS = 0x00000201,
@@ -103,6 +128,7 @@ pub enum AlphaFunction {
     GL_ALWAYS = 0x00000207,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelMap {
     GL_PIXEL_MAP_I_TO_I = 0x00000C70,
     GL_PIXEL_MAP_S_TO_S = 0x00000C71,
@@ -116,6 +142,7 @@ pub enum PixelMap {
     GL_PIXEL_MAP_A_TO_A = 0x00000C79,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelCopyType {
     GL_COLOR = 0x00001800,
     GL_DEPTH = 0x00001801,
@@ -127,6 +154,7 @@ impl PixelCopyType {
     pub const GL_STENCIL_EXT: PixelCopyType = PixelCopyType::GL_STENCIL;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SubroutineParameterName {
     GL_UNIFORM_SIZE = 0x00008A38,
     GL_UNIFORM_NAME_LENGTH = 0x00008A39,
@@ -134,6 +162,7 @@ pub enum SubroutineParameterName {
     GL_COMPATIBLE_SUBROUTINES = 0x00008E4B,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShaderBinaryFormat {
     GL_SGX_BINARY_IMG = 0x00008C0A,
     GL_MALI_SHADER_BINARY_ARM = 0x00008F60,
@@ -144,6 +173,7 @@ pub enum ShaderBinaryFormat {
     GL_SHADER_BINARY_HUAWEI = 0x00009770,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum RenderbufferTarget {
     GL_RENDERBUFFER = 0x00008D41,
 }
@@ -151,6 +181,7 @@ impl RenderbufferTarget {
     pub const GL_RENDERBUFFER_OES: RenderbufferTarget = RenderbufferTarget::GL_RENDERBUFFER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum UseProgramStageMask {
     GL_VERTEX_SHADER_BIT = 0x00000001,
     GL_FRAGMENT_SHADER_BIT = 0x00000002,
@@ -186,6 +217,7 @@ impl UseProgramStageMask {
     pub const GL_ALL_SHADER_BITS_EXT: UseProgramStageMask = UseProgramStageMask::GL_ALL_SHADER_BITS;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum RenderbufferParameterName {
     GL_RENDERBUFFER_COVERAGE_SAMPLES_NV = 0x00008CAB,
     GL_RENDERBUFFER_WIDTH = 0x00008D42,
@@ -250,6 +282,7 @@ impl RenderbufferParameterName {
         RenderbufferParameterName::GL_RENDERBUFFER_STENCIL_SIZE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribPointerPropertyARB {
     GL_VERTEX_ATTRIB_ARRAY_POINTER = 0x00008645,
 }
@@ -258,6 +291,7 @@ impl VertexAttribPointerPropertyARB {
         VertexAttribPointerPropertyARB::GL_VERTEX_ATTRIB_ARRAY_POINTER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderGenericSourceATI {
     GL_ZERO = 0x00000000,
     GL_ONE = 0x00000001,
@@ -335,6 +369,7 @@ impl FragmentShaderGenericSourceATI {
         FragmentShaderGenericSourceATI::GL_PRIMARY_COLOR;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TransformFeedbackTokenNV {
     GL_NEXT_BUFFER_NV = 0xFFFFFFFE,
     GL_SKIP_COMPONENTS4_NV = 0xFFFFFFFD,
@@ -343,6 +378,7 @@ pub enum TransformFeedbackTokenNV {
     GL_SKIP_COMPONENTS1_NV = 0xFFFFFFFA,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ContainerType {
     GL_PROGRAM_OBJECT_ARB = 0x00008B40,
 }
@@ -350,6 +386,7 @@ impl ContainerType {
     pub const GL_PROGRAM_OBJECT_EXT: ContainerType = ContainerType::GL_PROGRAM_OBJECT_ARB;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum WeightPointerTypeARB {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -361,10 +398,12 @@ pub enum WeightPointerTypeARB {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BindTransformFeedbackTarget {
     GL_TRANSFORM_FEEDBACK = 0x00008E22,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShadingRateQCOM {
     GL_SHADING_RATE_1X1_PIXELS_QCOM = 0x000096A6,
     GL_SHADING_RATE_1X2_PIXELS_QCOM = 0x000096A7,
@@ -377,6 +416,7 @@ pub enum ShadingRateQCOM {
     GL_SHADING_RATE_4X4_PIXELS_QCOM = 0x000096AE,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ErrorCode {
     GL_NO_ERROR = 0x00000000,
     GL_INVALID_ENUM = 0x00000500,
@@ -396,12 +436,27 @@ impl ErrorCode {
         ErrorCode::GL_INVALID_FRAMEBUFFER_OPERATION;
     pub const GL_TABLE_TOO_LARGE: ErrorCode = ErrorCode::GL_TABLE_TOO_LARGE_EXT;
 }
+impl TryFrom<u32> for ErrorCode {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0x00000000 | 0x00000500 | 0x00000501 | 0x00000502 | 0x00000503 | 0x00000504
+            | 0x00000505 | 0x00000506 | 0x00008031 | 0x00008065 => {
+                Ok(unsafe { std::mem::transmute(value) })
+            }
+            _ => Err(()),
+        }
+    }
+}
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TransformFeedbackBufferMode {
     GL_INTERLEAVED_ATTRIBS = 0x00008C8C,
     GL_SEPARATE_ATTRIBS = 0x00008C8D,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureCompareMode {
     GL_NONE = 0x00000000,
     GL_COMPARE_R_TO_TEXTURE = 0x0000884E,
@@ -411,6 +466,7 @@ impl TextureCompareMode {
         TextureCompareMode::GL_COMPARE_R_TO_TEXTURE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MaterialParameter {
     GL_AMBIENT = 0x00001200,
     GL_DIFFUSE = 0x00001201,
@@ -421,11 +477,13 @@ pub enum MaterialParameter {
     GL_COLOR_INDEXES = 0x00001603,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ListMode {
     GL_COMPILE = 0x00001300,
     GL_COMPILE_AND_EXECUTE = 0x00001301,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorTableTargetSGI {
     GL_TEXTURE_COLOR_TABLE_SGI = 0x000080BC,
     GL_PROXY_TEXTURE_COLOR_TABLE_SGI = 0x000080BD,
@@ -450,6 +508,7 @@ impl ColorTableTargetSGI {
         ColorTableTargetSGI::GL_PROXY_POST_COLOR_MATRIX_COLOR_TABLE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferTargetARB {
     GL_PARAMETER_BUFFER = 0x000080EE,
     GL_ARRAY_BUFFER = 0x00008892,
@@ -468,6 +527,7 @@ pub enum BufferTargetARB {
     GL_ATOMIC_COUNTER_BUFFER = 0x000092C0,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum UniformPName {
     GL_UNIFORM_TYPE = 0x00008A37,
     GL_UNIFORM_SIZE = 0x00008A38,
@@ -480,11 +540,13 @@ pub enum UniformPName {
     GL_UNIFORM_ATOMIC_COUNTER_BUFFER_INDEX = 0x000092DA,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum QueryParameterName {
     GL_QUERY_COUNTER_BITS = 0x00008864,
     GL_CURRENT_QUERY = 0x00008865,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TexCoordPointerType {
     GL_SHORT = 0x00001402,
     GL_INT = 0x00001404,
@@ -492,11 +554,13 @@ pub enum TexCoordPointerType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClipControlOrigin {
     GL_LOWER_LEFT = 0x00008CA1,
     GL_UPPER_LEFT = 0x00008CA2,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum InterleavedArrayFormat {
     GL_V2F = 0x00002A20,
     GL_V3F = 0x00002A21,
@@ -514,6 +578,7 @@ pub enum InterleavedArrayFormat {
     GL_T4F_C4F_N3F_V4F = 0x00002A2D,
 }
 #[repr(u64)]
+#[derive(Copy, Clone)]
 pub enum SpecialNumbers {
     GL_FALSE = 0x00000000,
     GL_TRUE = 0x00000001,
@@ -535,6 +600,7 @@ impl SpecialNumbers {
     pub const GL_VERSION_ES_CL_1_1: SpecialNumbers = SpecialNumbers::GL_TRUE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ListNameType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -548,10 +614,12 @@ pub enum ListNameType {
     GL_4_BYTES = 0x00001409,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum EvalMapsModeNV {
     GL_FILL_NV = 0x00001B02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribEnum {
     GL_VERTEX_ATTRIB_ARRAY_ENABLED = 0x00008622,
     GL_VERTEX_ATTRIB_ARRAY_SIZE = 0x00008623,
@@ -564,6 +632,7 @@ pub enum VertexAttribEnum {
     GL_VERTEX_ATTRIB_ARRAY_DIVISOR = 0x000088FE,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum NormalPointerType {
     GL_BYTE = 0x00001400,
     GL_SHORT = 0x00001402,
@@ -572,12 +641,14 @@ pub enum NormalPointerType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MeshMode2 {
     GL_POINT = 0x00001B00,
     GL_LINE = 0x00001B01,
     GL_FILL = 0x00001B02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SamplerParameterI {
     GL_TEXTURE_MAG_FILTER = 0x00002800,
     GL_TEXTURE_MIN_FILTER = 0x00002801,
@@ -589,6 +660,7 @@ pub enum SamplerParameterI {
     GL_TEXTURE_UNNORMALIZED_COORDINATES_ARM = 0x00008F6A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MatrixMode {
     GL_MODELVIEW = 0x00001700,
     GL_PROJECTION = 0x00001701,
@@ -598,12 +670,14 @@ impl MatrixMode {
     pub const GL_MODELVIEW0_EXT: MatrixMode = MatrixMode::GL_MODELVIEW;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FoveationConfigBitQCOM {
     GL_FOVEATION_ENABLE_BIT_QCOM = 0x00000001,
     GL_FOVEATION_SCALED_BIN_METHOD_BIT_QCOM = 0x00000002,
     GL_FOVEATION_SUBSAMPLED_LAYOUT_METHOD_BIT_QCOM = 0x00000004,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorBuffer {
     GL_NONE = 0x00000000,
     GL_FRONT_LEFT = 0x00000400,
@@ -649,16 +723,19 @@ pub enum ColorBuffer {
     GL_COLOR_ATTACHMENT31 = 0x00008CFF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BlitFramebufferFilter {
     GL_NEAREST = 0x00002600,
     GL_LINEAR = 0x00002601,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum HistogramTarget {
     GL_HISTOGRAM = 0x00008024,
     GL_PROXY_HISTOGRAM = 0x00008025,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderTextureSourceATI {
     GL_TEXTURE0 = 0x000084C0,
     GL_TEXTURE1 = 0x000084C1,
@@ -726,11 +803,13 @@ pub enum FragmentShaderTextureSourceATI {
     GL_REG_31_ATI = 0x00008940,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderParameterEXT {
     GL_CURRENT_VERTEX_EXT = 0x000087E2,
     GL_MVP_MATRIX_EXT = 0x000087E3,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureMinFilter {
     GL_NEAREST = 0x00002600,
     GL_LINEAR = 0x00002601,
@@ -748,6 +827,7 @@ pub enum TextureMinFilter {
     GL_LINEAR_CLIPMAP_NEAREST_SGIX = 0x0000844F,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum HistogramTargetEXT {
     GL_HISTOGRAM = 0x00008024,
     GL_PROXY_HISTOGRAM = 0x00008025,
@@ -757,6 +837,7 @@ impl HistogramTargetEXT {
     pub const GL_PROXY_HISTOGRAM_EXT: HistogramTargetEXT = HistogramTargetEXT::GL_PROXY_HISTOGRAM;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PrecisionType {
     GL_LOW_FLOAT = 0x00008DF0,
     GL_MEDIUM_FLOAT = 0x00008DF1,
@@ -766,6 +847,7 @@ pub enum PrecisionType {
     GL_HIGH_INT = 0x00008DF5,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShadingRateCombinerOp {
     GL_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_EXT = 0x000096D2,
     GL_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_EXT = 0x000096D3,
@@ -774,6 +856,7 @@ pub enum ShadingRateCombinerOp {
     GL_FRAGMENT_SHADING_RATE_COMBINER_OP_MUL_EXT = 0x000096D6,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferStorageMask {
     GL_DYNAMIC_STORAGE_BIT = 0x00000100,
     GL_CLIENT_STORAGE_BIT = 0x00000200,
@@ -799,6 +882,7 @@ impl BufferStorageMask {
     pub const GL_MAP_COHERENT_BIT_EXT: BufferStorageMask = BufferStorageMask::GL_MAP_COHERENT_BIT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureGenMode {
     GL_EYE_LINEAR = 0x00002400,
     GL_OBJECT_LINEAR = 0x00002401,
@@ -809,6 +893,7 @@ pub enum TextureGenMode {
     GL_OBJECT_DISTANCE_TO_LINE_SGIS = 0x000081F3,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FramebufferStatus {
     GL_FRAMEBUFFER_UNDEFINED = 0x00008219,
     GL_FRAMEBUFFER_COMPLETE = 0x00008CD5,
@@ -820,7 +905,21 @@ pub enum FramebufferStatus {
     GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE = 0x00008D56,
     GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS = 0x00008DA8,
 }
+
+impl TryFrom<u32> for FramebufferStatus {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0x00008219 | 0x00008CD5 | 0x00008CD6 | 0x00008CD7 | 0x00008CDB | 0x00008CDC
+            | 0x00008CDD | 0x00008D56 | 0x00008DA8 => Ok(unsafe { std::mem::transmute(value) }),
+            _ => Err(()),
+        }
+    }
+}
+
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexStreamATI {
     GL_VERTEX_STREAM0_ATI = 0x0000876C,
     GL_VERTEX_STREAM1_ATI = 0x0000876D,
@@ -832,16 +931,19 @@ pub enum VertexStreamATI {
     GL_VERTEX_STREAM7_ATI = 0x00008773,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum OcclusionQueryParameterNameNV {
     GL_PIXEL_COUNT_NV = 0x00008866,
     GL_PIXEL_COUNT_AVAILABLE_NV = 0x00008867,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum Boolean {
     GL_FALSE = 0x00000000,
     GL_TRUE = 0x00000001,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DrawBufferMode {
     GL_NONE = 0x00000000,
     GL_FRONT_LEFT = 0x00000400,
@@ -910,6 +1012,7 @@ impl DrawBufferMode {
     pub const GL_COLOR_ATTACHMENT15_NV: DrawBufferMode = DrawBufferMode::GL_COLOR_ATTACHMENT15;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MemoryBarrierMask {
     GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT = 0x00000001,
     GL_ELEMENT_ARRAY_BARRIER_BIT = 0x00000002,
@@ -959,11 +1062,13 @@ impl MemoryBarrierMask {
     pub const GL_ALL_BARRIER_BITS_EXT: MemoryBarrierMask = MemoryBarrierMask::GL_ALL_BARRIER_BITS;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathHandleMissingGlyphs {
     GL_SKIP_MISSING_GLYPH_NV = 0x000090A9,
     GL_USE_MISSING_GLYPH_NV = 0x000090AA,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DepthFunction {
     GL_NEVER = 0x00000200,
     GL_LESS = 0x00000201,
@@ -975,6 +1080,7 @@ pub enum DepthFunction {
     GL_ALWAYS = 0x00000207,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramTarget {
     GL_TEXT_FRAGMENT_SHADER_ATI = 0x00008200,
     GL_VERTEX_PROGRAM_ARB = 0x00008620,
@@ -985,11 +1091,13 @@ pub enum ProgramTarget {
     GL_COMPUTE_PROGRAM_NV = 0x000090FB,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ParameterRangeEXT {
     GL_NORMALIZED_RANGE_EXT = 0x000087E0,
     GL_FULL_RANGE_EXT = 0x000087E1,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramInterfacePName {
     GL_ACTIVE_RESOURCES = 0x000092F5,
     GL_MAX_NAME_LENGTH = 0x000092F6,
@@ -997,6 +1105,7 @@ pub enum ProgramInterfacePName {
     GL_MAX_NUM_COMPATIBLE_SUBROUTINES = 0x000092F8,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexHintsMaskPGI {
     GL_VERTEX23_BIT_PGI = 0x00000004,
     GL_VERTEX4_BIT_PGI = 0x00000008,
@@ -1018,6 +1127,7 @@ pub enum VertexHintsMaskPGI {
     GL_TEXCOORD4_BIT_PGI = 0x80000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ContextFlagMask {
     GL_CONTEXT_FLAG_FORWARD_COMPATIBLE_BIT = 0x00000001,
     GL_CONTEXT_FLAG_DEBUG_BIT = 0x00000002,
@@ -1034,6 +1144,7 @@ impl ContextFlagMask {
         ContextFlagMask::GL_CONTEXT_FLAG_NO_ERROR_BIT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureLayout {
     GL_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_EXT = 0x00009530,
     GL_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_EXT = 0x00009531,
@@ -1046,6 +1157,7 @@ pub enum TextureLayout {
     GL_LAYOUT_TRANSFER_DST_EXT = 0x00009593,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderDestMaskATI {
     GL_RED_BIT_ATI = 0x00000001,
     GL_GREEN_BIT_ATI = 0x00000002,
@@ -1053,10 +1165,12 @@ pub enum FragmentShaderDestMaskATI {
     GL_NONE = 0x00000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SyncCondition {
     GL_SYNC_GPU_COMMANDS_COMPLETE = 0x00009117,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathMetricMask {
     GL_GLYPH_WIDTH_BIT_NV = 0x00000001,
     GL_GLYPH_HEIGHT_BIT_NV = 0x00000002,
@@ -1083,6 +1197,7 @@ pub enum PathMetricMask {
     GL_FONT_NUM_GLYPH_INDICES_BIT_NV = 0x20000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerScaleNV {
     GL_NONE = 0x00000000,
     GL_SCALE_BY_TWO_NV = 0x0000853E,
@@ -1090,22 +1205,26 @@ pub enum CombinerScaleNV {
     GL_SCALE_BY_ONE_HALF_NV = 0x00008540,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureNormalModeEXT {
     GL_PERTURB_EXT = 0x000085AE,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapQuery {
     GL_COEFF = 0x00000A00,
     GL_ORDER = 0x00000A01,
     GL_DOMAIN = 0x00000A02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathFontStyle {
     GL_BOLD_BIT_NV = 0x00000001,
     GL_ITALIC_BIT_NV = 0x00000002,
     GL_NONE = 0x00000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -1126,6 +1245,7 @@ impl VertexAttribType {
         VertexAttribType::GL_UNSIGNED_INT_2_10_10_10_REV;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribPointerType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -1151,6 +1271,7 @@ impl VertexAttribPointerType {
         VertexAttribPointerType::GL_UNSIGNED_INT_2_10_10_10_REV;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BlendingFactor {
     GL_ZERO = 0x00000000,
     GL_ONE = 0x00000001,
@@ -1173,6 +1294,7 @@ pub enum BlendingFactor {
     GL_ONE_MINUS_SRC1_ALPHA = 0x000088FB,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LogicOp {
     GL_CLEAR = 0x00001500,
     GL_AND = 0x00001501,
@@ -1192,6 +1314,7 @@ pub enum LogicOp {
     GL_SET = 0x0000150F,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentLightModelParameterSGIX {
     GL_FRAGMENT_LIGHT_MODEL_LOCAL_VIEWER_SGIX = 0x00008408,
     GL_FRAGMENT_LIGHT_MODEL_TWO_SIDE_SGIX = 0x00008409,
@@ -1199,6 +1322,7 @@ pub enum FragmentLightModelParameterSGIX {
     GL_FRAGMENT_LIGHT_MODEL_NORMAL_INTERPOLATION_SGIX = 0x0000840B,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentLightNameSGIX {
     GL_FRAGMENT_LIGHT0_SGIX = 0x0000840C,
     GL_FRAGMENT_LIGHT1_SGIX = 0x0000840D,
@@ -1210,6 +1334,7 @@ pub enum FragmentLightNameSGIX {
     GL_FRAGMENT_LIGHT7_SGIX = 0x00008413,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelStoreParameter {
     GL_UNPACK_SWAP_BYTES = 0x00000CF0,
     GL_UNPACK_LSB_FIRST = 0x00000CF1,
@@ -1265,12 +1390,14 @@ impl PixelStoreParameter {
         PixelStoreParameter::GL_UNPACK_IMAGE_HEIGHT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum HintMode {
     GL_DONT_CARE = 0x00001100,
     GL_FASTEST = 0x00001101,
     GL_NICEST = 0x00001102,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentOp2ATI {
     GL_ADD_ATI = 0x00008963,
     GL_MUL_ATI = 0x00008964,
@@ -1279,22 +1406,26 @@ pub enum FragmentOp2ATI {
     GL_DOT4_ATI = 0x00008967,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderTextureUnitParameter {
     GL_CURRENT_TEXTURE_COORDS = 0x00000B03,
     GL_TEXTURE_MATRIX = 0x00000BA8,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightTexturePNameEXT {
     GL_ATTENUATION_EXT = 0x0000834D,
     GL_SHADOW_ATTENUATION_EXT = 0x0000834E,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PatchParameterName {
     GL_PATCH_VERTICES = 0x00008E72,
     GL_PATCH_DEFAULT_INNER_LEVEL = 0x00008E73,
     GL_PATCH_DEFAULT_OUTER_LEVEL = 0x00008E74,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderCoordOutEXT {
     GL_X_EXT = 0x000087D5,
     GL_Y_EXT = 0x000087D6,
@@ -1309,11 +1440,13 @@ pub enum VertexShaderCoordOutEXT {
     GL_NEGATIVE_ONE_EXT = 0x000087DF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FfdTargetSGIX {
     GL_GEOMETRY_DEFORMATION_SGIX = 0x00008194,
     GL_TEXTURE_DEFORMATION_SGIX = 0x00008195,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SamplerParameterF {
     GL_TEXTURE_BORDER_COLOR = 0x00001004,
     GL_TEXTURE_MIN_LOD = 0x0000813A,
@@ -1323,6 +1456,7 @@ pub enum SamplerParameterF {
     GL_TEXTURE_UNNORMALIZED_COORDINATES_ARM = 0x00008F6A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ReadBufferMode {
     GL_NONE = 0x00000000,
     GL_FRONT_LEFT = 0x00000400,
@@ -1358,6 +1492,7 @@ impl ReadBufferMode {
     pub const GL_NONE_OES: ReadBufferMode = ReadBufferMode::GL_NONE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SecondaryColorPointerTypeIBM {
     GL_SHORT = 0x00001402,
     GL_INT = 0x00001404,
@@ -1365,6 +1500,7 @@ pub enum SecondaryColorPointerTypeIBM {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum HintTargetPGI {
     GL_VERTEX_DATA_HINT_PGI = 0x0001A22A,
     GL_VERTEX_CONSISTENT_HINT_PGI = 0x0001A22B,
@@ -1372,6 +1508,7 @@ pub enum HintTargetPGI {
     GL_MAX_VERTEX_HINT_PGI = 0x0001A22D,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureTarget {
     GL_TEXTURE_1D = 0x00000DE0,
     GL_TEXTURE_2D = 0x00000DE1,
@@ -1474,6 +1611,7 @@ impl TextureTarget {
         TextureTarget::GL_PROXY_TEXTURE_CUBE_MAP_ARRAY;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderValueRepATI {
     GL_NONE = 0x00000000,
     GL_RED = 0x00001903,
@@ -1482,6 +1620,7 @@ pub enum FragmentShaderValueRepATI {
     GL_ALPHA = 0x00001906,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClearBufferMask {
     GL_DEPTH_BUFFER_BIT = 0x00000100,
     GL_ACCUM_BUFFER_BIT = 0x00000200,
@@ -1490,23 +1629,27 @@ pub enum ClearBufferMask {
     GL_COVERAGE_BUFFER_BIT_NV = 0x00008000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelTransformPNameEXT {
     GL_PIXEL_MAG_FILTER_EXT = 0x00008331,
     GL_PIXEL_MIN_FILTER_EXT = 0x00008332,
     GL_PIXEL_CUBIC_WEIGHT_EXT = 0x00008333,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ElementPointerTypeATI {
     GL_UNSIGNED_BYTE = 0x00001401,
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelTexGenParameterNameSGIS {
     GL_PIXEL_FRAGMENT_RGB_SOURCE_SGIS = 0x00008354,
     GL_PIXEL_FRAGMENT_ALPHA_SOURCE_SGIS = 0x00008355,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum UniformBlockPName {
     GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_CONTROL_SHADER = 0x000084F0,
     GL_UNIFORM_BLOCK_REFERENCED_BY_TESS_EVALUATION_SHADER = 0x000084F1,
@@ -1521,6 +1664,7 @@ pub enum UniformBlockPName {
     GL_UNIFORM_BLOCK_REFERENCED_BY_COMPUTE_SHADER = 0x000090EC,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FeedbackType {
     GL_2D = 0x00000600,
     GL_3D = 0x00000601,
@@ -1529,11 +1673,13 @@ pub enum FeedbackType {
     GL_4D_COLOR_TEXTURE = 0x00000604,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathStringFormat {
     GL_PATH_FORMAT_SVG_NV = 0x00009070,
     GL_PATH_FORMAT_PS_NV = 0x00009071,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClampColorTargetARB {
     GL_CLAMP_VERTEX_COLOR_ARB = 0x0000891A,
     GL_CLAMP_FRAGMENT_COLOR_ARB = 0x0000891B,
@@ -1544,6 +1690,7 @@ impl ClampColorTargetARB {
         ClampColorTargetARB::GL_CLAMP_READ_COLOR;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CopyImageSubDataTarget {
     GL_TEXTURE_1D = 0x00000DE0,
     GL_TEXTURE_2D = 0x00000DE1,
@@ -1558,6 +1705,7 @@ pub enum CopyImageSubDataTarget {
     GL_TEXTURE_2D_MULTISAMPLE_ARRAY = 0x00009102,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetPointervPName {
     GL_FEEDBACK_BUFFER_POINTER = 0x00000DF0,
     GL_SELECTION_BUFFER_POINTER = 0x00000DF3,
@@ -1586,6 +1734,7 @@ impl GetPointervPName {
         GetPointervPName::GL_EDGE_FLAG_ARRAY_POINTER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelTransferParameter {
     GL_MAP_COLOR = 0x00000D10,
     GL_MAP_STENCIL = 0x00000D11,
@@ -1653,24 +1802,28 @@ impl PixelTransferParameter {
         PixelTransferParameter::GL_POST_COLOR_MATRIX_ALPHA_BIAS;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PNTrianglesPNameATI {
     GL_PN_TRIANGLES_POINT_MODE_ATI = 0x000087F2,
     GL_PN_TRIANGLES_NORMAL_MODE_ATI = 0x000087F3,
     GL_PN_TRIANGLES_TESSELATION_LEVEL_ATI = 0x000087F4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathFontTarget {
     GL_STANDARD_FONT_NAME_NV = 0x00009072,
     GL_SYSTEM_FONT_NAME_NV = 0x00009073,
     GL_FILE_NAME_NV = 0x00009074,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerComponentUsageNV {
     GL_BLUE = 0x00001905,
     GL_ALPHA = 0x00001906,
     GL_RGB = 0x00001907,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelTexGenModeSGIX {
     GL_NONE = 0x00000000,
     GL_ALPHA = 0x00001906,
@@ -1683,22 +1836,26 @@ pub enum PixelTexGenModeSGIX {
     GL_PIXEL_TEX_GEN_ALPHA_MS_SGIX = 0x0000818A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TexBumpParameterATI {
     GL_BUMP_ROT_MATRIX_ATI = 0x00008775,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferAccessARB {
     GL_READ_ONLY = 0x000088B8,
     GL_WRITE_ONLY = 0x000088B9,
     GL_READ_WRITE = 0x000088BA,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetMapQuery {
     GL_COEFF = 0x00000A00,
     GL_ORDER = 0x00000A01,
     GL_DOMAIN = 0x00000A02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PrimitiveType {
     GL_POINTS = 0x00000000,
     GL_LINES = 0x00000001,
@@ -1731,6 +1888,7 @@ impl PrimitiveType {
     pub const GL_PATCHES_EXT: PrimitiveType = PrimitiveType::GL_PATCHES;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathColorFormat {
     GL_NONE = 0x00000000,
     GL_ALPHA = 0x00001906,
@@ -1741,12 +1899,14 @@ pub enum PathColorFormat {
     GL_INTENSITY = 0x00008049,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapTextureFormatINTEL {
     GL_LAYOUT_DEFAULT_INTEL = 0x00000000,
     GL_LAYOUT_LINEAR_INTEL = 0x00000001,
     GL_LAYOUT_LINEAR_CPU_CACHED_INTEL = 0x00000002,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetHistogramParameterPNameEXT {
     GL_HISTOGRAM_WIDTH = 0x00008026,
     GL_HISTOGRAM_FORMAT = 0x00008027,
@@ -1776,17 +1936,20 @@ impl GetHistogramParameterPNameEXT {
         GetHistogramParameterPNameEXT::GL_HISTOGRAM_SINK;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelDataRangeTargetNV {
     GL_WRITE_PIXEL_DATA_RANGE_NV = 0x00008878,
     GL_READ_PIXEL_DATA_RANGE_NV = 0x00008879,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum Buffer {
     GL_COLOR = 0x00001800,
     GL_DEPTH = 0x00001801,
     GL_STENCIL = 0x00001802,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CopyBufferSubDataTarget {
     GL_ARRAY_BUFFER = 0x00008892,
     GL_ELEMENT_ARRAY_BUFFER = 0x00008893,
@@ -1804,6 +1967,7 @@ pub enum CopyBufferSubDataTarget {
     GL_ATOMIC_COUNTER_BUFFER = 0x000092C0,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferBitQCOM {
     GL_COLOR_BUFFER_BIT0_QCOM = 0x00000001,
     GL_COLOR_BUFFER_BIT1_QCOM = 0x00000002,
@@ -1839,6 +2003,7 @@ pub enum BufferBitQCOM {
     GL_MULTISAMPLE_BUFFER_BIT7_QCOM = 0x80000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramResourceProperty {
     GL_NUM_COMPATIBLE_SUBROUTINES = 0x00008E4A,
     GL_COMPATIBLE_SUBROUTINES = 0x00008E4B,
@@ -1872,6 +2037,7 @@ pub enum ProgramResourceProperty {
     GL_TRANSFORM_FEEDBACK_BUFFER_STRIDE = 0x0000934C,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramPropertyARB {
     GL_COMPUTE_WORK_GROUP_SIZE = 0x00008267,
     GL_PROGRAM_BINARY_LENGTH = 0x00008741,
@@ -1895,12 +2061,14 @@ pub enum ProgramPropertyARB {
     GL_ACTIVE_ATOMIC_COUNTER_BUFFERS = 0x000092D9,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexArrayPNameAPPLE {
     GL_STORAGE_CLIENT_APPLE = 0x000085B4,
     GL_STORAGE_CACHED_APPLE = 0x000085BE,
     GL_STORAGE_SHARED_APPLE = 0x000085BF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathTransformType {
     GL_NONE = 0x00000000,
     GL_TRANSLATE_X_NV = 0x0000908E,
@@ -1913,6 +2081,7 @@ pub enum PathTransformType {
     GL_TRANSPOSE_AFFINE_3D_NV = 0x00009098,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum AtomicCounterBufferPName {
     GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_COMPUTE_SHADER = 0x000090ED,
     GL_ATOMIC_COUNTER_BUFFER_BINDING = 0x000092C1,
@@ -1926,6 +2095,7 @@ pub enum AtomicCounterBufferPName {
     GL_ATOMIC_COUNTER_BUFFER_REFERENCED_BY_FRAGMENT_SHADER = 0x000092CB,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureCoordName {
     GL_S = 0x00002000,
     GL_T = 0x00002001,
@@ -1934,6 +2104,7 @@ pub enum TextureCoordName {
     GL_TEXTURE_GEN_STR_OES = 0x00008D60,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureWrapMode {
     GL_CLAMP = 0x00002900,
     GL_REPEAT = 0x00002901,
@@ -1953,18 +2124,21 @@ impl TextureWrapMode {
     pub const GL_MIRRORED_REPEAT_OES: TextureWrapMode = TextureWrapMode::GL_MIRRORED_REPEAT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureEnvTarget {
     GL_TEXTURE_ENV = 0x00002300,
     GL_TEXTURE_FILTER_CONTROL = 0x00008500,
     GL_POINT_SPRITE = 0x00008861,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PolygonMode {
     GL_POINT = 0x00001B00,
     GL_LINE = 0x00001B01,
     GL_FILL = 0x00001B02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum StringName {
     GL_VENDOR = 0x00001F00,
     GL_RENDERER = 0x00001F01,
@@ -1973,6 +2147,7 @@ pub enum StringName {
     GL_SHADING_LANGUAGE_VERSION = 0x00008B8C,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DebugSeverity {
     GL_DONT_CARE = 0x00001100,
     GL_DEBUG_SEVERITY_NOTIFICATION = 0x0000826B,
@@ -1981,11 +2156,13 @@ pub enum DebugSeverity {
     GL_DEBUG_SEVERITY_LOW = 0x00009148,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ArrayObjectUsageATI {
     GL_STATIC_ATI = 0x00008760,
     GL_DYNAMIC_ATI = 0x00008761,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum InstancedPathCoverMode {
     GL_PATH_FILL_COVER_MODE_NV = 0x00009082,
     GL_CONVEX_HULL_NV = 0x0000908B,
@@ -1993,6 +2170,7 @@ pub enum InstancedPathCoverMode {
     GL_BOUNDING_BOX_OF_BOUNDING_BOXES_NV = 0x0000909C,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum IndexPointerType {
     GL_SHORT = 0x00001402,
     GL_INT = 0x00001404,
@@ -2000,11 +2178,13 @@ pub enum IndexPointerType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderWriteMaskEXT {
     GL_FALSE = 0x00000000,
     GL_TRUE = 0x00000001,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogParameter {
     GL_FOG_INDEX = 0x00000B61,
     GL_FOG_DENSITY = 0x00000B62,
@@ -2015,6 +2195,7 @@ pub enum FogParameter {
     GL_FOG_OFFSET_VALUE_SGIX = 0x00008199,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClampColorModeARB {
     GL_FALSE = 0x00000000,
     GL_TRUE = 0x00000001,
@@ -2024,6 +2205,7 @@ impl ClampColorModeARB {
     pub const GL_FIXED_ONLY_ARB: ClampColorModeARB = ClampColorModeARB::GL_FIXED_ONLY;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetFramebufferParameter {
     GL_DOUBLEBUFFER = 0x00000C32,
     GL_STEREO = 0x00000C33,
@@ -2038,10 +2220,12 @@ pub enum GetFramebufferParameter {
     GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS = 0x00009314,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexWeightPointerTypeEXT {
     GL_FLOAT = 0x00001406,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ConvolutionBorderModeEXT {
     GL_REDUCE = 0x00008016,
 }
@@ -2049,10 +2233,12 @@ impl ConvolutionBorderModeEXT {
     pub const GL_REDUCE_EXT: ConvolutionBorderModeEXT = ConvolutionBorderModeEXT::GL_REDUCE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ImageTransformTargetHP {
     GL_IMAGE_TRANSFORM_2D_HP = 0x00008161,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum AttribMask {
     GL_CURRENT_BIT = 0x00000001,
     GL_POINT_BIT = 0x00000002,
@@ -2083,6 +2269,7 @@ impl AttribMask {
     pub const GL_MULTISAMPLE_BIT_3DFX: AttribMask = AttribMask::GL_MULTISAMPLE_BIT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribPropertyARB {
     GL_VERTEX_ATTRIB_BINDING = 0x000082D4,
     GL_VERTEX_ATTRIB_RELATIVE_OFFSET = 0x000082D5,
@@ -2102,10 +2289,12 @@ impl VertexAttribPropertyARB {
         VertexAttribPropertyARB::GL_VERTEX_ATTRIB_ARRAY_INTEGER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureStorageMaskAMD {
     GL_TEXTURE_STORAGE_SPARSE_BIT_AMD = 0x00000001,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerMappingNV {
     GL_UNSIGNED_IDENTITY_NV = 0x00008536,
     GL_UNSIGNED_INVERT_NV = 0x00008537,
@@ -2117,11 +2306,13 @@ pub enum CombinerMappingNV {
     GL_SIGNED_NEGATE_NV = 0x0000853D,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapAttribParameterNV {
     GL_MAP_ATTRIB_U_ORDER_NV = 0x000086C3,
     GL_MAP_ATTRIB_V_ORDER_NV = 0x000086C4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FramebufferAttachment {
     GL_DEPTH_STENCIL_ATTACHMENT = 0x0000821A,
     GL_COLOR_ATTACHMENT0 = 0x00008CE0,
@@ -2161,6 +2352,7 @@ pub enum FramebufferAttachment {
     GL_SHADING_RATE_ATTACHMENT_EXT = 0x000096D1,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderDestModMaskATI {
     GL_2X_BIT_ATI = 0x00000001,
     GL_4X_BIT_ATI = 0x00000002,
@@ -2172,14 +2364,17 @@ pub enum FragmentShaderDestModMaskATI {
     GL_NONE = 0x00000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum IndexMaterialParameterEXT {
     GL_INDEX_OFFSET = 0x00000D13,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramFormat {
     GL_PROGRAM_FORMAT_ASCII_ARB = 0x00008875,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetTexBumpParameterATI {
     GL_BUMP_ROT_MATRIX_ATI = 0x00008775,
     GL_BUMP_ROT_MATRIX_SIZE_ATI = 0x00008776,
@@ -2187,6 +2382,7 @@ pub enum GetTexBumpParameterATI {
     GL_BUMP_TEX_UNITS_ATI = 0x00008778,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelFormat {
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
@@ -2226,6 +2422,7 @@ impl PixelFormat {
     pub const GL_BGRA_IMG: PixelFormat = PixelFormat::GL_BGRA;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexPointerType {
     GL_SHORT = 0x00001402,
     GL_INT = 0x00001404,
@@ -2233,6 +2430,7 @@ pub enum VertexPointerType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ConvolutionTargetEXT {
     GL_CONVOLUTION_1D = 0x00008010,
     GL_CONVOLUTION_2D = 0x00008011,
@@ -2242,10 +2440,12 @@ impl ConvolutionTargetEXT {
     pub const GL_CONVOLUTION_2D_EXT: ConvolutionTargetEXT = ConvolutionTargetEXT::GL_CONVOLUTION_2D;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapParameterNV {
     GL_MAP_TESSELLATION_NV = 0x000086C2,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferPointerNameARB {
     GL_BUFFER_MAP_POINTER = 0x000088BD,
 }
@@ -2254,6 +2454,7 @@ impl BufferPointerNameARB {
         BufferPointerNameARB::GL_BUFFER_MAP_POINTER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathParameter {
     GL_PATH_STROKE_WIDTH_NV = 0x00009075,
     GL_PATH_END_CAPS_NV = 0x00009076,
@@ -2281,23 +2482,27 @@ pub enum PathParameter {
     GL_PATH_DASH_OFFSET_RESET_NV = 0x000090B4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathListMode {
     GL_ACCUM_ADJACENT_PAIRS_NV = 0x000090AD,
     GL_ADJACENT_PAIRS_NV = 0x000090AE,
     GL_FIRST_TO_REST_NV = 0x000090AF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ScalarType {
     GL_UNSIGNED_BYTE = 0x00001401,
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogPointerTypeEXT {
     GL_FLOAT = 0x00001406,
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferStorageTarget {
     GL_ARRAY_BUFFER = 0x00008892,
     GL_ELEMENT_ARRAY_BUFFER = 0x00008893,
@@ -2315,17 +2520,20 @@ pub enum BufferStorageTarget {
     GL_ATOMIC_COUNTER_BUFFER = 0x000092C0,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ObjectTypeAPPLE {
     GL_DRAW_PIXELS_APPLE = 0x00008A0A,
     GL_FENCE_APPLE = 0x00008A0B,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightEnvModeSGIX {
     GL_ADD = 0x00000104,
     GL_REPLACE = 0x00001E01,
     GL_MODULATE = 0x00002100,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum InternalFormatPName {
     GL_SAMPLES = 0x000080A9,
     GL_GENERATE_MIPMAP = 0x00008191,
@@ -2401,12 +2609,14 @@ pub enum InternalFormatPName {
     GL_NUM_SAMPLE_COUNTS = 0x00009380,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PerfQueryDataFlags {
     GL_PERFQUERY_DONOT_FLUSH_INTEL = 0x000083F9,
     GL_PERFQUERY_FLUSH_INTEL = 0x000083FA,
     GL_PERFQUERY_WAIT_INTEL = 0x000083FB,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathFillMode {
     GL_INVERT = 0x0000150A,
     GL_PATH_FILL_MODE_NV = 0x00009080,
@@ -2414,6 +2624,7 @@ pub enum PathFillMode {
     GL_COUNT_DOWN_NV = 0x00009089,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureUnit {
     GL_TEXTURE0 = 0x000084C0,
     GL_TEXTURE1 = 0x000084C1,
@@ -2449,28 +2660,33 @@ pub enum TextureUnit {
     GL_TEXTURE31 = 0x000084DF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FenceParameterNameNV {
     GL_FENCE_STATUS_NV = 0x000084F3,
     GL_FENCE_CONDITION_NV = 0x000084F4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DataTypeEXT {
     GL_SCALAR_EXT = 0x000087BE,
     GL_VECTOR_EXT = 0x000087BF,
     GL_MATRIX_EXT = 0x000087C0,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClipControlDepth {
     GL_NEGATIVE_ONE_TO_ONE = 0x0000935E,
     GL_ZERO_TO_ONE = 0x0000935F,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClientAttribMask {
     GL_CLIENT_PIXEL_STORE_BIT = 0x00000001,
     GL_CLIENT_VERTEX_ARRAY_BIT = 0x00000002,
     GL_CLIENT_ALL_ATTRIB_BITS = 0xFFFFFFFF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentLightParameterSGIX {
     GL_AMBIENT = 0x00001200,
     GL_DIFFUSE = 0x00001201,
@@ -2484,11 +2700,13 @@ pub enum FragmentLightParameterSGIX {
     GL_QUADRATIC_ATTENUATION = 0x00001209,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapTypeNV {
     GL_FLOAT = 0x00001406,
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShadingRate {
     GL_SHADING_RATE_1X1_PIXELS_EXT = 0x000096A6,
     GL_SHADING_RATE_1X2_PIXELS_EXT = 0x000096A7,
@@ -2501,6 +2719,7 @@ pub enum ShadingRate {
     GL_SHADING_RATE_4X4_PIXELS_EXT = 0x000096AE,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -2562,17 +2781,20 @@ impl PixelType {
         PixelType::GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DrawElementsType {
     GL_UNSIGNED_BYTE = 0x00001401,
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogPointerTypeIBM {
     GL_FLOAT = 0x00001406,
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ObjectIdentifier {
     GL_TEXTURE = 0x00001702,
     GL_VERTEX_ARRAY = 0x00008074,
@@ -2587,6 +2809,7 @@ pub enum ObjectIdentifier {
     GL_TRANSFORM_FEEDBACK = 0x00008E22,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureEnvParameter {
     GL_ALPHA_SCALE = 0x00000D1C,
     GL_TEXTURE_ENV_MODE = 0x00002200,
@@ -2672,6 +2895,7 @@ impl TextureEnvParameter {
     pub const GL_OPERAND2_ALPHA_EXT: TextureEnvParameter = TextureEnvParameter::GL_OPERAND2_ALPHA;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ClipPlaneName {
     GL_CLIP_PLANE0 = 0x00003000,
     GL_CLIP_PLANE1 = 0x00003001,
@@ -2691,6 +2915,7 @@ impl ClipPlaneName {
     pub const GL_CLIP_DISTANCE5: ClipPlaneName = ClipPlaneName::GL_CLIP_PLANE5;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferPNameARB {
     GL_BUFFER_IMMUTABLE_STORAGE = 0x0000821F,
     GL_BUFFER_STORAGE_FLAGS = 0x00008220,
@@ -2709,6 +2934,7 @@ impl BufferPNameARB {
     pub const GL_BUFFER_MAPPED_ARB: BufferPNameARB = BufferPNameARB::GL_BUFFER_MAPPED;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ConditionalRenderMode {
     GL_QUERY_WAIT = 0x00008E13,
     GL_QUERY_NO_WAIT = 0x00008E14,
@@ -2720,6 +2946,7 @@ pub enum ConditionalRenderMode {
     GL_QUERY_BY_REGION_NO_WAIT_INVERTED = 0x00008E1A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorTableTarget {
     GL_COLOR_TABLE = 0x000080D0,
     GL_POST_CONVOLUTION_COLOR_TABLE = 0x000080D1,
@@ -2729,12 +2956,14 @@ pub enum ColorTableTarget {
     GL_PROXY_POST_COLOR_MATRIX_COLOR_TABLE = 0x000080D5,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelStoreSubsampleRate {
     GL_PIXEL_SUBSAMPLE_4444_SGIX = 0x000085A2,
     GL_PIXEL_SUBSAMPLE_2424_SGIX = 0x000085A3,
     GL_PIXEL_SUBSAMPLE_4242_SGIX = 0x000085A4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TangentPointerTypeEXT {
     GL_BYTE = 0x00001400,
     GL_SHORT = 0x00001402,
@@ -2746,6 +2975,7 @@ impl TangentPointerTypeEXT {
     pub const GL_DOUBLE_EXT: TangentPointerTypeEXT = TangentPointerTypeEXT::GL_DOUBLE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderOpEXT {
     GL_OP_INDEX_EXT = 0x00008782,
     GL_OP_NEGATE_EXT = 0x00008783,
@@ -2773,6 +3003,7 @@ pub enum VertexShaderOpEXT {
     GL_OP_MOV_EXT = 0x00008799,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BlendEquationModeEXT {
     GL_FUNC_ADD = 0x00008006,
     GL_MIN = 0x00008007,
@@ -2791,17 +3022,20 @@ impl BlendEquationModeEXT {
         BlendEquationModeEXT::GL_FUNC_REVERSE_SUBTRACT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum RenderingMode {
     GL_RENDER = 0x00001C00,
     GL_FEEDBACK = 0x00001C01,
     GL_SELECT = 0x00001C02,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramParameterPName {
     GL_PROGRAM_BINARY_RETRIEVABLE_HINT = 0x00008257,
     GL_PROGRAM_SEPARABLE = 0x00008258,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentOp3ATI {
     GL_MAD_ATI = 0x00008968,
     GL_LERP_ATI = 0x00008969,
@@ -2810,6 +3044,7 @@ pub enum FragmentOp3ATI {
     GL_DOT2_ADD_ATI = 0x0000896C,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetPName {
     GL_CURRENT_COLOR = 0x00000B00,
     GL_CURRENT_INDEX = 0x00000B01,
@@ -3453,6 +3688,7 @@ impl GetPName {
     pub const GL_TIMESTAMP_EXT: GetPName = GetPName::GL_TIMESTAMP;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum AccumOp {
     GL_ACCUM = 0x00000100,
     GL_LOAD = 0x00000101,
@@ -3461,6 +3697,7 @@ pub enum AccumOp {
     GL_ADD = 0x00000104,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightName {
     GL_LIGHT0 = 0x00004000,
     GL_LIGHT1 = 0x00004001,
@@ -3480,31 +3717,37 @@ pub enum LightName {
     GL_FRAGMENT_LIGHT7_SGIX = 0x00008413,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribEnumNV {
     GL_PROGRAM_PARAMETER_NV = 0x00008644,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentOp1ATI {
     GL_MOV_ATI = 0x00008961,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CullParameterEXT {
     GL_CULL_VERTEX_EYE_POSITION_EXT = 0x000081AB,
     GL_CULL_VERTEX_OBJECT_POSITION_EXT = 0x000081AC,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathCoverMode {
     GL_PATH_FILL_COVER_MODE_NV = 0x00009082,
     GL_CONVEX_HULL_NV = 0x0000908B,
     GL_BOUNDING_BOX_NV = 0x0000908D,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TriangleFace {
     GL_FRONT = 0x00000404,
     GL_BACK = 0x00000405,
     GL_FRONT_AND_BACK = 0x00000408,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightParameter {
     GL_AMBIENT = 0x00001200,
     GL_DIFFUSE = 0x00001201,
@@ -3518,15 +3761,18 @@ pub enum LightParameter {
     GL_QUADRATIC_ATTENUATION = 0x00001209,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribLType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerPortionNV {
     GL_ALPHA = 0x00001906,
     GL_RGB = 0x00001907,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum QueryTarget {
     GL_TRANSFORM_FEEDBACK_OVERFLOW = 0x000082EC,
     GL_VERTICES_SUBMITTED = 0x000082EE,
@@ -3543,6 +3789,7 @@ pub enum QueryTarget {
     GL_MESH_PRIMITIVES_GENERATED_EXT = 0x00009755,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetTextureParameter {
     GL_TEXTURE_WIDTH = 0x00001000,
     GL_TEXTURE_HEIGHT = 0x00001001,
@@ -3618,6 +3865,7 @@ impl GetTextureParameter {
     pub const GL_REFLECTION_MAP_OES: GetTextureParameter = GetTextureParameter::GL_REFLECTION_MAP;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathCoordType {
     GL_CLOSE_PATH_NV = 0x00000000,
     GL_MOVE_TO_NV = 0x00000002,
@@ -3666,6 +3914,7 @@ pub enum PathCoordType {
     GL_RELATIVE_ARC_TO_NV = 0x000000FF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerVariableNV {
     GL_VARIABLE_A_NV = 0x00008523,
     GL_VARIABLE_B_NV = 0x00008524,
@@ -3676,6 +3925,7 @@ pub enum CombinerVariableNV {
     GL_VARIABLE_G_NV = 0x00008529,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureParameterName {
     GL_TEXTURE_WIDTH = 0x00001000,
     GL_TEXTURE_HEIGHT = 0x00001001,
@@ -3767,11 +4017,13 @@ impl TextureParameterName {
         TextureParameterName::GL_GENERATE_MIPMAP;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DepthStencilTextureMode {
     GL_STENCIL_INDEX = 0x00001901,
     GL_DEPTH_COMPONENT = 0x00001902,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramInterface {
     GL_TRANSFORM_FEEDBACK_BUFFER = 0x00008C8E,
     GL_UNIFORM = 0x000092E1,
@@ -3795,6 +4047,7 @@ pub enum ProgramInterface {
     GL_TRANSFORM_FEEDBACK_VARYING = 0x000092F4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogMode {
     GL_EXP = 0x00000800,
     GL_EXP2 = 0x00000801,
@@ -3802,6 +4055,7 @@ pub enum FogMode {
     GL_FOG_FUNC_SGIS = 0x0000812A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum AttributeType {
     GL_INT = 0x00001404,
     GL_UNSIGNED_INT = 0x00001405,
@@ -3956,6 +4210,7 @@ impl AttributeType {
     pub const GL_FLOAT_MAT4x3_NV: AttributeType = AttributeType::GL_FLOAT_MAT4x3;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum OcclusionQueryEventMaskAMD {
     GL_QUERY_DEPTH_PASS_EVENT_BIT_AMD = 0x00000001,
     GL_QUERY_DEPTH_FAIL_EVENT_BIT_AMD = 0x00000002,
@@ -3964,6 +4219,7 @@ pub enum OcclusionQueryEventMaskAMD {
     GL_QUERY_ALL_EVENT_BITS_AMD = 0xFFFFFFFF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum StencilOp {
     GL_ZERO = 0x00000000,
     GL_INVERT = 0x0000150A,
@@ -3975,22 +4231,38 @@ pub enum StencilOp {
     GL_DECR_WRAP = 0x00008508,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VariantCapEXT {
     GL_VARIANT_ARRAY_EXT = 0x000087E8,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexProvokingMode {
     GL_FIRST_VERTEX_CONVENTION = 0x00008E4D,
     GL_LAST_VERTEX_CONVENTION = 0x00008E4E,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SyncStatus {
     GL_ALREADY_SIGNALED = 0x0000911A,
     GL_TIMEOUT_EXPIRED = 0x0000911B,
     GL_CONDITION_SATISFIED = 0x0000911C,
     GL_WAIT_FAILED = 0x0000911D,
 }
+impl TryFrom<u32> for SyncStatus {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0x0000911A | 0x0000911B | 0x0000911C | 0x0000911D => {
+                Ok(unsafe { std::mem::transmute(value) })
+            }
+            _ => Err(()),
+        }
+    }
+}
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderRegATI {
     GL_REG_0_ATI = 0x00008921,
     GL_REG_1_ATI = 0x00008922,
@@ -4026,10 +4298,12 @@ pub enum FragmentShaderRegATI {
     GL_REG_31_ATI = 0x00008940,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureFilterSGIS {
     GL_FILTER4_SGIS = 0x00008146,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BinormalPointerTypeEXT {
     GL_BYTE = 0x00001400,
     GL_SHORT = 0x00001402,
@@ -4041,12 +4315,14 @@ impl BinormalPointerTypeEXT {
     pub const GL_DOUBLE_EXT: BinormalPointerTypeEXT = BinormalPointerTypeEXT::GL_DOUBLE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ReplacementCodeTypeSUN {
     GL_UNSIGNED_BYTE = 0x00001401,
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightModelColorControl {
     GL_SINGLE_COLOR = 0x000081F9,
     GL_SEPARATE_SPECULAR_COLOR = 0x000081FA,
@@ -4057,6 +4333,7 @@ impl LightModelColorControl {
         LightModelColorControl::GL_SEPARATE_SPECULAR_COLOR;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PipelineParameterName {
     GL_ACTIVE_PROGRAM = 0x00008259,
     GL_FRAGMENT_SHADER = 0x00008B30,
@@ -4067,6 +4344,7 @@ pub enum PipelineParameterName {
     GL_TESS_CONTROL_SHADER = 0x00008E88,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum HintTarget {
     GL_PERSPECTIVE_CORRECTION_HINT = 0x00000C50,
     GL_POINT_SMOOTH_HINT = 0x00000C51,
@@ -4125,6 +4403,7 @@ impl HintTarget {
         HintTarget::GL_FRAGMENT_SHADER_DERIVATIVE_HINT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SizedInternalFormat {
     GL_R3_G3_B2 = 0x00002A10,
     GL_ALPHA4 = 0x0000803B,
@@ -4552,6 +4831,7 @@ impl SizedInternalFormat {
         SizedInternalFormat::GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DebugSource {
     GL_DONT_CARE = 0x00001100,
     GL_DEBUG_SOURCE_API = 0x00008246,
@@ -4562,6 +4842,7 @@ pub enum DebugSource {
     GL_DEBUG_SOURCE_OTHER = 0x0000824B,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum InternalFormat {
     GL_STENCIL_INDEX = 0x00001901,
     GL_DEPTH_COMPONENT = 0x00001902,
@@ -5010,12 +5291,51 @@ impl InternalFormat {
         InternalFormat::GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10;
     pub const GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR: InternalFormat =
         InternalFormat::GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12;
+
+    pub fn size(&self) -> usize {
+        match self {
+            InternalFormat::GL_R8
+            | InternalFormat::GL_R16
+            | InternalFormat::GL_R16F
+            | InternalFormat::GL_R32F
+            | InternalFormat::GL_R8I
+            | InternalFormat::GL_R16I
+            | InternalFormat::GL_R32I
+            | InternalFormat::GL_R8UI
+            | InternalFormat::GL_R16UI
+            | InternalFormat::GL_R32UI => 1,
+            InternalFormat::GL_RG8
+            | InternalFormat::GL_RG16
+            | InternalFormat::GL_RG16F
+            | InternalFormat::GL_RG32F
+            | InternalFormat::GL_RG8I
+            | InternalFormat::GL_RG16I
+            | InternalFormat::GL_RG32I
+            | InternalFormat::GL_RG8UI
+            | InternalFormat::GL_RG16UI
+            | InternalFormat::GL_RG32UI => 2,
+            InternalFormat::GL_RGB32F | InternalFormat::GL_RGB32I | InternalFormat::GL_RGB32UI => 3,
+            InternalFormat::GL_RGBA8
+            | InternalFormat::GL_RGBA16
+            | InternalFormat::GL_RGBA16F
+            | InternalFormat::GL_RGBA32F
+            | InternalFormat::GL_RGBA8I
+            | InternalFormat::GL_RGBA16I
+            | InternalFormat::GL_RGBA32I
+            | InternalFormat::GL_RGBA8UI
+            | InternalFormat::GL_RGBA16UI
+            | InternalFormat::GL_RGBA32UI => 4,
+            _ => todo!(),
+        }
+    }
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PixelTransformTargetEXT {
     GL_PIXEL_TRANSFORM_2D_EXT = 0x00008330,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerStageNV {
     GL_COMBINER0_NV = 0x00008550,
     GL_COMBINER1_NV = 0x00008551,
@@ -5027,6 +5347,7 @@ pub enum CombinerStageNV {
     GL_COMBINER7_NV = 0x00008557,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathGenMode {
     GL_NONE = 0x00000000,
     GL_EYE_LINEAR = 0x00002400,
@@ -5035,6 +5356,7 @@ pub enum PathGenMode {
     GL_PATH_OBJECT_BOUNDING_BOX_NV = 0x0000908A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SamplePatternSGIS {
     GL_1PASS_EXT = 0x000080A1,
     GL_2PASS_0_EXT = 0x000080A2,
@@ -5054,6 +5376,7 @@ impl SamplePatternSGIS {
     pub const GL_4PASS_3_SGIS: SamplePatternSGIS = SamplePatternSGIS::GL_4PASS_3_EXT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureSwizzle {
     GL_ZERO = 0x00000000,
     GL_ONE = 0x00000001,
@@ -5063,16 +5386,19 @@ pub enum TextureSwizzle {
     GL_ALPHA = 0x00001906,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ConvolutionTarget {
     GL_CONVOLUTION_1D = 0x00008010,
     GL_CONVOLUTION_2D = 0x00008011,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MeshMode1 {
     GL_POINT = 0x00001B00,
     GL_LINE = 0x00001B01,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum StencilFunction {
     GL_NEVER = 0x00000200,
     GL_LESS = 0x00000201,
@@ -5084,6 +5410,7 @@ pub enum StencilFunction {
     GL_ALWAYS = 0x00000207,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum UniformType {
     GL_INT = 0x00001404,
     GL_UNSIGNED_INT = 0x00001405,
@@ -5165,10 +5492,12 @@ pub enum UniformType {
     GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY = 0x0000910D,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightEnvParameterSGIX {
     GL_LIGHT_ENV_MODE_SGIX = 0x00008407,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogCoordSrc {
     GL_FOG_COORDINATE = 0x00008451,
     GL_FRAGMENT_DEPTH = 0x00008452,
@@ -5179,10 +5508,12 @@ impl FogCoordSrc {
     pub const GL_FRAGMENT_DEPTH_EXT: FogCoordSrc = FogCoordSrc::GL_FRAGMENT_DEPTH;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ListParameterName {
     GL_LIST_PRIORITY_SGIX = 0x00008182,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SwizzleOpATI {
     GL_SWIZZLE_STR_ATI = 0x00008976,
     GL_SWIZZLE_STQ_ATI = 0x00008977,
@@ -5190,6 +5521,7 @@ pub enum SwizzleOpATI {
     GL_SWIZZLE_STQ_DQ_ATI = 0x00008979,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureEnvMode {
     GL_ADD = 0x00000104,
     GL_BLEND = 0x00000BE2,
@@ -5201,12 +5533,14 @@ pub enum TextureEnvMode {
     GL_COMBINE = 0x00008570,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TriangleListSUN {
     GL_RESTART_SUN = 0x00000001,
     GL_REPLACE_MIDDLE_SUN = 0x00000002,
     GL_REPLACE_OLDEST_SUN = 0x00000003,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SyncParameterName {
     GL_OBJECT_TYPE = 0x00009112,
     GL_SYNC_CONDITION = 0x00009113,
@@ -5214,6 +5548,7 @@ pub enum SyncParameterName {
     GL_SYNC_FLAGS = 0x00009115,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FramebufferParameterName {
     GL_FRAMEBUFFER_DEFAULT_WIDTH = 0x00009310,
     GL_FRAMEBUFFER_DEFAULT_HEIGHT = 0x00009311,
@@ -5222,6 +5557,7 @@ pub enum FramebufferParameterName {
     GL_FRAMEBUFFER_DEFAULT_FIXED_SAMPLE_LOCATIONS = 0x00009314,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SyncObjectMask {
     GL_SYNC_FLUSH_COMMANDS_BIT = 0x00000001,
 }
@@ -5230,11 +5566,13 @@ impl SyncObjectMask {
         SyncObjectMask::GL_SYNC_FLUSH_COMMANDS_BIT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PerformanceQueryCapsMaskINTEL {
     GL_PERFQUERY_SINGLE_CONTEXT_INTEL = 0x00000000,
     GL_PERFQUERY_GLOBAL_CONTEXT_INTEL = 0x00000001,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorMaterialParameter {
     GL_AMBIENT = 0x00001200,
     GL_DIFFUSE = 0x00001201,
@@ -5243,6 +5581,7 @@ pub enum ColorMaterialParameter {
     GL_AMBIENT_AND_DIFFUSE = 0x00001602,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum BufferUsageARB {
     GL_STREAM_DRAW = 0x000088E0,
     GL_STREAM_READ = 0x000088E1,
@@ -5255,6 +5594,7 @@ pub enum BufferUsageARB {
     GL_DYNAMIC_COPY = 0x000088EA,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetMultisamplePNameNV {
     GL_SAMPLE_POSITION = 0x00008E50,
     GL_PROGRAMMABLE_SAMPLE_LOCATION_ARB = 0x00009341,
@@ -5264,6 +5604,7 @@ impl GetMultisamplePNameNV {
         GetMultisamplePNameNV::GL_SAMPLE_POSITION;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FramebufferAttachmentParameterName {
     GL_FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING = 0x00008210,
     GL_FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE = 0x00008211,
@@ -5321,6 +5662,7 @@ impl FramebufferAttachmentParameterName {
         FramebufferAttachmentParameterName::GL_FRAMEBUFFER_ATTACHMENT_LAYERED;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TexStorageAttribs {
     GL_SURFACE_COMPRESSION_EXT = 0x000096C0,
     GL_SURFACE_COMPRESSION_FIXED_RATE_NONE_EXT = 0x000096C1,
@@ -5339,16 +5681,19 @@ pub enum TexStorageAttribs {
     GL_SURFACE_COMPRESSION_FIXED_RATE_12BPC_EXT = 0x000096CF,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ContextProfileMask {
     GL_CONTEXT_CORE_PROFILE_BIT = 0x00000001,
     GL_CONTEXT_COMPATIBILITY_PROFILE_BIT = 0x00000002,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerBiasNV {
     GL_NONE = 0x00000000,
     GL_BIAS_BY_NEGATIVE_ONE_HALF_NV = 0x00008541,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum DebugType {
     GL_DONT_CARE = 0x00001100,
     GL_DEBUG_TYPE_ERROR = 0x0000824C,
@@ -5362,6 +5707,7 @@ pub enum DebugType {
     GL_DEBUG_TYPE_POP_GROUP = 0x0000826A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MinmaxTargetEXT {
     GL_MINMAX = 0x0000802E,
 }
@@ -5369,11 +5715,13 @@ impl MinmaxTargetEXT {
     pub const GL_MINMAX_EXT: MinmaxTargetEXT = MinmaxTargetEXT::GL_MINMAX;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum EvalTargetNV {
     GL_EVAL_2D_NV = 0x000086C0,
     GL_EVAL_TRIANGULAR_2D_NV = 0x000086C1,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShaderParameterName {
     GL_SHADER_TYPE = 0x00008B4F,
     GL_DELETE_STATUS = 0x00008B80,
@@ -5382,12 +5730,14 @@ pub enum ShaderParameterName {
     GL_SHADER_SOURCE_LENGTH = 0x00008B88,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathColor {
     GL_PRIMARY_COLOR_NV = 0x0000852C,
     GL_SECONDARY_COLOR_NV = 0x0000852D,
     GL_PRIMARY_COLOR = 0x00008577,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TransformFeedbackPName {
     GL_TRANSFORM_FEEDBACK_BUFFER_START = 0x00008C84,
     GL_TRANSFORM_FEEDBACK_BUFFER_SIZE = 0x00008C85,
@@ -5396,12 +5746,14 @@ pub enum TransformFeedbackPName {
     GL_TRANSFORM_FEEDBACK_ACTIVE = 0x00008E24,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SpriteModeSGIX {
     GL_SPRITE_AXIAL_SGIX = 0x0000814C,
     GL_SPRITE_OBJECT_ALIGNED_SGIX = 0x0000814D,
     GL_SPRITE_EYE_ALIGNED_SGIX = 0x0000814E,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PointParameterNameARB {
     GL_POINT_SIZE_MIN = 0x00008126,
     GL_POINT_SIZE_MAX = 0x00008127,
@@ -5435,6 +5787,7 @@ impl PointParameterNameARB {
         PointParameterNameARB::GL_DISTANCE_ATTENUATION_EXT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetMinmaxParameterPNameEXT {
     GL_MINMAX_FORMAT = 0x0000802F,
     GL_MINMAX_SINK = 0x00008030,
@@ -5446,6 +5799,7 @@ impl GetMinmaxParameterPNameEXT {
         GetMinmaxParameterPNameEXT::GL_MINMAX_SINK;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum IndexFunctionEXT {
     GL_NEVER = 0x00000200,
     GL_LESS = 0x00000201,
@@ -5457,10 +5811,12 @@ pub enum IndexFunctionEXT {
     GL_ALWAYS = 0x00000207,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SpriteParameterNameSGIX {
     GL_SPRITE_MODE_SGIX = 0x00008149,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexArrayPName {
     GL_VERTEX_ATTRIB_RELATIVE_OFFSET = 0x000082D5,
     GL_VERTEX_ATTRIB_ARRAY_ENABLED = 0x00008622,
@@ -5473,6 +5829,7 @@ pub enum VertexArrayPName {
     GL_VERTEX_ATTRIB_ARRAY_DIVISOR = 0x000088FE,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ImageTransformPNameHP {
     GL_IMAGE_SCALE_X_HP = 0x00008155,
     GL_IMAGE_SCALE_Y_HP = 0x00008156,
@@ -5486,6 +5843,7 @@ pub enum ImageTransformPNameHP {
     GL_IMAGE_CUBIC_WEIGHT_HP = 0x0000815E,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexAttribIType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -5495,6 +5853,7 @@ pub enum VertexAttribIType {
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightModelParameter {
     GL_LIGHT_MODEL_LOCAL_VIEWER = 0x00000B51,
     GL_LIGHT_MODEL_TWO_SIDE = 0x00000B52,
@@ -5506,6 +5865,7 @@ impl LightModelParameter {
         LightModelParameter::GL_LIGHT_MODEL_COLOR_CONTROL;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapTarget {
     GL_MAP1_COLOR_4 = 0x00000D90,
     GL_MAP1_INDEX = 0x00000D91,
@@ -5529,6 +5889,7 @@ pub enum MapTarget {
     GL_TEXTURE_DEFORMATION_SGIX = 0x00008195,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CommandOpcodesNV {
     GL_TERMINATE_SEQUENCE_COMMAND_NV = 0x00000000,
     GL_NOP_COMMAND_NV = 0x00000001,
@@ -5551,6 +5912,7 @@ pub enum CommandOpcodesNV {
     GL_FRONT_FACE_COMMAND_NV = 0x00000012,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FeedBackToken {
     GL_PASS_THROUGH_TOKEN = 0x00000700,
     GL_POINT_TOKEN = 0x00000701,
@@ -5562,6 +5924,7 @@ pub enum FeedBackToken {
     GL_LINE_RESET_TOKEN = 0x00000707,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SamplePatternEXT {
     GL_1PASS_EXT = 0x000080A1,
     GL_2PASS_0_EXT = 0x000080A2,
@@ -5572,11 +5935,13 @@ pub enum SamplePatternEXT {
     GL_4PASS_3_EXT = 0x000080A7,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FfdMaskSGIX {
     GL_TEXTURE_DEFORMATION_BIT_SGIX = 0x00000001,
     GL_GEOMETRY_DEFORMATION_BIT_SGIX = 0x00000002,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MapBufferAccessMask {
     GL_MAP_READ_BIT = 0x00000001,
     GL_MAP_WRITE_BIT = 0x00000002,
@@ -5604,16 +5969,19 @@ impl MapBufferAccessMask {
         MapBufferAccessMask::GL_MAP_COHERENT_BIT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FrontFaceDirection {
     GL_CW = 0x00000900,
     GL_CCW = 0x00000901,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShadingModel {
     GL_FLAT = 0x00001D00,
     GL_SMOOTH = 0x00001D01,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FragmentShaderConATI {
     GL_CON_0_ATI = 0x00008941,
     GL_CON_1_ATI = 0x00008942,
@@ -5649,6 +6017,7 @@ pub enum FragmentShaderConATI {
     GL_CON_31_ATI = 0x00008960,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum QueryCounterTarget {
     GL_TIMESTAMP = 0x00008E28,
 }
@@ -5656,6 +6025,7 @@ impl QueryCounterTarget {
     pub const GL_TIMESTAMP_EXT: QueryCounterTarget = QueryCounterTarget::GL_TIMESTAMP;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum EnableCap {
     GL_POINT_SMOOTH = 0x00000B10,
     GL_LINE_SMOOTH = 0x00000B20,
@@ -5807,6 +6177,7 @@ impl EnableCap {
     pub const GL_TEXTURE_CUBE_MAP_OES: EnableCap = EnableCap::GL_TEXTURE_CUBE_MAP;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorPointerType {
     GL_BYTE = 0x00001400,
     GL_UNSIGNED_BYTE = 0x00001401,
@@ -5818,6 +6189,7 @@ pub enum ColorPointerType {
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ColorTableParameterPName {
     GL_COLOR_TABLE_SCALE = 0x000080D6,
     GL_COLOR_TABLE_BIAS = 0x000080D7,
@@ -5853,6 +6225,7 @@ impl ColorTableParameterPName {
         ColorTableParameterPName::GL_COLOR_TABLE_INTENSITY_SIZE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SemaphoreParameterName {
     GL_D3D12_FENCE_VALUE_EXT = 0x00009595,
     GL_SEMAPHORE_TYPE_NV = 0x000095B3,
@@ -5864,10 +6237,12 @@ impl SemaphoreParameterName {
         SemaphoreParameterName::GL_D3D12_FENCE_VALUE_EXT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SeparableTarget {
     GL_SEPARABLE_2D = 0x00008012,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ConvolutionParameter {
     GL_CONVOLUTION_BORDER_MODE = 0x00008013,
     GL_CONVOLUTION_FILTER_SCALE = 0x00008014,
@@ -5898,6 +6273,7 @@ impl ConvolutionParameter {
         ConvolutionParameter::GL_MAX_CONVOLUTION_HEIGHT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ShaderType {
     GL_FRAGMENT_SHADER = 0x00008B30,
     GL_VERTEX_SHADER = 0x00008B31,
@@ -5911,6 +6287,7 @@ impl ShaderType {
     pub const GL_VERTEX_SHADER_ARB: ShaderType = ShaderType::GL_VERTEX_SHADER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum TextureGenParameter {
     GL_TEXTURE_GEN_MODE = 0x00002500,
     GL_OBJECT_PLANE = 0x00002501,
@@ -5925,6 +6302,7 @@ impl TextureGenParameter {
         TextureGenParameter::GL_TEXTURE_GEN_MODE;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum VertexShaderStorageTypeEXT {
     GL_VARIANT_EXT = 0x000087C1,
     GL_INVARIANT_EXT = 0x000087C2,
@@ -5932,11 +6310,13 @@ pub enum VertexShaderStorageTypeEXT {
     GL_LOCAL_EXT = 0x000087C4,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogCoordinatePointerType {
     GL_FLOAT = 0x00001406,
     GL_DOUBLE = 0x0000140A,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum QueryObjectParameterName {
     GL_QUERY_TARGET = 0x000082EA,
     GL_QUERY_RESULT = 0x00008866,
@@ -5944,11 +6324,13 @@ pub enum QueryObjectParameterName {
     GL_QUERY_RESULT_NO_WAIT = 0x00009194,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ArrayObjectPNameATI {
     GL_OBJECT_BUFFER_SIZE_ATI = 0x00008764,
     GL_OBJECT_BUFFER_USAGE_ATI = 0x00008765,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SubgroupSupportedFeatures {
     GL_SUBGROUP_FEATURE_BASIC_BIT_KHR = 0x00000001,
     GL_SUBGROUP_FEATURE_VOTE_BIT_KHR = 0x00000002,
@@ -5961,16 +6343,19 @@ pub enum SubgroupSupportedFeatures {
     GL_SUBGROUP_FEATURE_PARTITIONED_BIT_NV = 0x00000100,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramStringProperty {
     GL_PROGRAM_STRING_ARB = 0x00008628,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum MatrixIndexPointerTypeARB {
     GL_UNSIGNED_BYTE = 0x00001401,
     GL_UNSIGNED_SHORT = 0x00001403,
     GL_UNSIGNED_INT = 0x00001405,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum InvalidateFramebufferAttachment {
     GL_COLOR = 0x00001800,
     GL_DEPTH = 0x00001801,
@@ -6086,6 +6471,7 @@ impl InvalidateFramebufferAttachment {
         InvalidateFramebufferAttachment::GL_STENCIL_ATTACHMENT_EXT;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum GetVariantValueEXT {
     GL_VARIANT_VALUE_EXT = 0x000087E4,
     GL_VARIANT_DATATYPE_EXT = 0x000087E5,
@@ -6093,10 +6479,12 @@ pub enum GetVariantValueEXT {
     GL_VARIANT_ARRAY_TYPE_EXT = 0x000087E7,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum SyncBehaviorFlags {
     GL_NONE = 0x00000000,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FramebufferTarget {
     GL_READ_FRAMEBUFFER = 0x00008CA8,
     GL_DRAW_FRAMEBUFFER = 0x00008CA9,
@@ -6106,6 +6494,7 @@ impl FramebufferTarget {
     pub const GL_FRAMEBUFFER_OES: FramebufferTarget = FramebufferTarget::GL_FRAMEBUFFER;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum FogPName {
     GL_FOG_INDEX = 0x00000B61,
     GL_FOG_DENSITY = 0x00000B62,
@@ -6115,6 +6504,7 @@ pub enum FogPName {
     GL_FOG_COORD_SRC = 0x00008450,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum LightTextureModeEXT {
     GL_FRAGMENT_MATERIAL_EXT = 0x00008349,
     GL_FRAGMENT_NORMAL_EXT = 0x0000834A,
@@ -6125,12 +6515,14 @@ impl LightTextureModeEXT {
     pub const GL_FRAGMENT_DEPTH_EXT: LightTextureModeEXT = LightTextureModeEXT::GL_FRAGMENT_DEPTH;
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum CombinerParameterNV {
     GL_COMBINER_INPUT_NV = 0x00008542,
     GL_COMBINER_MAPPING_NV = 0x00008543,
     GL_COMBINER_COMPONENT_USAGE_NV = 0x00008544,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum ProgramStagePName {
     GL_ACTIVE_SUBROUTINES = 0x00008DE5,
     GL_ACTIVE_SUBROUTINE_UNIFORMS = 0x00008DE6,
@@ -6139,6 +6531,7 @@ pub enum ProgramStagePName {
     GL_ACTIVE_SUBROUTINE_UNIFORM_MAX_LENGTH = 0x00008E49,
 }
 #[repr(u32)]
+#[derive(Copy, Clone)]
 pub enum PathElementType {
     GL_UTF8_NV = 0x0000909A,
     GL_UTF16_NV = 0x0000909B,

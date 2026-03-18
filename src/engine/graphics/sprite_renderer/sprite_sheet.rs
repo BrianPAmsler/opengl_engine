@@ -1,9 +1,8 @@
 use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, ops::DerefMut};
 
-use gl46::GL_RGBA;
 use lazy_static::lazy_static;
 
-use crate::engine::graphics::{image::Image, Graphics, Texture};
+use crate::engine::graphics::{Graphics, Texture, gl_enums::InternalFormat, image::Image};
 
 struct SpriteCell {
     x: u32,
@@ -367,7 +366,7 @@ pub struct SpriteSheet {
 
 impl SpriteSheet {
     pub fn as_texture(self, gfx: &Graphics) -> Texture {
-        self.sheet.as_texture(gfx, GL_RGBA)
+        self.sheet.as_texture(gfx, InternalFormat::GL_RGBA)
     }
 
     pub fn image(&self) -> &Image {

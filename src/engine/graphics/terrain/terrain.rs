@@ -1,6 +1,4 @@
-use gl46::{GL_R8, GL_RED, GL_RGB, GL_RGB8, GL_TEXTURE_2D, GL_TEXTURE0, GL_TEXTURE1, GL_UNPACK_ALIGNMENT};
-
-use crate::engine::graphics::{Graphics, Texture, Vertex, builder::{self, TextureBuilder}};
+use crate::engine::graphics::{Graphics, Texture, builder::{TextureBuilder}, gl_enums::{InternalFormat, PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit}};
 
 pub enum Corner {
     TopLeft,
@@ -94,13 +92,13 @@ impl Terrain {
     } 
 
     pub unsafe fn from_raw_unchecked(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
-        let height_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&height_data, width + 1, height + 1, GL_RED, GL_RED) }
-            .min_filter(builder::GLTextureMinFilter::Nearest)
-            .mag_filter(builder::GLTextureMagFilter::Nearest)
+        let height_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&height_data, width + 1, height + 1, InternalFormat::GL_RED, PixelFormat::GL_RED) }
+            .min_filter(TextureMinFilter::GL_NEAREST)
+            .mag_filter(TextureMagFilter::GL_NEAREST)
             .finish(gfx);
-        let color_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&color_data, width * 2, height * 2, GL_RGB, GL_RGB) }
-            .min_filter(builder::GLTextureMinFilter::Nearest)
-            .mag_filter(builder::GLTextureMagFilter::Nearest)
+        let color_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&color_data, width * 2, height * 2, InternalFormat::GL_RGB, PixelFormat::GL_RGB) }
+            .min_filter(TextureMinFilter::GL_NEAREST)
+            .mag_filter(TextureMagFilter::GL_NEAREST)
             .finish(gfx);
 
         Terrain { height_data, color_data, width, height, height_texture, color_texture, height_dirty: false, color_dirty: false }
@@ -208,22 +206,22 @@ impl Terrain {
     pub(in crate::engine::graphics::terrain) fn update_textures(&mut self, gfx: &Graphics) {
         if self.height_dirty {
             // Terrain enforces correct data buffer size, so this is safe
-            unsafe { self.height_texture.update_texture(gfx, &self.height_data, GL_RED) };
+            unsafe { self.height_texture.update_texture(gfx, &self.height_data, PixelFormat::GL_RED) };
             self.height_dirty = false;
         }
 
         if self.color_dirty {
             // Terrain enforces correct data buffer size, so this is safe
-            unsafe { self.color_texture.update_texture(gfx, &self.color_data, GL_RGB) };
+            unsafe { self.color_texture.update_texture(gfx, &self.color_data, PixelFormat::GL_RGB) };
             self.color_dirty = false;
         }
     }
 
     pub(in crate::engine::graphics::terrain) fn bind_textures(&mut self, gfx: &Graphics) {
-        gfx.glActiveTexture(GL_TEXTURE0);
-        gfx.glBindTexture(GL_TEXTURE_2D, self.height_texture.texture_id());
+        gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
+        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.height_texture.texture_id());
 
-        gfx.glActiveTexture(GL_TEXTURE1);
-        gfx.glBindTexture(GL_TEXTURE_2D, self.color_texture.texture_id());
+        gfx.glActiveTexture(TextureUnit::GL_TEXTURE1);
+        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.color_texture.texture_id());
     }
 }

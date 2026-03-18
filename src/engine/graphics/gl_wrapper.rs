@@ -2,10 +2,10 @@
 
 use std::{ffi::{c_void, CString}, fmt::Debug, ops::{Deref, DerefMut}};
 
-use crate::engine::{errors::{GraphicsError, Result}, graphics::VAO};
+use crate::engine::{errors::{GraphicsError, Result}, graphics::{VAO, gl_enums::{AtomicCounterBufferPName, AttributeType, BindTransformFeedbackTarget, BlendEquationModeEXT, BlendingFactor, BlitFramebufferFilter, Buffer, BufferAccessARB, BufferPNameARB, BufferPointerNameARB, BufferStorageTarget, BufferTargetARB, BufferUsageARB, ClampColorModeARB, ClampColorTargetARB, ClipControlDepth, ClipControlOrigin, ColorBuffer, ConditionalRenderMode, CopyBufferSubDataTarget, CopyImageSubDataTarget, DebugSeverity, DebugSource, DebugType, DepthFunction, DrawBufferMode, DrawElementsType, EnableCap, ErrorCode, FramebufferAttachment, FramebufferAttachmentParameterName, FramebufferParameterName, FramebufferStatus, FramebufferTarget, FrontFaceDirection, GetFramebufferParameter, GetMultisamplePNameNV, GetPName, GetPointervPName, GetTextureParameter, GraphicsResetStatus, HintMode, HintTarget, InternalFormat, InternalFormatPName, InvalidateFramebufferAttachment, LogicOp, ObjectIdentifier, PatchParameterName, PipelineParameterName, PixelFormat, PixelStoreParameter, PixelType, PointParameterNameARB, PolygonMode, PrecisionType, PrimitiveType, ProgramInterface, ProgramInterfacePName, ProgramParameterPName, ProgramPropertyARB, ProgramResourceProperty, ProgramStagePName, QueryCounterTarget, QueryObjectParameterName, QueryParameterName, QueryTarget, ReadBufferMode, RenderbufferParameterName, RenderbufferTarget, SamplerParameterF, SamplerParameterI, ShaderBinaryFormat, ShaderParameterName, ShaderType, StencilFunction, StencilOp, StringName, SubroutineParameterName, SyncCondition, SyncParameterName, SyncStatus, TextureParameterName, TextureTarget, TextureUnit, TransformFeedbackBufferMode, TransformFeedbackPName, UniformBlockPName, UniformPName, UniformType, VertexArrayPName, VertexAttribEnum, VertexAttribIType, VertexAttribLType, VertexAttribPointerPropertyARB, VertexAttribPointerType, VertexAttribPropertyARB, VertexAttribType, VertexProvokingMode}}};
 
 use gl_types::matrices::{Mat4, MatN};
-use gl46::*;
+use gl46::{CullFaceMode, GL_INT, GL_UNSIGNED_INT, GLDEBUGPROC, GLbitfield, GLenum, GLsync, GlFns, MaterialFace, StencilFaceDirection, VertexBufferObjectUsage};
 use glfw::GLProc;
 
 use self::private::Sealed;
@@ -15,69 +15,64 @@ mod private {
 }
 
 pub trait GLType : Sealed + Clone + Copy + Debug {
-    fn gl_type() -> GLenum;
+    fn gl_type() -> VertexAttribPointerType;
 }
 
 impl Sealed for bool {}
-impl GLType for bool {
-    fn gl_type() -> GLenum {
-        GL_BOOL
-    }
-}
 
 impl Sealed for i8 {}
 impl GLType for i8 {
-    fn gl_type() -> GLenum {
-        GL_BYTE
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_BYTE
     }
 }
 
 impl Sealed for u8 {}
 impl GLType for u8 {
-    fn gl_type() -> GLenum {
-        GL_UNSIGNED_BYTE
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_UNSIGNED_BYTE
     }
 }
 
 impl Sealed for i16 {}
 impl GLType for i16 {
-    fn gl_type() -> GLenum {
-        GL_SHORT
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_SHORT
     }
 }
 
 impl Sealed for u16 {}
 impl GLType for u16 {
-    fn gl_type() -> GLenum {
-        GL_UNSIGNED_SHORT
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_UNSIGNED_SHORT
     }
 }
 
 impl Sealed for i32 {}
 impl GLType for i32 {
-    fn gl_type() -> GLenum {
-        GL_INT
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_INT
     }
 }
 
 impl Sealed for u32 {}
 impl GLType for u32 {
-    fn gl_type() -> GLenum {
-        GL_UNSIGNED_INT
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_UNSIGNED_INT
     }
 }
 
 impl Sealed for f32 {}
 impl GLType for f32 {
-    fn gl_type() -> GLenum {
-        GL_FLOAT
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_FLOAT
     }
 }
 
 impl Sealed for f64 {}
 impl GLType for f64 {
-    fn gl_type() -> GLenum {
-        GL_DOUBLE
+    fn gl_type() -> VertexAttribPointerType {
+        VertexAttribPointerType::GL_DOUBLE
     }
 }
 
@@ -167,7 +162,7 @@ impl GLWrapper {
     }
 
     pub fn glActiveTexture(&self, texture: TextureUnit) {
-        unsafe { self.fns.ActiveTexture(texture) }
+        unsafe { self.fns.ActiveTexture(GLenum(texture as u32)) }
     }
     
     pub fn glAttachShader(&self, program: u32, shader: u32) {
@@ -175,15 +170,15 @@ impl GLWrapper {
     }
     
     pub fn glBeginConditionalRender(&self, id: u32, mode: ConditionalRenderMode) {
-        unsafe { self.fns.BeginConditionalRender(id, mode) }
+        unsafe { self.fns.BeginConditionalRender(id, GLenum(mode as u32)) }
     }
     
     pub fn glBeginQuery(&self, target: QueryTarget, id: u32) {
-        unsafe { self.fns.BeginQuery(target, id) }
+        unsafe { self.fns.BeginQuery(GLenum(target as u32), id) }
     }
     
     pub fn glBeginTransformFeedback(&self, primitiveMode: PrimitiveType) {
-        unsafe { self.fns.BeginTransformFeedback(primitiveMode) }
+        unsafe { self.fns.BeginTransformFeedback(GLenum(primitiveMode as u32)) }
     }
     
     pub fn glBindAttribLocation(&self, program: u32, index: u32, name: &str) {
@@ -192,15 +187,15 @@ impl GLWrapper {
     }
     
     pub fn glBindBuffer(&self, target: BufferTargetARB, buffer: u32) {
-        unsafe { self.fns.BindBuffer(target, buffer) }
+        unsafe { self.fns.BindBuffer(GLenum(target as u32), buffer) }
     }
     
     pub fn glBindBufferBase(&self, target: BufferTargetARB, index: u32, buffer: u32) {
-        unsafe { self.fns.BindBufferBase(target, index, buffer) }
+        unsafe { self.fns.BindBufferBase(GLenum(target as u32), index, buffer) }
     }
     
     pub fn glBindBufferRange(&self, target: BufferTargetARB, index: u32, buffer: u32, offset: isize, size: isize) {
-        unsafe { self.fns.BindBufferRange(target, index, buffer, offset, size) }
+        unsafe { self.fns.BindBufferRange(GLenum(target as u32), index, buffer, offset, size) }
     }
     
     pub fn glBindFragDataLocation(&self, program: u32, color: u32, name: &str) {
@@ -214,11 +209,11 @@ impl GLWrapper {
     }
     
     pub fn glBindFramebuffer(&self, target: FramebufferTarget, framebuffer: u32) {
-        unsafe { self.fns.BindFramebuffer(target, framebuffer) }
+        unsafe { self.fns.BindFramebuffer(GLenum(target as u32), framebuffer) }
     }
     
     pub fn glBindRenderbuffer(&self, target: RenderbufferTarget, renderbuffer: u32) {
-        unsafe { self.fns.BindRenderbuffer(target, renderbuffer) }
+        unsafe { self.fns.BindRenderbuffer(GLenum(target as u32), renderbuffer) }
     }
     
     pub fn glBindSampler(&self, unit: u32, sampler: u32) {
@@ -226,7 +221,7 @@ impl GLWrapper {
     }
     
     pub fn glBindTexture(&self, target: TextureTarget, texture: u32) {
-        unsafe { self.fns.BindTexture(target, texture) }
+        unsafe { self.fns.BindTexture(GLenum(target as u32), texture) }
     }
     
     pub fn glBindVertexArray(&self, array: VAO) {
@@ -238,43 +233,43 @@ impl GLWrapper {
     }
     
     pub fn glBlendEquation(&self, mode: BlendEquationModeEXT) {
-        unsafe { self.fns.BlendEquation(mode) }
+        unsafe { self.fns.BlendEquation(GLenum(mode as u32)) }
     }
     
     pub fn glBlendEquationSeparate(&self, modeRGB: BlendEquationModeEXT, modeAlpha: BlendEquationModeEXT) {
-        unsafe { self.fns.BlendEquationSeparate(modeRGB, modeAlpha) }
+        unsafe { self.fns.BlendEquationSeparate(GLenum(modeRGB as u32), GLenum(modeAlpha as u32)) }
     }
     
     pub fn glBlendFunc(&self, sfactor: BlendingFactor, dfactor: BlendingFactor) {
-        unsafe { self.fns.BlendFunc(sfactor, dfactor) }
+        unsafe { self.fns.BlendFunc(GLenum(sfactor as u32), GLenum(dfactor as u32)) }
     }
     
     pub fn glBlendFuncSeparate(&self, sfactorRGB: BlendingFactor, dfactorRGB: BlendingFactor, sfactorAlpha: BlendingFactor, dfactorAlpha: BlendingFactor) {
-        unsafe { self.fns.BlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha) }
+        unsafe { self.fns.BlendFuncSeparate(GLenum(sfactorRGB as u32), GLenum(dfactorRGB as u32), GLenum(sfactorAlpha as u32), GLenum(dfactorAlpha as u32)) }
     }
     
     pub fn glBlitFramebuffer(&self, srcX0: i32, srcY0: i32, srcX1: i32, srcY1: i32, dstX0: i32, dstY0: i32, dstX1: i32, dstY1: i32, mask: GLbitfield, filter: BlitFramebufferFilter) {
-        unsafe { self.fns.BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) }
+        unsafe { self.fns.BlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, GLenum(filter as u32)) }
     }
     
     pub fn glBufferData<T>(&self, target: BufferTargetARB, data: &[T], usage: BufferUsageARB) {
-        unsafe { self.fns.BufferData(target, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _, usage) }
+        unsafe { self.fns.BufferData(GLenum(target as u32), (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _, GLenum(usage as u32)) }
     }
     
     pub fn glBufferSubData<T>(&self, target: BufferTargetARB, offset: isize, data: &[T]) {
-        unsafe { self.fns.BufferSubData(target, offset, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _) }
+        unsafe { self.fns.BufferSubData(GLenum(target as u32), offset, (data.len() * std::mem::size_of::<T>()) as _, data.as_ptr() as _) }
     }
 
     pub fn glBufferNull(&self, target: BufferTargetARB, size: usize, usage: BufferUsageARB) {
-        unsafe { self.fns.BufferData(target, size as _, std::ptr::null(), usage )}
+        unsafe { self.fns.BufferData(GLenum(target as u32), size as _, std::ptr::null(), GLenum(usage as u32) )}
     }
     
     pub fn glCheckFramebufferStatus(&self, target: FramebufferTarget) -> FramebufferStatus {
-        unsafe { self.fns.CheckFramebufferStatus(target) }
+        unsafe { self.fns.CheckFramebufferStatus(GLenum(target as u32)) }.0.try_into().unwrap()
     }
     
     pub fn glClampColor(&self, target: ClampColorTargetARB, clamp: ClampColorModeARB) {
-        unsafe { self.fns.ClampColor(target, clamp) }
+        unsafe { self.fns.ClampColor(GLenum(target as u32), GLenum(clamp as u32)) }
     }
     
     pub fn glClear(&self, mask: GLbitfield) {
@@ -282,52 +277,53 @@ impl GLWrapper {
     }
     
     pub fn glClearBufferfi(&self, buffer: Buffer, drawbuffer: i32, depth: f32, stencil: i32) {
-        unsafe { self.fns.ClearBufferfi(buffer, drawbuffer, depth as _, stencil) }
+        unsafe { self.fns.ClearBufferfi(GLenum(buffer as u32), drawbuffer, depth as _, stencil) }
     }
     
+
+    //TODO: Replace buffer and value with a single enum, rather than doing a runtime check
     pub fn glClearBufferfv(&self, buffer: Buffer, drawbuffer: i32, value: &[f32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearBufferfv(buffer, drawbuffer, value.as_ptr()) }
+        unsafe { self.fns.ClearBufferfv(GLenum(buffer as u32), drawbuffer, value.as_ptr()) }
     }
     
+    //TODO: Replace buffer and value with a single enum, rather than doing a runtime check
     pub fn glClearBufferiv(&self, buffer: Buffer, drawbuffer: i32, value: &[i32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearBufferiv(buffer, drawbuffer, value.as_ptr()) }
+        unsafe { self.fns.ClearBufferiv(GLenum(buffer as u32), drawbuffer, value.as_ptr()) }
     }
     
+    //TODO: Replace buffer and value with a single enum, rather than doing a runtime check
     pub fn glClearBufferuiv(&self, buffer: Buffer, drawbuffer: i32, value: &[u32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearBufferuiv(buffer, drawbuffer, value.as_ptr()) }
+        unsafe { self.fns.ClearBufferuiv(GLenum(buffer as u32), drawbuffer, value.as_ptr()) }
     }
     
     pub fn glClearColor(&self, red: f32, green: f32, blue: f32, alpha: f32) {
@@ -343,7 +339,7 @@ impl GLWrapper {
     }
     
     pub fn glClientWaitSync(&self, sync: GLsync, flags: GLbitfield, timeout: u64) -> SyncStatus {
-        unsafe { self.fns.ClientWaitSync(sync, flags, timeout) }
+        unsafe { self.fns.ClientWaitSync(sync, flags, timeout) }.0.try_into().unwrap()
     }
     
     pub fn glColorMask(&self, red: u8, green: u8, blue: u8, alpha: u8) {
@@ -359,51 +355,51 @@ impl GLWrapper {
     }
     
     pub fn glCompressedTexImage1D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage1D(target, level, internalformat, width as _, border, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage1D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage2D(target, level, internalformat, width as _, height as _, border, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage2D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, height as _, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexImage3D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, border: i32, data: &[u8]) {
-        unsafe { self.fns.CompressedTexImage3D(target, level, internalformat, width as _, height as _, depth as _, border, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage3D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, height as _, depth as _, border, data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage1D(&self, target: TextureTarget, level: i32, xoffset: i32, width: u32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage1D(target, level, xoffset, width as _, format, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexSubImage1D(GLenum(target as u32), level, xoffset, width as _, GLenum(format as u32), data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage2D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, width: u32, height: u32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage2D(target, level, xoffset, yoffset, width as _, height as _, format, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexSubImage2D(GLenum(target as u32), level, xoffset, yoffset, width as _, height as _, GLenum(format as u32), data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTexSubImage3D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, data: &[u8]) {
-        unsafe { self.fns.CompressedTexSubImage3D(target, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, data.len() as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexSubImage3D(GLenum(target as u32), level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, GLenum(format as u32), data.len() as _, data.as_ptr() as _) }
     }
     
     pub fn glCopyBufferSubData(&self, readTarget: CopyBufferSubDataTarget, writeTarget: CopyBufferSubDataTarget, readOffset: isize, writeOffset: isize, size: isize) {
-        unsafe { self.fns.CopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size) }
+        unsafe { self.fns.CopyBufferSubData(GLenum(readTarget as u32), GLenum(writeTarget as u32), readOffset, writeOffset, size) }
     }
     
     pub fn glCopyTexImage1D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, x: i32, y: i32, width: u32, border: i32) {
-        unsafe { self.fns.CopyTexImage1D(target, level, internalformat, x, y, width as _, border) }
+        unsafe { self.fns.CopyTexImage1D(GLenum(target as u32), level, GLenum(internalformat as u32), x, y, width as _, border) }
     }
     
     pub fn glCopyTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, x: i32, y: i32, width: u32, height: u32, border: i32) {
-        unsafe { self.fns.CopyTexImage2D(target, level, internalformat, x, y, width as _, height as _, border) }
+        unsafe { self.fns.CopyTexImage2D(GLenum(target as u32), level, GLenum(internalformat as u32), x, y, width as _, height as _, border) }
     }
     
     pub fn glCopyTexSubImage1D(&self, target: TextureTarget, level: i32, xoffset: i32, x: i32, y: i32, width: u32) {
-        unsafe { self.fns.CopyTexSubImage1D(target, level, xoffset, x, y, width as _) }
+        unsafe { self.fns.CopyTexSubImage1D(GLenum(target as u32), level, xoffset, x, y, width as _) }
     }
     
     pub fn glCopyTexSubImage2D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, x: i32, y: i32, width: u32, height: u32) {
-        unsafe { self.fns.CopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width as _, height as _) }
+        unsafe { self.fns.CopyTexSubImage2D(GLenum(target as u32), level, xoffset, yoffset, x, y, width as _, height as _) }
     }
     
     pub fn glCopyTexSubImage3D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, x: i32, y: i32, width: u32, height: u32) {
-        unsafe { self.fns.CopyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width as _, height as _) }
+        unsafe { self.fns.CopyTexSubImage3D(GLenum(target as u32), level, xoffset, yoffset, zoffset, x, y, width as _, height as _) }
     }
     
     pub fn glCreateProgram(&self) -> u32 {
@@ -411,7 +407,7 @@ impl GLWrapper {
     }
     
     pub fn glCreateShader(&self, type_: ShaderType) -> u32 {
-        self.fns.CreateShader(type_)
+        self.fns.CreateShader(GLenum(type_ as u32))
     }
     
     pub fn glCullFace(&self, mode: CullFaceMode) {
@@ -459,7 +455,7 @@ impl GLWrapper {
     }
     
     pub fn glDepthFunc(&self, func: DepthFunction) {
-        unsafe { self.fns.DepthFunc(func) }
+        unsafe { self.fns.DepthFunc(GLenum(func as u32)) }
     }
     
     pub fn glDepthMask(&self, flag: u8) {
@@ -475,7 +471,7 @@ impl GLWrapper {
     }
     
     pub fn glDisable(&self, cap: EnableCap) {
-        unsafe { self.fns.Disable(cap) }
+        unsafe { self.fns.Disable(GLenum(cap as u32)) }
     }
     
     pub fn glDisableVertexAttribArray(&self, index: u32) {
@@ -483,51 +479,51 @@ impl GLWrapper {
     }
     
     pub fn glDisablei(&self, target: EnableCap, index: u32) {
-        unsafe { self.fns.Disablei(target, index) }
+        unsafe { self.fns.Disablei(GLenum(target as u32), index) }
     }
     
     pub fn glDrawArrays(&self, mode: PrimitiveType, first: i32, count: i32) {
-        unsafe { self.fns.DrawArrays(mode, first, count) }
+        unsafe { self.fns.DrawArrays(GLenum(mode as u32), first, count) }
     }
     
     pub fn glDrawArraysInstanced(&self, mode: PrimitiveType, first: i32, count: i32, instancecount: u32) {
-        unsafe { self.fns.DrawArraysInstanced(mode, first, count, instancecount as _) }
+        unsafe { self.fns.DrawArraysInstanced(GLenum(mode as u32), first, count, instancecount as _) }
     }
     
     pub fn glDrawBuffer(&self, buf: DrawBufferMode) {
-        unsafe { self.fns.DrawBuffer(buf) }
+        unsafe { self.fns.DrawBuffer(GLenum(buf as u32)) }
     }
     
     pub fn glDrawBuffers(&self, bufs: &[DrawBufferMode]) {
-        unsafe { self.fns.DrawBuffers(bufs.len() as _, bufs.as_ptr()) }
+        unsafe { self.fns.DrawBuffers(bufs.len() as _, bufs.as_ptr() as _) } // TODO: Verify that this pointer conversion is valid (it should be)
     }
     
     pub fn glDrawElements(&self, mode: PrimitiveType, indices: &[u32]) {
-        unsafe { self.fns.DrawElements(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _) }
+        unsafe { self.fns.DrawElements(GLenum(mode as u32), indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _) }
     }
     
     pub fn glDrawElementsBaseVertex(&self, mode: PrimitiveType, indices: &[u32], basevertex: i32) {
-        unsafe { self.fns.DrawElementsBaseVertex(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, basevertex) }
+        unsafe { self.fns.DrawElementsBaseVertex(GLenum(mode as u32), indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, basevertex) }
     }
     
     pub fn glDrawElementsInstanced(&self, mode: PrimitiveType, indices: &[u32], instancecount: u32) {
-        unsafe { self.fns.DrawElementsInstanced(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount as i32) }
+        unsafe { self.fns.DrawElementsInstanced(GLenum(mode as u32), indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount as i32) }
     }
     
     pub fn glDrawElementsInstancedBaseVertex(&self, mode: PrimitiveType, indices: &[u32], instancecount: i32, basevertex: i32) {
-        unsafe { self.fns.DrawElementsInstancedBaseVertex(mode, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount, basevertex) }
+        unsafe { self.fns.DrawElementsInstancedBaseVertex(GLenum(mode as u32), indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, instancecount, basevertex) }
     }
     
     pub fn glDrawRangeElements(&self, mode: PrimitiveType, start: u32, end: u32, indices: &[u32]) {
-        unsafe { self.fns.DrawRangeElements(mode, start, end, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _) }
+        unsafe { self.fns.DrawRangeElements(GLenum(mode as u32), start, end, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _) }
     }
     
     pub fn glDrawRangeElementsBaseVertex(&self, mode: PrimitiveType, start: u32, end: u32, indices: &[u32], basevertex: i32) {
-        unsafe { self.fns.DrawRangeElementsBaseVertex(mode, start, end, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, basevertex) }
+        unsafe { self.fns.DrawRangeElementsBaseVertex(GLenum(mode as u32), start, end, indices.len() as _, GL_UNSIGNED_INT, indices.as_ptr() as _, basevertex) }
     }
     
     pub fn glEnable(&self, cap: EnableCap) {
-        unsafe { self.fns.Enable(cap) }
+        unsafe { self.fns.Enable(GLenum(cap as u32)) }
     }
     
     pub fn glEnableVertexAttribArray(&self, index: u32) {
@@ -535,7 +531,7 @@ impl GLWrapper {
     }
     
     pub fn glEnablei(&self, target: EnableCap, index: u32) {
-        unsafe { self.fns.Enablei(target, index) }
+        unsafe { self.fns.Enablei(GLenum(target as u32), index) }
     }
     
     pub fn glEndConditionalRender(&self) {
@@ -543,7 +539,7 @@ impl GLWrapper {
     }
     
     pub fn glEndQuery(&self, target: QueryTarget) {
-        unsafe { self.fns.EndQuery(target) }
+        unsafe { self.fns.EndQuery(GLenum(target as u32)) }
     }
     
     pub fn glEndTransformFeedback(&self) {
@@ -551,7 +547,7 @@ impl GLWrapper {
     }
     
     pub fn glFenceSync(&self, condition: SyncCondition, flags: GLbitfield) -> GLsync {
-        unsafe { self.fns.FenceSync(condition, flags) }
+        unsafe { self.fns.FenceSync(GLenum(condition as u32), flags) }
     }
     
     pub fn glFinish(&self) {
@@ -563,35 +559,35 @@ impl GLWrapper {
     }
     
     pub fn glFlushMappedBufferRange(&self, target: BufferTargetARB, offset: isize, length: isize) {
-        unsafe { self.fns.FlushMappedBufferRange(target, offset, length) }
+        unsafe { self.fns.FlushMappedBufferRange(GLenum(target as u32), offset, length) }
     }
     
     pub fn glFramebufferRenderbuffer(&self, target: FramebufferTarget, attachment: FramebufferAttachment, renderbuffertarget: RenderbufferTarget, renderbuffer: u32) {
-        unsafe { self.fns.FramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer) }
+        unsafe { self.fns.FramebufferRenderbuffer(GLenum(target as u32), GLenum(attachment as u32), GLenum(renderbuffertarget as u32), renderbuffer) }
     }
     
     pub fn glFramebufferTexture(&self, target: FramebufferTarget, attachment: FramebufferAttachment, texture: u32, level: i32) {
-        unsafe { self.fns.FramebufferTexture(target, attachment, texture, level) }
+        unsafe { self.fns.FramebufferTexture(GLenum(target as u32), GLenum(attachment as u32), texture, level) }
     }
     
     pub fn glFramebufferTexture1D(&self, target: FramebufferTarget, attachment: FramebufferAttachment, textarget: TextureTarget, texture: u32, level: i32) {
-        unsafe { self.fns.FramebufferTexture1D(target, attachment, textarget, texture, level) }
+        unsafe { self.fns.FramebufferTexture1D(GLenum(target as u32), GLenum(attachment as u32), GLenum(textarget as u32), texture, level) }
     }
     
     pub fn glFramebufferTexture2D(&self, target: FramebufferTarget, attachment: FramebufferAttachment, textarget: TextureTarget, texture: u32, level: i32) {
-        unsafe { self.fns.FramebufferTexture2D(target, attachment, textarget, texture, level) }
+        unsafe { self.fns.FramebufferTexture2D(GLenum(target as u32), GLenum(attachment as u32), GLenum(textarget as u32), texture, level) }
     }
     
     pub fn glFramebufferTexture3D(&self, target: FramebufferTarget, attachment: FramebufferAttachment, textarget: TextureTarget, texture: u32, level: i32, zoffset: i32) {
-        unsafe { self.fns.FramebufferTexture3D(target, attachment, textarget, texture, level, zoffset) }
+        unsafe { self.fns.FramebufferTexture3D(GLenum(target as u32), GLenum(attachment as u32), GLenum(textarget as u32), texture, level, zoffset) }
     }
     
     pub fn glFramebufferTextureLayer(&self, target: FramebufferTarget, attachment: FramebufferAttachment, texture: u32, level: i32, layer: i32) {
-        unsafe { self.fns.FramebufferTextureLayer(target, attachment, texture, level, layer) }
+        unsafe { self.fns.FramebufferTextureLayer(GLenum(target as u32), GLenum(attachment as u32), texture, level, layer) }
     }
     
     pub fn glFrontFace(&self, mode: FrontFaceDirection) {
-        unsafe { self.fns.FrontFace(mode) }
+        unsafe { self.fns.FrontFace(GLenum(mode as u32)) }
     }
     
     pub fn glGenBuffers(&self, buffers: &mut [u32]) {
@@ -651,10 +647,10 @@ impl GLWrapper {
     }
     
     pub fn glGenerateMipmap(&self, target: TextureTarget) {
-        unsafe { self.fns.GenerateMipmap(target) }
+        unsafe { self.fns.GenerateMipmap(GLenum(target as u32)) }
     }
 
-    // NEEDS TESTING
+    // TODO: NEEDS TESTING
     pub fn glGetActiveAttrib(&self, program: u32, index: u32) -> Attrib {
         let mut name = [0u8; 100];
         let mut size = 0i32;
@@ -665,9 +661,10 @@ impl GLWrapper {
 
         let name = String::from_utf8_lossy(&name[..length as _]).into_owned();
 
-        Attrib { name, type_, size }
+        Attrib { name, type_: AttributeType::GL_INT, size }
     }
 
+    // TODO: Something isn't right here
     pub fn glGetActiveUniform(&self, program: u32, index: u32) -> Uniform {
         let mut name = [0u8; 100];
         let mut size = 0i32;
@@ -678,7 +675,7 @@ impl GLWrapper {
 
         let name = String::from_utf8_lossy(&name[0..length as _]).into_owned();
 
-        Uniform { name, type_, size }
+        Uniform { name, type_: UniformType::GL_INT, size }
     }
     
     pub fn glGetActiveUniformBlockName(&self, program: u32, uniformBlockIndex: u32) -> String {
@@ -691,7 +688,7 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetActiveUniformBlockiv(&self, program: u32, uniformBlockIndex: u32, pname: UniformBlockPName, params: *mut i32) {
-        self.fns.GetActiveUniformBlockiv(program, uniformBlockIndex, pname, params)
+        self.fns.GetActiveUniformBlockiv(program, uniformBlockIndex, GLenum(pname as u32), params)
     }
     
     pub fn glGetActiveUniformName(&self, program: u32, uniformIndex: u32) -> String {
@@ -706,7 +703,7 @@ impl GLWrapper {
     pub fn glGetActiveUniformsiv(&self, program: u32, uniformIndices: &[u32], pname: UniformPName) -> Box<[i32]> {
         let mut params = vec![0; uniformIndices.len()].into_boxed_slice();
 
-        unsafe { self.fns.GetActiveUniformsiv(program, uniformIndices.len() as _, uniformIndices.as_ptr() as _, pname, params.as_mut_ptr()) }
+        unsafe { self.fns.GetActiveUniformsiv(program, uniformIndices.len() as _, uniformIndices.as_ptr() as _, GLenum(pname as u32), params.as_mut_ptr()) }
 
         params
     }
@@ -729,43 +726,43 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetBooleani_v(&self, target: BufferTargetARB, index: u32, data: *mut u8) {
-        self.fns.GetBooleani_v(target, index, data)
+        self.fns.GetBooleani_v(GLenum(target as u32), index, data)
     }
     
     pub unsafe fn glGetBooleanv(&self, pname: GetPName, data: *mut u8) {
-        self.fns.GetBooleanv(pname, data)
+        self.fns.GetBooleanv(GLenum(pname as u32), data)
     }
     
     pub unsafe fn glGetBufferParameteri64v(&self, target: BufferTargetARB, pname: BufferPNameARB, params: *mut i64) {
-        self.fns.GetBufferParameteri64v(target, pname, params)
+        self.fns.GetBufferParameteri64v(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetBufferParameteriv(&self, target: BufferTargetARB, pname: BufferPNameARB, params: *mut i32) {
-        self.fns.GetBufferParameteriv(target, pname, params)
+        self.fns.GetBufferParameteriv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetBufferPointerv(&self, target: BufferTargetARB, pname: BufferPointerNameARB, params: *mut *mut c_void) {
-        self.fns.GetBufferPointerv(target, pname, params)
+        self.fns.GetBufferPointerv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetBufferSubData(&self, target: BufferTargetARB, offset: isize, size: isize, data: *mut c_void) {
-        self.fns.GetBufferSubData(target, offset, size, data)
+        self.fns.GetBufferSubData(GLenum(target as u32), offset, size, data)
     }
     
     pub unsafe fn glGetCompressedTexImage(&self, target: TextureTarget, level: i32, img: *mut c_void) {
-        self.fns.GetCompressedTexImage(target, level, img)
+        self.fns.GetCompressedTexImage(GLenum(target as u32), level, img)
     }
     
     pub unsafe fn glGetDoublev(&self, pname: GetPName, data: *mut f64) {
-        self.fns.GetDoublev(pname, data)
+        self.fns.GetDoublev(GLenum(pname as u32), data)
     }
     
     pub unsafe fn glGetError(&self) -> ErrorCode {
-        self.fns.GetError()
+        self.fns.GetError().0.try_into().unwrap()
     }
     
     pub unsafe fn glGetFloatv(&self, pname: GetPName, data: *mut f32) {
-        self.fns.GetFloatv(pname, data)
+        self.fns.GetFloatv(GLenum(pname as u32), data)
     }
     
     pub fn glGetFragDataIndex(&self, program: u32, name: &str) -> i32 {
@@ -779,27 +776,27 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetFramebufferAttachmentParameteriv(&self, target: FramebufferTarget, attachment: FramebufferAttachment, pname: FramebufferAttachmentParameterName, params: *mut i32) {
-        self.fns.GetFramebufferAttachmentParameteriv(target, attachment, pname, params)
+        self.fns.GetFramebufferAttachmentParameteriv(GLenum(target as u32), GLenum(attachment as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetInteger64i_v(&self, target: GetPName, index: u32, data: *mut i64) {
-        self.fns.GetInteger64i_v(target, index, data)
+        self.fns.GetInteger64i_v(GLenum(target as u32), index, data)
     }
     
     pub unsafe fn glGetInteger64v(&self, pname: GetPName, data: *mut i64) {
-        self.fns.GetInteger64v(pname, data)
+        self.fns.GetInteger64v(GLenum(pname as u32), data)
     }
     
     pub unsafe fn glGetIntegeri_v(&self, target: GetPName, index: u32, data: *mut i32) {
-        self.fns.GetIntegeri_v(target, index, data)
+        self.fns.GetIntegeri_v(GLenum(target as u32), index, data)
     }
     
     pub unsafe fn glGetIntegerv(&self, pname: GetPName, data: *mut i32) {
-        self.fns.GetIntegerv(pname, data)
+        self.fns.GetIntegerv(GLenum(pname as u32), data)
     }
     
     pub unsafe fn glGetMultisamplefv(&self, pname: GetMultisamplePNameNV, index: u32, val: *mut f32) {
-        self.fns.GetMultisamplefv(pname, index, val)
+        self.fns.GetMultisamplefv(GLenum(pname as u32), index, val)
     }
     
     pub unsafe fn glGetProgramInfoLog(&self, program: u32, bufSize: i32, length: *mut i32, infoLog: *mut u8) {
@@ -807,52 +804,52 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetProgramiv(&self, program: u32, pname: ProgramPropertyARB, params: *mut i32) {
-        self.fns.GetProgramiv(program, pname, params)
+        self.fns.GetProgramiv(program, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetQueryObjecti64v(&self, id: u32, pname: QueryObjectParameterName, params: *mut i64) {
-        self.fns.GetQueryObjecti64v(id, pname, params)
+        self.fns.GetQueryObjecti64v(id, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetQueryObjectiv(&self, id: u32, pname: QueryObjectParameterName, params: *mut i32) {
-        self.fns.GetQueryObjectiv(id, pname, params)
+        self.fns.GetQueryObjectiv(id, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetQueryObjectui64v(&self, id: u32, pname: QueryObjectParameterName, params: *mut u64) {
-        self.fns.GetQueryObjectui64v(id, pname, params)
+        self.fns.GetQueryObjectui64v(id, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetQueryObjectuiv(&self, id: u32, pname: QueryObjectParameterName, params: *mut u32) {
-        self.fns.GetQueryObjectuiv(id, pname, params)
+        self.fns.GetQueryObjectuiv(id, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetQueryiv(&self, target: QueryTarget, pname: QueryParameterName, params: *mut i32) {
-        self.fns.GetQueryiv(target, pname, params)
+        self.fns.GetQueryiv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetRenderbufferParameteriv(&self, target: RenderbufferTarget, pname: RenderbufferParameterName, params: *mut i32) {
-        self.fns.GetRenderbufferParameteriv(target, pname, params)
+        self.fns.GetRenderbufferParameteriv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetSamplerParameterIiv(&self, sampler: u32, pname: SamplerParameterI, params: *mut i32) {
-        self.fns.GetSamplerParameterIiv(sampler, pname, params)
+        self.fns.GetSamplerParameterIiv(sampler, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetSamplerParameterIuiv(&self, sampler: u32, pname: SamplerParameterI, params: *mut u32) {
-        self.fns.GetSamplerParameterIuiv(sampler, pname, params)
+        self.fns.GetSamplerParameterIuiv(sampler, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetSamplerParameterfv(&self, sampler: u32, pname: SamplerParameterF, params: *mut f32) {
-        self.fns.GetSamplerParameterfv(sampler, pname, params)
+        self.fns.GetSamplerParameterfv(sampler, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetSamplerParameteriv(&self, sampler: u32, pname: SamplerParameterI, params: *mut i32) {
-        self.fns.GetSamplerParameteriv(sampler, pname, params)
+        self.fns.GetSamplerParameteriv(sampler, GLenum(pname as u32), params)
     }
     
     pub fn glGetShaderInfoLog(&self, shader: u32) -> String {
         let mut length = 0;
-        self.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &mut length);
+        self.glGetShaderiv(shader, ShaderParameterName::GL_INFO_LOG_LENGTH, &mut length);
 
         let mut buffer = vec![0u8; length as usize];
         unsafe { self.fns.GetShaderInfoLog(shader, length, std::ptr::null_mut(), buffer.as_mut_ptr()) }
@@ -867,11 +864,11 @@ impl GLWrapper {
     }
     
     pub fn glGetShaderiv(&self, shader: u32, pname: ShaderParameterName, params: &mut i32) {
-        unsafe { self.fns.GetShaderiv(shader, pname, params) }
+        unsafe { self.fns.GetShaderiv(shader, GLenum(pname as u32), params) }
     }
     
     pub unsafe fn glGetString(&self, name: StringName) -> String {
-        let raw_str = self.fns.GetString(name);
+        let raw_str = self.fns.GetString(GLenum(name as u32));
 
         unsafe {
             let len = libc::strlen(raw_str as _);
@@ -881,7 +878,7 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetStringi(&self, name: StringName, index: u32) -> String {
-        let raw_str = self.fns.GetStringi(name, index);
+        let raw_str = self.fns.GetStringi(GLenum(name as u32), index);
 
         unsafe {
             let len = libc::strlen(raw_str as _);
@@ -891,39 +888,39 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetSynciv(&self, sync: GLsync, pname: SyncParameterName, count: i32, length: *mut i32, values: *mut i32) {
-        self.fns.GetSynciv(sync, pname, count, length, values)
+        self.fns.GetSynciv(sync, GLenum(pname as u32), count, length, values)
     }
     
     pub unsafe fn glGetTexImage(&self, target: TextureTarget, level: i32, format: PixelFormat, type_: PixelType, pixels: *mut c_void) {
-        self.fns.GetTexImage(target, level, format, type_, pixels)
+        self.fns.GetTexImage(GLenum(target as u32), level, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glGetTexLevelParameterfv(&self, target: TextureTarget, level: i32, pname: GetTextureParameter, params: *mut f32) {
-        self.fns.GetTexLevelParameterfv(target, level, pname, params)
+        self.fns.GetTexLevelParameterfv(GLenum(target as u32), level, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTexLevelParameteriv(&self, target: TextureTarget, level: i32, pname: GetTextureParameter, params: *mut i32) {
-        self.fns.GetTexLevelParameteriv(target, level, pname, params)
+        self.fns.GetTexLevelParameteriv(GLenum(target as u32), level, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTexParameterIiv(&self, target: TextureTarget, pname: GetTextureParameter, params: *mut i32) {
-        self.fns.GetTexParameterIiv(target, pname, params)
+        self.fns.GetTexParameterIiv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTexParameterIuiv(&self, target: TextureTarget, pname: GetTextureParameter, params: *mut u32) {
-        self.fns.GetTexParameterIuiv(target, pname, params)
+        self.fns.GetTexParameterIuiv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTexParameterfv(&self, target: TextureTarget, pname: GetTextureParameter, params: *mut f32) {
-        self.fns.GetTexParameterfv(target, pname, params)
+        self.fns.GetTexParameterfv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTexParameteriv(&self, target: TextureTarget, pname: GetTextureParameter, params: *mut i32) {
-        self.fns.GetTexParameteriv(target, pname, params)
+        self.fns.GetTexParameteriv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetTransformFeedbackVarying(&self, program: u32, index: u32, bufSize: i32, length: *mut i32, size: *mut i32, type_: *mut AttributeType, name: *mut u8) {
-        self.fns.GetTransformFeedbackVarying(program, index, bufSize, length, size, type_, name)
+        self.fns.GetTransformFeedbackVarying(program, index, bufSize, length, size, type_ as _, name)
     }
     
     pub fn glGetUniformBlockIndex(&self, program: u32, uniformBlockName: &str) -> u32 {
@@ -955,31 +952,31 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetVertexAttribIiv(&self, index: u32, pname: VertexAttribEnum, params: *mut i32) {
-        self.fns.GetVertexAttribIiv(index, pname, params)
+        self.fns.GetVertexAttribIiv(index, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetVertexAttribIuiv(&self, index: u32, pname: VertexAttribEnum, params: *mut u32) {
-        self.fns.GetVertexAttribIuiv(index, pname, params)
+        self.fns.GetVertexAttribIuiv(index, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetVertexAttribPointerv(&self, index: u32, pname: VertexAttribPointerPropertyARB, pointer: *mut *mut c_void) {
-        self.fns.GetVertexAttribPointerv(index, pname, pointer)
+        self.fns.GetVertexAttribPointerv(index, GLenum(pname as u32), pointer)
     }
     
     pub unsafe fn glGetVertexAttribdv(&self, index: u32, pname: VertexAttribPropertyARB, params: *mut[f64; 4]) {
-        self.fns.GetVertexAttribdv(index, pname, params)
+        self.fns.GetVertexAttribdv(index, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetVertexAttribfv(&self, index: u32, pname: VertexAttribPropertyARB, params: *mut[f32; 4]) {
-        self.fns.GetVertexAttribfv(index, pname, params)
+        self.fns.GetVertexAttribfv(index, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glGetVertexAttribiv(&self, index: u32, pname: VertexAttribPropertyARB, params: *mut[i32; 4]) {
-        self.fns.GetVertexAttribiv(index, pname, params)
+        self.fns.GetVertexAttribiv(index, GLenum(pname as u32), params)
     }
     
     pub unsafe fn glHint(&self, target: HintTarget, mode: HintMode) {
-        self.fns.Hint(target, mode)
+        self.fns.Hint(GLenum(target as u32), GLenum(mode as u32))
     }
     
     pub unsafe fn glIsBuffer(&self, buffer: u32) -> u8 {
@@ -987,11 +984,11 @@ impl GLWrapper {
     }
     
     pub unsafe fn glIsEnabled(&self, cap: EnableCap) -> u8 {
-        self.fns.IsEnabled(cap)
+        self.fns.IsEnabled(GLenum(cap as u32))
     }
     
     pub unsafe fn glIsEnabledi(&self, target: EnableCap, index: u32) -> u8 {
-        self.fns.IsEnabledi(target, index)
+        self.fns.IsEnabledi(GLenum(target as u32), index)
     }
     
     pub unsafe fn glIsFramebuffer(&self, framebuffer: u32) -> u8 {
@@ -1039,51 +1036,51 @@ impl GLWrapper {
     }
     
     pub unsafe fn glLogicOp(&self, opcode: LogicOp) {
-        self.fns.LogicOp(opcode)
+        self.fns.LogicOp(GLenum(opcode as u32))
     }
     
     pub unsafe fn glMapBuffer(&self, target: BufferTargetARB, access: BufferAccessARB) -> *mut c_void {
-        self.fns.MapBuffer(target, access)
+        self.fns.MapBuffer(GLenum(target as u32), GLenum(access as u32))
     }
     
     pub unsafe fn glMapBufferRange(&self, target: BufferTargetARB, offset: isize, length: isize, access: GLbitfield) -> *mut c_void {
-        self.fns.MapBufferRange(target, offset, length, access)
+        self.fns.MapBufferRange(GLenum(target as u32), offset, length, access)
     }
     
     pub unsafe fn glMultiDrawArrays(&self, mode: PrimitiveType, first: *const i32, count: *const i32, drawcount: i32) {
-        self.fns.MultiDrawArrays(mode, first, count, drawcount)
+        self.fns.MultiDrawArrays(GLenum(mode as u32), first, count, drawcount)
     }
     
     pub unsafe fn glMultiDrawElements(&self, mode: PrimitiveType, count: *const i32, type_: DrawElementsType, indices: *const *const c_void, drawcount: i32) {
-        self.fns.MultiDrawElements(mode, count, type_, indices, drawcount)
+        self.fns.MultiDrawElements(GLenum(mode as u32), count, GLenum(type_ as u32), indices, drawcount)
     }
     
     pub unsafe fn glMultiDrawElementsBaseVertex(&self, mode: PrimitiveType, count: *const i32, type_: DrawElementsType, indices: *const *const c_void, drawcount: i32, basevertex: *const i32) {
-        self.fns.MultiDrawElementsBaseVertex(mode, count, type_, indices, drawcount, basevertex)
+        self.fns.MultiDrawElementsBaseVertex(GLenum(mode as u32), count, GLenum(type_ as u32), indices, drawcount, basevertex)
     }
     
     pub unsafe fn glPixelStoref(&self, pname: PixelStoreParameter, param: f32) {
-        self.fns.PixelStoref(pname, param)
+        self.fns.PixelStoref(GLenum(pname as u32), param)
     }
     
     pub unsafe fn glPixelStorei(&self, pname: PixelStoreParameter, param: i32) {
-        self.fns.PixelStorei(pname, param)
+        self.fns.PixelStorei(GLenum(pname as u32), param)
     }
     
     pub unsafe fn glPointParameterf(&self, pname: PointParameterNameARB, param: f32) {
-        self.fns.PointParameterf(pname, param)
+        self.fns.PointParameterf(GLenum(pname as u32), param)
     }
     
     pub unsafe fn glPointParameterfv(&self, pname: PointParameterNameARB, params: *const f32) {
-        self.fns.PointParameterfv(pname, params)
+        self.fns.PointParameterfv(GLenum(pname as u32), params)
     }
     
     pub unsafe fn glPointParameteri(&self, pname: PointParameterNameARB, param: i32) {
-        self.fns.PointParameteri(pname, param)
+        self.fns.PointParameteri(GLenum(pname as u32), param)
     }
     
     pub unsafe fn glPointParameteriv(&self, pname: PointParameterNameARB, params: *const i32) {
-        self.fns.PointParameteriv(pname, params)
+        self.fns.PointParameteriv(GLenum(pname as u32), params)
     }
     
     pub fn glPointSize(&self, size: f32) {
@@ -1091,7 +1088,7 @@ impl GLWrapper {
     }
     
     pub unsafe fn glPolygonMode(&self, face: MaterialFace, mode: PolygonMode) {
-        self.fns.PolygonMode(face, mode)
+        self.fns.PolygonMode(face, GLenum(mode as u32))
     }
     
     pub unsafe fn glPolygonOffset(&self, factor: f32, units: f32) {
@@ -1103,27 +1100,27 @@ impl GLWrapper {
     }
     
     pub unsafe fn glProvokingVertex(&self, mode: VertexProvokingMode) {
-        self.fns.ProvokingVertex(mode)
+        self.fns.ProvokingVertex(GLenum(mode as u32))
     }
     
     pub unsafe fn glQueryCounter(&self, id: u32, target: QueryCounterTarget) {
-        self.fns.QueryCounter(id, target)
+        self.fns.QueryCounter(id, GLenum(target as u32))
     }
     
     pub unsafe fn glReadBuffer(&self, src: ReadBufferMode) {
-        self.fns.ReadBuffer(src)
+        self.fns.ReadBuffer(GLenum(src as u32))
     }
     
     pub unsafe fn glReadPixels(&self, x: i32, y: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, pixels: *mut c_void) {
-        self.fns.ReadPixels(x, y, width as _, height as _, format, type_, pixels)
+        self.fns.ReadPixels(x, y, width as _, height as _, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glRenderbufferStorage(&self, target: RenderbufferTarget, internalformat: InternalFormat, width: u32, height: u32) {
-        self.fns.RenderbufferStorage(target, internalformat, width as _, height as _)
+        self.fns.RenderbufferStorage(GLenum(target as u32), GLenum(internalformat as u32), width as _, height as _)
     }
     
     pub unsafe fn glRenderbufferStorageMultisample(&self, target: RenderbufferTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32) {
-        self.fns.RenderbufferStorageMultisample(target, samples, internalformat, width as _, height as _)
+        self.fns.RenderbufferStorageMultisample(GLenum(target as u32), samples, GLenum(internalformat as u32), width as _, height as _)
     }
     
     pub unsafe fn glSampleCoverage(&self, value: f32, invert: u8) {
@@ -1135,27 +1132,27 @@ impl GLWrapper {
     }
     
     pub unsafe fn glSamplerParameterIiv(&self, sampler: u32, pname: SamplerParameterI, param: *const i32) {
-        self.fns.SamplerParameterIiv(sampler, pname, param)
+        self.fns.SamplerParameterIiv(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glSamplerParameterIuiv(&self, sampler: u32, pname: SamplerParameterI, param: *const u32) {
-        self.fns.SamplerParameterIuiv(sampler, pname, param)
+        self.fns.SamplerParameterIuiv(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glSamplerParameterf(&self, sampler: u32, pname: SamplerParameterF, param: f32) {
-        self.fns.SamplerParameterf(sampler, pname, param)
+        self.fns.SamplerParameterf(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glSamplerParameterfv(&self, sampler: u32, pname: SamplerParameterF, param: *const f32) {
-        self.fns.SamplerParameterfv(sampler, pname, param)
+        self.fns.SamplerParameterfv(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glSamplerParameteri(&self, sampler: u32, pname: SamplerParameterI, param: i32) {
-        self.fns.SamplerParameteri(sampler, pname, param)
+        self.fns.SamplerParameteri(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glSamplerParameteriv(&self, sampler: u32, pname: SamplerParameterI, param: *const i32) {
-        self.fns.SamplerParameteriv(sampler, pname, param)
+        self.fns.SamplerParameteriv(sampler, GLenum(pname as u32), param)
     }
     
     pub unsafe fn glScissor(&self, x: i32, y: i32, width: u32, height: u32) {
@@ -1171,11 +1168,11 @@ impl GLWrapper {
     }
     
     pub unsafe fn glStencilFunc(&self, func: StencilFunction, ref_: i32, mask: u32) {
-        self.fns.StencilFunc(func, ref_, mask)
+        self.fns.StencilFunc(GLenum(func as u32), ref_, mask)
     }
     
     pub unsafe fn glStencilFuncSeparate(&self, face: StencilFaceDirection, func: StencilFunction, ref_: i32, mask: u32) {
-        self.fns.StencilFuncSeparate(face, func, ref_, mask)
+        self.fns.StencilFuncSeparate(face, GLenum(func as u32), ref_, mask)
     }
     
     pub unsafe fn glStencilMask(&self, mask: u32) {
@@ -1187,76 +1184,76 @@ impl GLWrapper {
     }
     
     pub unsafe fn glStencilOp(&self, fail: StencilOp, zfail: StencilOp, zpass: StencilOp) {
-        self.fns.StencilOp(fail, zfail, zpass)
+        self.fns.StencilOp(GLenum(fail as u32), GLenum(zfail as u32), GLenum(zpass as u32))
     }
     
     pub unsafe fn glStencilOpSeparate(&self, face: StencilFaceDirection, sfail: StencilOp, dpfail: StencilOp, dppass: StencilOp) {
-        self.fns.StencilOpSeparate(face, sfail, dpfail, dppass)
+        self.fns.StencilOpSeparate(face, GLenum(sfail as u32), GLenum(dpfail as u32), GLenum(dppass as u32))
     }
     
     pub unsafe fn glTexBuffer(&self, target: TextureTarget, internalformat: InternalFormat, buffer: u32) {
-        self.fns.TexBuffer(target, internalformat, buffer)
+        self.fns.TexBuffer(GLenum(target as u32), GLenum(internalformat as u32), buffer)
     }
     
     pub unsafe fn glTexImage1D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexImage1D(target, level, internalformat.0 as _, width as _, border, format, type_, pixels)
+        self.fns.TexImage1D(GLenum(target as u32), level, internalformat as u32 as i32, width as _, border, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glTexImage2D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
-        self.fns.TexImage2D(target, level, internalformat.0 as _, width as _, height as _, border, format, type_, pixels.as_ptr() as _)
+        self.fns.TexImage2D(GLenum(target as u32), level, internalformat as u32 as i32, width as _, height as _, border, GLenum(format as u32), GLenum(type_ as u32), pixels.as_ptr() as _)
     }
     
     pub unsafe fn glTexImage2DMultisample(&self, target: TextureTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32, fixedsamplelocations: u8) {
-        self.fns.TexImage2DMultisample(target, samples, internalformat, width as _, height as _, fixedsamplelocations)
+        self.fns.TexImage2DMultisample(GLenum(target as u32), samples, GLenum(internalformat as u32), width as _, height as _, fixedsamplelocations)
     }
     
     pub unsafe fn glTexImage3D(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, border: i32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexImage3D(target, level, internalformat.0 as _, width as _, height as _, depth as _, border, format, type_, pixels)
+        self.fns.TexImage3D(GLenum(target as u32), level, internalformat as u32 as i32, width as _, height as _, depth as _, border, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glTexImage3DMultisample(&self, target: TextureTarget, samples: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, fixedsamplelocations: u8) {
-        self.fns.TexImage3DMultisample(target, samples, internalformat, width as _, height as _, depth as _, fixedsamplelocations)
+        self.fns.TexImage3DMultisample(GLenum(target as u32), samples, GLenum(internalformat as u32), width as _, height as _, depth as _, fixedsamplelocations)
     }
     
     pub unsafe fn glTexParameterIiv(&self, target: TextureTarget, pname: TextureParameterName, params: *const i32) {
-        self.fns.TexParameterIiv(target, pname, params)
+        self.fns.TexParameterIiv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glTexParameterIuiv(&self, target: TextureTarget, pname: TextureParameterName, params: *const u32) {
-        self.fns.TexParameterIuiv(target, pname, params)
+        self.fns.TexParameterIuiv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glTexParameterf(&self, target: TextureTarget, pname: TextureParameterName, param: f32) {
-        self.fns.TexParameterf(target, pname, param)
+        self.fns.TexParameterf(GLenum(target as u32), GLenum(pname as u32), param)
     }
     
     pub unsafe fn glTexParameterfv(&self, target: TextureTarget, pname: TextureParameterName, params: *const f32) {
-        self.fns.TexParameterfv(target, pname, params)
+        self.fns.TexParameterfv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub fn glTexParameteri(&self, target: TextureTarget, pname: TextureParameterName, param: GLenum) {
-        unsafe { self.fns.TexParameteri(target, pname, param.0 as _) }
+        unsafe { self.fns.TexParameteri(GLenum(target as u32), GLenum(pname as u32), param.0 as _) }
     }
     
     pub unsafe fn glTexParameteriv(&self, target: TextureTarget, pname: TextureParameterName, params: *const i32) {
-        self.fns.TexParameteriv(target, pname, params)
+        self.fns.TexParameteriv(GLenum(target as u32), GLenum(pname as u32), params)
     }
     
     pub unsafe fn glTexSubImage1D(&self, target: TextureTarget, level: i32, xoffset: i32, width: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexSubImage1D(target, level, xoffset, width as _, format, type_, pixels)
+        self.fns.TexSubImage1D(GLenum(target as u32), level, xoffset, width as _, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glTexSubImage2D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexSubImage2D(target, level, xoffset, yoffset, width as _, height as _, format, type_, pixels)
+        self.fns.TexSubImage2D(GLenum(target as u32), level, xoffset, yoffset, width as _, height as _, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub unsafe fn glTexSubImage3D(&self, target: TextureTarget, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, pixels: *const c_void) {
-        self.fns.TexSubImage3D(target, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, pixels)
+        self.fns.TexSubImage3D(GLenum(target as u32), level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, GLenum(format as u32), GLenum(type_ as u32), pixels)
     }
     
     pub fn glTransformFeedbackVaryings(&self, program: u32, varyings: &[&str], bufferMode: TransformFeedbackBufferMode) {
         let varyings = CStringArray::new(varyings);
-        unsafe { self.fns.TransformFeedbackVaryings(program, varyings.len() as _, varyings.as_ptr(), bufferMode) }
+        unsafe { self.fns.TransformFeedbackVaryings(program, varyings.len() as _, varyings.as_ptr(), GLenum(bufferMode as u32)) }
     }
     
     pub fn glUniform1f(&self, location: GlUniformLocation, v0: f32) {
@@ -1400,7 +1397,7 @@ impl GLWrapper {
     }
     
     pub unsafe fn glUnmapBuffer(&self, target: BufferTargetARB) -> u8 {
-        self.fns.UnmapBuffer(target)
+        self.fns.UnmapBuffer(GLenum(target as u32))
     }
     
     pub fn glUseProgram(&self, program: u32) {
@@ -1640,43 +1637,43 @@ impl GLWrapper {
     }
     
     pub unsafe fn glVertexAttribIPointer(&self, index: u32, size: i32, type_: VertexAttribIType, stride: i32, pointer: *const c_void) {
-        self.fns.VertexAttribIPointer(index, size, type_, stride, pointer)
+        self.fns.VertexAttribIPointer(index, size, GLenum(type_ as u32), stride, pointer)
     }
     
     pub unsafe fn glVertexAttribP1ui(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: u32) {
-        self.fns.VertexAttribP1ui(index, type_, normalized, value)
+        self.fns.VertexAttribP1ui(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP1uiv(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: *const u32) {
-        self.fns.VertexAttribP1uiv(index, type_, normalized, value)
+        self.fns.VertexAttribP1uiv(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP2ui(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: u32) {
-        self.fns.VertexAttribP2ui(index, type_, normalized, value)
+        self.fns.VertexAttribP2ui(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP2uiv(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: *const u32) {
-        self.fns.VertexAttribP2uiv(index, type_, normalized, value)
+        self.fns.VertexAttribP2uiv(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP3ui(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: u32) {
-        self.fns.VertexAttribP3ui(index, type_, normalized, value)
+        self.fns.VertexAttribP3ui(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP3uiv(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: *const u32) {
-        self.fns.VertexAttribP3uiv(index, type_, normalized, value)
+        self.fns.VertexAttribP3uiv(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP4ui(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: u32) {
-        self.fns.VertexAttribP4ui(index, type_, normalized, value)
+        self.fns.VertexAttribP4ui(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub unsafe fn glVertexAttribP4uiv(&self, index: u32, type_: VertexAttribPointerType, normalized: u8, value: *const u32) {
-        self.fns.VertexAttribP4uiv(index, type_, normalized, value)
+        self.fns.VertexAttribP4uiv(index, GLenum(type_ as u32), normalized, value)
     }
     
     pub fn glVertexAttribPointer(&self, index: u32, size: i32, type_: VertexAttribPointerType, normalized: bool, stride: i32, offset: u32) {
-        unsafe { self.fns.VertexAttribPointer(index, size, type_, normalized as _, stride, offset as _) }
+        unsafe { self.fns.VertexAttribPointer(index, size, GLenum(type_ as u32), normalized as _, stride, offset as _) }
     }
     
     pub unsafe fn glViewport(&self, x: i32, y: i32, width: u32, height: u32) {
@@ -1692,19 +1689,19 @@ impl GLWrapper {
     }
     
     pub unsafe fn glDebugMessageControl(&self, source: DebugSource, type_: DebugType, severity: DebugSeverity, count: i32, ids: *const u32, enabled: u8) {
-        self.fns.DebugMessageControl(source, type_, severity, count, ids, enabled)
+        self.fns.DebugMessageControl(GLenum(source as u32), GLenum(type_ as u32), GLenum(severity as u32), count, ids, enabled)
     }
     
     pub fn glDebugMessageInsert(&self, source: DebugSource, type_: DebugType, id: u32, severity: DebugSeverity, buf: &str) {
-        unsafe { self.fns.DebugMessageInsert(source, type_, id, severity, buf.len() as _, buf.as_ptr()) }
+        unsafe { self.fns.DebugMessageInsert(GLenum(source as u32), GLenum(type_ as u32), id, GLenum(severity as u32), buf.len() as _, buf.as_ptr()) }
     }
     
     pub unsafe fn glGetDebugMessageLog(&self, count: u32, bufSize: i32, sources: *mut DebugSource, types: *mut DebugType, ids: *mut u32, severities: *mut DebugSeverity, lengths: *mut i32, messageLog: *mut u8) -> u32 {
-        self.fns.GetDebugMessageLog(count, bufSize, sources, types, ids, severities, lengths, messageLog)
+        self.fns.GetDebugMessageLog(count, bufSize, sources as _, types as _, ids, severities as _, lengths, messageLog)
     }
     
     pub unsafe fn glGetObjectLabel(&self, identifier: ObjectIdentifier, name: u32, bufSize: i32, length: *mut i32, label: *mut u8) {
-        self.fns.GetObjectLabel(identifier, name, bufSize, length, label)
+        self.fns.GetObjectLabel(GLenum(identifier as u32), name, bufSize, length, label)
     }
     
     pub unsafe fn glGetObjectPtrLabel(&self, ptr: *const c_void, bufSize: i32, length: *mut i32, label: *mut u8) {
@@ -1712,11 +1709,11 @@ impl GLWrapper {
     }
     
     pub unsafe fn glGetPointerv(&self, pname: GetPointervPName, params: *mut *mut c_void) {
-        self.fns.GetPointerv(pname, params)
+        self.fns.GetPointerv(GLenum(pname as u32), params)
     }
     
     pub fn glObjectLabel(&self, identifier: ObjectIdentifier, name: u32, label: &str) {
-        unsafe { self.fns.ObjectLabel(identifier, name, label.len() as _, label.as_ptr()) }
+        unsafe { self.fns.ObjectLabel(GLenum(identifier as u32), name, label.len() as _, label.as_ptr()) }
     }
     
     pub fn glObjectPtrLabel(&self, ptr: *const c_void, label: &str) {
@@ -1728,7 +1725,7 @@ impl GLWrapper {
     }
     
     pub fn glPushDebugGroup(&self, source: DebugSource, id: u32, message: &str) {
-        unsafe { self.fns.PushDebugGroup(source, id, message.len() as _, message.as_ptr()) }
+        unsafe { self.fns.PushDebugGroup(GLenum(source as u32), id, message.len() as _, message.as_ptr()) }
     }
     
     // Functions new to gl46
@@ -1737,19 +1734,19 @@ impl GLWrapper {
     }
     
     pub fn glBeginQueryIndexed(&self, target: QueryTarget, index: u32, id: u32) {
-        unsafe { self.fns.BeginQueryIndexed(target, index, id) }
+        unsafe { self.fns.BeginQueryIndexed(GLenum(target as u32), index, id) }
     }
     
     pub fn glBindBuffersBase(&self, target: BufferTargetARB, index: u32, buffer: u32) {
-        unsafe { self.fns.BindBufferBase(target, index, buffer) }
+        unsafe { self.fns.BindBufferBase(GLenum(target as u32), index, buffer) }
     }
     
     pub fn glBindBuffersRange(&self, target: BufferTargetARB, index: u32, buffer: u32, offset: isize, size: isize) {
-        unsafe { self.fns.BindBufferRange(target, index, buffer, offset, size) }
+        unsafe { self.fns.BindBufferRange(GLenum(target as u32), index, buffer, offset, size) }
     }
     
     pub fn glBindImageTexture(&self, unit: u32, texture: u32, level: i32, layered: u8, layer: i32, access: BufferAccessARB, format: InternalFormat) {
-        unsafe { self.fns.BindImageTexture(unit, texture, level, layered, layer, access, format) }
+        unsafe { self.fns.BindImageTexture(unit, texture, level, layered, layer, GLenum(access as u32), GLenum(format as u32)) }
     }
     
     pub fn glBindImageTextures(&self, first: u32, textures: &[u32]) {
@@ -1773,7 +1770,7 @@ impl GLWrapper {
     }
     
     pub fn glBindTransformFeedback(&self, target: BindTransformFeedbackTarget, id: u32) {
-        unsafe { self.fns.BindTransformFeedback(target, id) }
+        unsafe { self.fns.BindTransformFeedback(GLenum(target as u32), id) }
     }
     
     pub fn glBindVertexBuffer(&self, bindingindex: u32, buffer: u32, offset: isize, stride: i32) {
@@ -1789,176 +1786,146 @@ impl GLWrapper {
     }
     
     pub fn glBlendEquationSeparatei(&self, buf: u32, modeRGB: BlendEquationModeEXT, modeAlpha: BlendEquationModeEXT) {
-        unsafe { self.fns.BlendEquationSeparatei(buf, modeRGB, modeAlpha) }
+        unsafe { self.fns.BlendEquationSeparatei(buf, GLenum(modeRGB as u32), GLenum(modeAlpha as u32)) }
     }
     
     pub fn glBlendEquationi(&self, buf: u32, mode: BlendEquationModeEXT) {
-        unsafe { self.fns.BlendEquationi(buf, mode) }
+        unsafe { self.fns.BlendEquationi(buf, GLenum(mode as u32)) }
     }
     
     pub fn glBlendFuncSeparatei(&self, buf: u32, srcRGB: BlendingFactor, dstRGB: BlendingFactor, srcAlpha: BlendingFactor, dstAlpha: BlendingFactor) {
-        unsafe { self.fns.BlendFuncSeparatei(buf, srcRGB, dstRGB, srcAlpha, dstAlpha) }
+        unsafe { self.fns.BlendFuncSeparatei(buf, GLenum(srcRGB as u32), GLenum(dstRGB as u32), GLenum(srcAlpha as u32), GLenum(dstAlpha as u32)) }
     }
     
     pub fn glBlendFunci(&self, buf: u32, src: BlendingFactor, dst: BlendingFactor) {
-        unsafe { self.fns.BlendFunci(buf, src, dst) }
+        unsafe { self.fns.BlendFunci(buf, GLenum(src as u32), GLenum(dst as u32)) }
     }
     
     pub fn glBlitNamedFramebuffer(&self, readFramebuffer: u32, drawFramebuffer: u32, srcX0: i32, srcY0: i32, srcX1: i32, srcY1: i32, dstX0: i32, dstY0: i32, dstX1: i32, dstY1: i32, mask: GLbitfield, filter: BlitFramebufferFilter) {
-        unsafe { self.fns.BlitNamedFramebuffer(readFramebuffer, drawFramebuffer, srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) }
+        unsafe { self.fns.BlitNamedFramebuffer(readFramebuffer, drawFramebuffer, srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, GLenum(filter as u32)) }
     }
     
     pub fn glBufferStorage<T>(&self, target: BufferStorageTarget, data: &[T], flags: GLbitfield) {
-        unsafe { self.fns.BufferStorage(target, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _, flags) }
+        unsafe { self.fns.BufferStorage(GLenum(target as u32), (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _, flags) }
     }
     
     pub fn glCheckNamedFramebufferStatus(&self, framebuffer: u32, target: FramebufferTarget) -> FramebufferStatus {
-        unsafe { self.fns.CheckNamedFramebufferStatus(framebuffer, target) }
+        unsafe { self.fns.CheckNamedFramebufferStatus(framebuffer, GLenum(target as u32)) }.0.try_into().unwrap()
     }
     
+
+    // TODO: This seems wrong
     pub fn glClearBufferData<T: GLType>(&self, target: BufferStorageTarget, internalformat: InternalFormat, format: PixelFormat, data: &[T]) {
-        let expected_size = match internalformat {
-            GL_R8 | GL_R16 | GL_R16F | GL_R32F | GL_R8I | GL_R16I | GL_R32I | GL_R8UI | GL_R16UI | GL_R32UI => 1,
-            GL_RG8 | GL_RG16 | GL_RG16F | GL_RG32F | GL_RG8I | GL_RG16I | GL_RG32I | GL_RG8UI | GL_RG16UI | GL_RG32UI => 2,
-            GL_RGB32F | GL_RGB32I | GL_RGB32UI => 3,
-            GL_RGBA8 | GL_RGBA16 | GL_RGBA16F | GL_RGBA32F | GL_RGBA8I | GL_RGBA16I | GL_RGBA32I | GL_RGBA8UI | GL_RGBA16UI | GL_RGBA32UI => 4,
-            _ => -1 
-        };
-
-        if data.len() as i32 != expected_size {
+        if data.len() != internalformat.size() {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearBufferData(target, internalformat, format, T::gl_type(), data.as_ptr() as _) }
+        unsafe { self.fns.ClearBufferData(GLenum(target as u32), GLenum(internalformat as u32), GLenum(format as u32), GLenum(T::gl_type() as u32), data.as_ptr() as _) }
     }
     
+    // TODO: This seems wrong
     pub fn glClearBufferSubData<T: GLType>(&self, target: BufferStorageTarget, internalformat: InternalFormat, offset: isize, size: isize, format: PixelFormat, data: &[T]) {
-        let expected_size = match internalformat {
-            GL_R8 | GL_R16 | GL_R16F | GL_R32F | GL_R8I | GL_R16I | GL_R32I | GL_R8UI | GL_R16UI | GL_R32UI => 1,
-            GL_RG8 | GL_RG16 | GL_RG16F | GL_RG32F | GL_RG8I | GL_RG16I | GL_RG32I | GL_RG8UI | GL_RG16UI | GL_RG32UI => 2,
-            GL_RGB32F | GL_RGB32I | GL_RGB32UI => 3,
-            GL_RGBA8 | GL_RGBA16 | GL_RGBA16F | GL_RGBA32F | GL_RGBA8I | GL_RGBA16I | GL_RGBA32I | GL_RGBA8UI | GL_RGBA16UI | GL_RGBA32UI => 4,
-            _ => -1 
-        };
-
-        if data.len() as i32 != expected_size {
+        if data.len() != internalformat.size() {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearBufferSubData(target, internalformat, offset, size, format, T::gl_type(), data.as_ptr() as _) }
+        unsafe { self.fns.ClearBufferSubData(GLenum(target as u32), GLenum(internalformat as u32), offset, size, GLenum(format as u32), GLenum(T::gl_type() as u32), data.as_ptr() as _) }
     }
     
     pub fn glClearDepthf(&self, d: f32) {
         unsafe { self.fns.ClearDepthf(d) }
     }
     
+    // TODO: This seems wrong
     pub fn glClearNamedBufferData<T: GLType>(&self, buffer: u32, internalformat: InternalFormat, format: PixelFormat, data: &[T]) {
-        let expected_size = match internalformat {
-            GL_R8 | GL_R16 | GL_R16F | GL_R32F | GL_R8I | GL_R16I | GL_R32I | GL_R8UI | GL_R16UI | GL_R32UI => 1,
-            GL_RG8 | GL_RG16 | GL_RG16F | GL_RG32F | GL_RG8I | GL_RG16I | GL_RG32I | GL_RG8UI | GL_RG16UI | GL_RG32UI => 2,
-            GL_RGB32F | GL_RGB32I | GL_RGB32UI => 3,
-            GL_RGBA8 | GL_RGBA16 | GL_RGBA16F | GL_RGBA32F | GL_RGBA8I | GL_RGBA16I | GL_RGBA32I | GL_RGBA8UI | GL_RGBA16UI | GL_RGBA32UI => 4,
-            _ => -1 
-        };
-
-        if data.len() as i32 != expected_size {
+        if data.len() != internalformat.size() {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearNamedBufferData(buffer, internalformat, format, T::gl_type(), data.as_ptr() as _) }
+        unsafe { self.fns.ClearNamedBufferData(buffer, GLenum(internalformat as u32), GLenum(format as u32), GLenum(T::gl_type() as u32), data.as_ptr() as _) }
     }
     
+    // TODO: This seems wrong
     pub fn glClearNamedBufferSubData<T: GLType>(&self, buffer: u32, internalformat: InternalFormat, offset: isize, size: isize, format: PixelFormat, data: &[T]) {
-        let expected_size = match internalformat {
-            GL_R8 | GL_R16 | GL_R16F | GL_R32F | GL_R8I | GL_R16I | GL_R32I | GL_R8UI | GL_R16UI | GL_R32UI => 1,
-            GL_RG8 | GL_RG16 | GL_RG16F | GL_RG32F | GL_RG8I | GL_RG16I | GL_RG32I | GL_RG8UI | GL_RG16UI | GL_RG32UI => 2,
-            GL_RGB32F | GL_RGB32I | GL_RGB32UI => 3,
-            GL_RGBA8 | GL_RGBA16 | GL_RGBA16F | GL_RGBA32F | GL_RGBA8I | GL_RGBA16I | GL_RGBA32I | GL_RGBA8UI | GL_RGBA16UI | GL_RGBA32UI => 4,
-            _ => -1 
-        };
-
-        if data.len() as i32 != expected_size {
+        if data.len() != internalformat.size() {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearNamedBufferSubData(buffer, internalformat, offset, size, format, T::gl_type(), data.as_ptr() as _) }
+        unsafe { self.fns.ClearNamedBufferSubData(buffer, GLenum(internalformat as u32), offset, size, GLenum(format as u32), GLenum(T::gl_type() as u32), data.as_ptr() as _) }
     }
     
     pub fn glClearNamedFramebufferfi(&self, framebuffer: u32, buffer: Buffer, drawbuffer: i32, depth: f32, stencil: i32) {
-        unsafe { self.fns.ClearNamedFramebufferfi(framebuffer, buffer, drawbuffer, depth as _, stencil) }
+        unsafe { self.fns.ClearNamedFramebufferfi(framebuffer, GLenum(buffer as u32), drawbuffer, depth as _, stencil) }
     }
     
     pub fn glClearNamedFramebufferfv(&self, framebuffer: u32, buffer: Buffer, drawbuffer: i32, value: &[f32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearNamedFramebufferfv(framebuffer, buffer, drawbuffer, value.as_ptr()) }
+        unsafe { self.fns.ClearNamedFramebufferfv(framebuffer, GLenum(buffer as u32), drawbuffer, value.as_ptr()) }
     }
     
     pub fn glClearNamedFramebufferiv(&self, framebuffer: u32, buffer: Buffer, drawbuffer: i32, value: &[i32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearNamedFramebufferiv(framebuffer, buffer, drawbuffer, value.as_ptr() as _) }
+        unsafe { self.fns.ClearNamedFramebufferiv(framebuffer, GLenum(buffer as u32), drawbuffer, value.as_ptr() as _) }
     }
     
     pub fn glClearNamedFramebufferuiv(&self, framebuffer: u32, buffer: Buffer, drawbuffer: i32, value: &[u32]) {
         let expected_size = match buffer {
-            GL_COLOR => 4,
-            GL_DEPTH => 1,
-            GL_STENCIL => 1,
-            _ => -1
+            Buffer::GL_COLOR => 4,
+            Buffer::GL_DEPTH => 1,
+            Buffer::GL_STENCIL => 1,
         };
 
         if value.len() as i32 != expected_size {
             panic!("Incorrect value size!")
         }
 
-        unsafe { self.fns.ClearNamedFramebufferuiv(framebuffer, buffer, drawbuffer, value.as_ptr() as _) }
+        unsafe { self.fns.ClearNamedFramebufferuiv(framebuffer, GLenum(buffer as u32), drawbuffer, value.as_ptr() as _) }
     }
     
     pub unsafe fn glClearTexImage<T: GLType>(&self, texture: u32, level: i32, format: PixelFormat, type_: PixelType, data: *const c_void ) {
-        self.fns.ClearTexImage(texture, level, format, type_, data)
+        self.fns.ClearTexImage(texture, level, GLenum(format as u32), GLenum(type_ as u32), data)
     }
     
     pub unsafe fn glClearTexSubImage(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, data: *const c_void) {
-        self.fns.ClearTexSubImage(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, data)
+        self.fns.ClearTexSubImage(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, GLenum(format as u32), GLenum(type_ as u32), data)
     }
     
     pub fn glClipControl(&self, origin: ClipControlOrigin, depth: ClipControlDepth) {
-        unsafe { self.fns.ClipControl(origin, depth) }
+        unsafe { self.fns.ClipControl(GLenum(origin as u32), GLenum(depth as u32)) }
     }
     
     pub fn glCompressedTextureSubImage1D<T>(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, border: i32, data: &[T]) {
-        unsafe { self.fns.CompressedTexImage1D(target, level, internalformat, width as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage1D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTextureSubImage2D<T>(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, border: i32, data: &[T]) {
-        unsafe { self.fns.CompressedTexImage2D(target, level, internalformat, width as _, height as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage2D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, height as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
     }
     
     pub fn glCompressedTextureSubImage3D<T>(&self, target: TextureTarget, level: i32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, border: i32, data: &[T]) {
-        unsafe { self.fns.CompressedTexImage3D(target, level, internalformat, width as _, height as _, depth as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
+        unsafe { self.fns.CompressedTexImage3D(GLenum(target as u32), level, GLenum(internalformat as u32), width as _, height as _, depth as _, border, (std::mem::size_of::<T>() * data.len()) as _, data.as_ptr() as _) }
     }
     
     pub fn glCopyImageSubData(&self, srcName: u32, srcTarget: CopyImageSubDataTarget, srcLevel: i32, srcX: i32, srcY: i32, srcZ: i32, dstName: u32, dstTarget: CopyImageSubDataTarget, dstLevel: i32, dstX: i32, dstY: i32, dstZ: i32, srcWidth: u32, srcHeight: u32, srcDepth: u32) {
-        unsafe { self.fns.CopyImageSubData(srcName, srcTarget, srcLevel, srcX, srcY, srcZ, dstName, dstTarget, dstLevel, dstX, dstY, dstZ, srcWidth as _, srcHeight as _, srcDepth as _) }
+        unsafe { self.fns.CopyImageSubData(srcName, GLenum(srcTarget as u32), srcLevel, srcX, srcY, srcZ, dstName, GLenum(dstTarget as u32), dstLevel, dstX, dstY, dstZ, srcWidth as _, srcHeight as _, srcDepth as _) }
     }
     
     pub fn glCopyNamedBufferSubData(&self, readBuffer: u32, writeBuffer: u32, readOffset: isize, writeOffset: isize, size: usize) {
@@ -1990,7 +1957,7 @@ impl GLWrapper {
     }
 
     pub fn glCreateQueries(&self, target: QueryTarget, ids: &mut [u32]) {
-        unsafe { self.fns.CreateQueries(target, ids.len() as _, ids.as_mut_ptr()) }
+        unsafe { self.fns.CreateQueries(GLenum(target as u32), ids.len() as _, ids.as_mut_ptr()) }
     }
 
     pub fn glCreateRenderbuffers(&self, renderbuffers: &mut [u32]) {
@@ -2003,11 +1970,11 @@ impl GLWrapper {
 
     pub fn glCreateShaderProgramv(&self, type_: ShaderType, strings: &[&str]) -> u32 {
         let strings = CStringArray::new(strings);
-        unsafe { self.fns.CreateShaderProgramv(type_, strings.len() as _, strings.as_ptr()) }
+        unsafe { self.fns.CreateShaderProgramv(GLenum(type_ as u32), strings.len() as _, strings.as_ptr()) }
     }
 
     pub fn glCreateTextures(&self, target: TextureTarget, textures: &mut [u32]) {
-        unsafe { self.fns.CreateTextures(target, textures.len() as _, textures.as_mut_ptr()) }
+        unsafe { self.fns.CreateTextures(GLenum(target as u32), textures.len() as _, textures.as_mut_ptr()) }
     }
 
     pub fn glCreateTransformFeedbacks(&self, ids: &mut [u32]) {
@@ -2052,42 +2019,42 @@ impl GLWrapper {
 
     pub unsafe fn glDrawArraysIndirect(&self, mode: PrimitiveType, indirect: *const c_void) {
         // Needs Special Attention
-        unsafe { self.fns.DrawArraysIndirect(mode, indirect) }
+        unsafe { self.fns.DrawArraysIndirect(GLenum(mode as u32), indirect) }
     }
 
     pub fn glDrawArraysInstancedBaseInstance(&self, mode: PrimitiveType, first: i32, count: u32, instancecount: u32, baseinstance: u32) {
-        unsafe { self.fns.DrawArraysInstancedBaseInstance(mode, first, count as _, instancecount as _, baseinstance) }
+        unsafe { self.fns.DrawArraysInstancedBaseInstance(GLenum(mode as u32), first, count as _, instancecount as _, baseinstance) }
     }
 
     pub fn glDrawElementsIndirect(&self, mode: PrimitiveType, type_: DrawElementsType, indirect: *const c_void) {
         // Unreviewed
-        unsafe { self.fns.DrawElementsIndirect(mode, type_, indirect) }
+        unsafe { self.fns.DrawElementsIndirect(GLenum(mode as u32), GLenum(type_ as u32), indirect) }
     }
 
     pub fn glDrawElementsInstancedBaseInstance(&self, mode: PrimitiveType, count: u32, type_: PrimitiveType, indices: *const c_void, instancecount: u32, baseinstance: u32) {
         // Unreviewed
-        unsafe { self.fns.DrawElementsInstancedBaseInstance(mode, count as _, type_, indices, instancecount as _, baseinstance) }
+        unsafe { self.fns.DrawElementsInstancedBaseInstance(GLenum(mode as u32), count as _, GLenum(type_ as u32), indices, instancecount as _, baseinstance) }
     }
 
     pub fn glDrawElementsInstancedBaseVertexBaseInstance(&self, mode: PrimitiveType, count: u32, type_: DrawElementsType, indices: *const c_void, instancecount: u32, basevertex: i32, baseinstance: u32) {
         // Unreviewed
-        unsafe { self.fns.DrawElementsInstancedBaseVertexBaseInstance(mode, count as _, type_, indices, instancecount as _, basevertex, baseinstance) }
+        unsafe { self.fns.DrawElementsInstancedBaseVertexBaseInstance(GLenum(mode as u32), count as _, GLenum(type_ as u32), indices, instancecount as _, basevertex, baseinstance) }
     }
 
     pub fn glDrawTransformFeedback(&self, mode: PrimitiveType, id: u32) {
-        unsafe { self.fns.DrawTransformFeedback(mode, id) }
+        unsafe { self.fns.DrawTransformFeedback(GLenum(mode as u32), id) }
     }
 
     pub fn glDrawTransformFeedbackInstanced(&self, mode: PrimitiveType, id: u32, instancecount: u32) {
-        unsafe { self.fns.DrawTransformFeedbackInstanced(mode, id, instancecount as _) }
+        unsafe { self.fns.DrawTransformFeedbackInstanced(GLenum(mode as u32), id, instancecount as _) }
     }
 
     pub fn glDrawTransformFeedbackStream(&self, mode: PrimitiveType, id: u32, stream: u32) {
-        unsafe { self.fns.DrawTransformFeedbackStream(mode, id, stream) }
+        unsafe { self.fns.DrawTransformFeedbackStream(GLenum(mode as u32), id, stream) }
     }
 
     pub fn glDrawTransformFeedbackStreamInstanced(&self, mode: PrimitiveType, id: u32, stream: u32, instancecount: u32) {
-        unsafe { self.fns.DrawTransformFeedbackStreamInstanced(mode, id, stream, instancecount as _) }
+        unsafe { self.fns.DrawTransformFeedbackStreamInstanced(GLenum(mode as u32), id, stream, instancecount as _) }
     }
 
     pub fn glEnableVertexArrayAttrib(&self, vaobj: u32, index: u32) {
@@ -2095,7 +2062,7 @@ impl GLWrapper {
     }
 
     pub fn glEndQueryIndexed(&self, target: QueryTarget, index: u32) {
-        unsafe { self.fns.EndQueryIndexed(target, index) }
+        unsafe { self.fns.EndQueryIndexed(GLenum(target as u32), index) }
     }
 
     pub fn glFlushMappedNamedBufferRange(&self, buffer: u32, offset: isize, length: usize) {
@@ -2103,7 +2070,7 @@ impl GLWrapper {
     }
 
     pub fn glFramebufferParameteri(&self, target: FramebufferTarget, pname: FramebufferParameterName, param: i32) {
-        unsafe { self.fns.FramebufferParameteri(target, pname, param) }
+        unsafe { self.fns.FramebufferParameteri(GLenum(target as u32), GLenum(pname as u32), param) }
     }
 
     pub fn glGenProgramPipelines(&self, n: u32, pipelines: *mut u32) {
@@ -2122,22 +2089,22 @@ impl GLWrapper {
 
     pub fn glGetActiveAtomicCounterBufferiv(&self, program: u32, bufferIndex: u32, pname: AtomicCounterBufferPName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetActiveAtomicCounterBufferiv(program, bufferIndex, pname, params) }
+        unsafe { self.fns.GetActiveAtomicCounterBufferiv(program, bufferIndex, GLenum(pname as u32), params) }
     }
 
     pub fn glGetActiveSubroutineName(&self, program: u32, shadertype: ShaderType, index: u32, bufSize: u32, length: *mut u32, name: *mut u8) {
         // Unreviewed
-        unsafe { self.fns.GetActiveSubroutineName(program, shadertype, index, bufSize as _, length as _, name) }
+        unsafe { self.fns.GetActiveSubroutineName(program, GLenum(shadertype as u32), index, bufSize as _, length as _, name) }
     }
 
     pub fn glGetActiveSubroutineUniformName(&self, program: u32, shadertype: ShaderType, index: u32, bufSize: u32, length: *mut u32, name: *mut u8) {
         // Unreviewed
-        unsafe { self.fns.GetActiveSubroutineUniformName(program, shadertype, index, bufSize as _, length as _, name) }
+        unsafe { self.fns.GetActiveSubroutineUniformName(program, GLenum(shadertype as u32), index, bufSize as _, length as _, name) }
     }
 
     pub fn glGetActiveSubroutineUniformiv(&self, program: u32, shadertype: ShaderType, index: u32, pname: SubroutineParameterName, values: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetActiveSubroutineUniformiv(program, shadertype, index, pname, values) }
+        unsafe { self.fns.GetActiveSubroutineUniformiv(program, GLenum(shadertype as u32), index, GLenum(pname as u32), values) }
     }
 
     pub fn glGetCompressedTextureImage(&self, texture: u32, level: i32, bufSize: u32, pixels: *mut c_void) {
@@ -2152,46 +2119,46 @@ impl GLWrapper {
 
     pub fn glGetDoublei_v(&self, target: GetPName, index: u32, data: *mut f64) {
         // Unreviewed
-        unsafe { self.fns.GetDoublei_v(target, index, data) }
+        unsafe { self.fns.GetDoublei_v(GLenum(target as u32), index, data) }
     }
 
     pub fn glGetFloati_v(&self, target: GetPName, index: u32, data: *mut f32) {
         // Unreviewed
-        unsafe { self.fns.GetFloati_v(target, index, data) }
+        unsafe { self.fns.GetFloati_v(GLenum(target as u32), index, data) }
     }
 
     pub fn glGetFramebufferParameteriv(&self, target: FramebufferTarget, pname: FramebufferAttachmentParameterName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetFramebufferParameteriv(target, pname, params) }
+        unsafe { self.fns.GetFramebufferParameteriv(GLenum(target as u32), GLenum(pname as u32), params) }
     }
 
     pub fn glGetGraphicsResetStatus(&self) -> GraphicsResetStatus {
-        unsafe { self.fns.GetGraphicsResetStatus() }
+        unsafe { self.fns.GetGraphicsResetStatus() }.0.try_into().unwrap()
     }
 
     pub fn glGetInternalformati64v(&self, target: TextureTarget, internalformat: InternalFormat, pname: InternalFormatPName, count: u32, params: *mut i64) {
         // Unreviewed
-        unsafe { self.fns.GetInternalformati64v(target, internalformat, pname, count as _, params) }
+        unsafe { self.fns.GetInternalformati64v(GLenum(target as u32), GLenum(internalformat as u32), GLenum(pname as u32), count as _, params) }
     }
 
     pub fn glGetInternalformativ(&self, target: TextureTarget, internalformat: InternalFormat, pname: InternalFormatPName, count: u32, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetInternalformativ(target, internalformat, pname, count as _, params) }
+        unsafe { self.fns.GetInternalformativ(GLenum(target as u32), GLenum(internalformat as u32), GLenum(pname as u32), count as _, params) }
     }
 
     pub fn glGetNamedBufferParameteri64v(&self, buffer: u32, pname: BufferPNameARB, params: *mut i64) {
         // Unreviewed
-        unsafe { self.fns.GetNamedBufferParameteri64v(buffer, pname, params) }
+        unsafe { self.fns.GetNamedBufferParameteri64v(buffer, GLenum(pname as u32), params) }
     }
 
     pub fn glGetNamedBufferParameteriv(&self, buffer: u32, pname: BufferPNameARB, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetNamedBufferParameteriv(buffer, pname, params) }
+        unsafe { self.fns.GetNamedBufferParameteriv(buffer, GLenum(pname as u32), params) }
     }
 
     pub fn glGetNamedBufferPointerv(&self, buffer: u32, pname: BufferPointerNameARB, params: *mut *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.GetNamedBufferPointerv(buffer, pname, params) }
+        unsafe { self.fns.GetNamedBufferPointerv(buffer, GLenum(pname as u32), params) }
     }
 
     pub fn glGetNamedBufferSubData(&self, buffer: u32, offset: isize, size: usize, data: *mut c_void) {
@@ -2201,17 +2168,17 @@ impl GLWrapper {
 
     pub fn glGetNamedFramebufferAttachmentParameteriv(&self, framebuffer: u32, attachment: FramebufferAttachment, pname: FramebufferAttachmentParameterName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetNamedFramebufferAttachmentParameteriv(framebuffer, attachment, pname, params) }
+        unsafe { self.fns.GetNamedFramebufferAttachmentParameteriv(framebuffer, GLenum(attachment as u32), GLenum(pname as u32), params) }
     }
 
     pub fn glGetNamedFramebufferParameteriv(&self, framebuffer: u32, pname: GetFramebufferParameter, param: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetNamedFramebufferParameteriv(framebuffer, pname, param) }
+        unsafe { self.fns.GetNamedFramebufferParameteriv(framebuffer, GLenum(pname as u32), param) }
     }
 
     pub fn glGetNamedRenderbufferParameteriv(&self, renderbuffer: u32, pname: RenderbufferParameterName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetNamedRenderbufferParameteriv(renderbuffer, pname, params) }
+        unsafe { self.fns.GetNamedRenderbufferParameteriv(renderbuffer, GLenum(pname as u32), params) }
     }
 
     pub fn glGetProgramBinary(&self, program: u32, bufSize: u32, length: *mut u32, binaryFormat: *mut GLenum, binary: *mut c_void) {
@@ -2221,7 +2188,7 @@ impl GLWrapper {
 
     pub fn glGetProgramInterfaceiv(&self, program: u32, programInterface: ProgramInterface, pname: ProgramInterfacePName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetProgramInterfaceiv(program, programInterface, pname, params) }
+        unsafe { self.fns.GetProgramInterfaceiv(program, GLenum(programInterface as u32), GLenum(pname as u32), params) }
     }
 
     pub fn glGetProgramPipelineInfoLog(&self, pipeline: u32, bufSize: u32, length: *mut u32, infoLog: *mut u8) {
@@ -2231,133 +2198,133 @@ impl GLWrapper {
 
     pub fn glGetProgramPipelineiv(&self, pipeline: u32, pname: PipelineParameterName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetProgramPipelineiv(pipeline, pname, params) }
+        unsafe { self.fns.GetProgramPipelineiv(pipeline, GLenum(pname as u32), params) }
     }
 
     pub fn glGetProgramResourceIndex(&self, program: u32, programInterface: ProgramInterface, name: *const u8) -> u32 {
         // Unreviewed
-        unsafe { self.fns.GetProgramResourceIndex(program, programInterface, name) }
+        unsafe { self.fns.GetProgramResourceIndex(program, GLenum(programInterface as u32), name) }
     }
 
     pub fn glGetProgramResourceLocation(&self, program: u32, programInterface: ProgramInterface, name: *const u8) -> i32 {
         // Unreviewed
-        unsafe { self.fns.GetProgramResourceLocation(program, programInterface, name) }
+        unsafe { self.fns.GetProgramResourceLocation(program, GLenum(programInterface as u32), name) }
     }
 
     pub fn glGetProgramResourceLocationIndex(&self, program: u32, programInterface: ProgramInterface, name: *const u8) -> i32 {
         // Unreviewed
-        unsafe { self.fns.GetProgramResourceLocationIndex(program, programInterface, name) }
+        unsafe { self.fns.GetProgramResourceLocationIndex(program, GLenum(programInterface as u32), name) }
     }
 
     pub fn glGetProgramResourceName(&self, program: u32, programInterface: ProgramInterface, index: u32, bufSize: u32, length: *mut u32, name: *mut u8) {
         // Unreviewed
-        unsafe { self.fns.GetProgramResourceName(program, programInterface, index, bufSize as _, length as _, name) }
+        unsafe { self.fns.GetProgramResourceName(program, GLenum(programInterface as u32), index, bufSize as _, length as _, name) }
     }
 
     pub fn glGetProgramResourceiv(&self, program: u32, programInterface: ProgramInterface, index: u32, propCount: u32, props: *const ProgramResourceProperty, count: u32, length: *mut u32, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetProgramResourceiv(program, programInterface, index, propCount as _, props, count as _, length as _, params) }
+        unsafe { self.fns.GetProgramResourceiv(program, GLenum(programInterface as u32), index, propCount as _, props as _, count as _, length as _, params) }
     }
 
     pub fn glGetProgramStageiv(&self, program: u32, shadertype: ShaderType, pname: ProgramStagePName, values: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetProgramStageiv(program, shadertype, pname, values) }
+        unsafe { self.fns.GetProgramStageiv(program, GLenum(shadertype as u32), GLenum(pname as u32), values) }
     }
 
     pub fn glGetQueryBufferObjecti64v(&self, id: u32, buffer: u32, pname: QueryObjectParameterName, offset: isize) {
-        unsafe { self.fns.GetQueryBufferObjecti64v(id, buffer, pname, offset) }
+        unsafe { self.fns.GetQueryBufferObjecti64v(id, buffer, GLenum(pname as u32), offset) }
     }
 
     pub fn glGetQueryBufferObjectiv(&self, id: u32, buffer: u32, pname: QueryObjectParameterName, offset: isize) {
-        unsafe { self.fns.GetQueryBufferObjectiv(id, buffer, pname, offset) }
+        unsafe { self.fns.GetQueryBufferObjectiv(id, buffer, GLenum(pname as u32), offset) }
     }
 
     pub fn glGetQueryBufferObjectui64v(&self, id: u32, buffer: u32, pname: QueryObjectParameterName, offset: isize) {
-        unsafe { self.fns.GetQueryBufferObjectui64v(id, buffer, pname, offset) }
+        unsafe { self.fns.GetQueryBufferObjectui64v(id, buffer, GLenum(pname as u32), offset) }
     }
 
     pub fn glGetQueryBufferObjectuiv(&self, id: u32, buffer: u32, pname: QueryObjectParameterName, offset: isize) {
-        unsafe { self.fns.GetQueryBufferObjectuiv(id, buffer, pname, offset) }
+        unsafe { self.fns.GetQueryBufferObjectuiv(id, buffer, GLenum(pname as u32), offset) }
     }
 
     pub fn glGetQueryIndexediv(&self, target: QueryTarget, index: u32, pname: QueryParameterName, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetQueryIndexediv(target, index, pname, params) }
+        unsafe { self.fns.GetQueryIndexediv(GLenum(target as u32), index, GLenum(pname as u32), params) }
     }
 
     pub fn glGetShaderPrecisionFormat(&self, shadertype: ShaderType, precisiontype: PrecisionType, range: *mut [i32; 2], precision: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetShaderPrecisionFormat(shadertype, precisiontype, range, precision) }
+        unsafe { self.fns.GetShaderPrecisionFormat(GLenum(shadertype as u32), GLenum(precisiontype as u32), range, precision) }
     }
 
     pub fn glGetSubroutineIndex(&self, program: u32, shadertype: ShaderType, name: *const u8) -> u32 {
         // Unreviewed
-        unsafe { self.fns.GetSubroutineIndex(program, shadertype, name) }
+        unsafe { self.fns.GetSubroutineIndex(program, GLenum(shadertype as u32), name) }
     }
 
     pub fn glGetSubroutineUniformLocation(&self, program: u32, shadertype: ShaderType, name: *const u8) -> i32 {
         // Unreviewed
-        unsafe { self.fns.GetSubroutineUniformLocation(program, shadertype, name) }
+        unsafe { self.fns.GetSubroutineUniformLocation(program, GLenum(shadertype as u32), name) }
     }
 
     pub fn glGetTextureImage(&self, texture: u32, level: i32, format: PixelFormat, type_: PixelType, bufSize: u32, pixels: *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.GetTextureImage(texture, level, format, type_, bufSize as _, pixels) }
+        unsafe { self.fns.GetTextureImage(texture, level, GLenum(format as u32), GLenum(type_ as u32), bufSize as _, pixels) }
     }
 
     pub fn glGetTextureLevelParameterfv(&self, texture: u32, level: i32, pname: GetTextureParameter, params: *mut f32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureLevelParameterfv(texture, level, pname, params) }
+        unsafe { self.fns.GetTextureLevelParameterfv(texture, level, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureLevelParameteriv(&self, texture: u32, level: i32, pname: GetTextureParameter, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureLevelParameteriv(texture, level, pname, params) }
+        unsafe { self.fns.GetTextureLevelParameteriv(texture, level, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureParameterIiv(&self, texture: u32, pname: GetTextureParameter, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureParameterIiv(texture, pname, params) }
+        unsafe { self.fns.GetTextureParameterIiv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureParameterIuiv(&self, texture: u32, pname: GetTextureParameter, params: *mut u32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureParameterIuiv(texture, pname, params) }
+        unsafe { self.fns.GetTextureParameterIuiv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureParameterfv(&self, texture: u32, pname: GetTextureParameter, params: *mut f32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureParameterfv(texture, pname, params) }
+        unsafe { self.fns.GetTextureParameterfv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureParameteriv(&self, texture: u32, pname: GetTextureParameter, params: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetTextureParameteriv(texture, pname, params) }
+        unsafe { self.fns.GetTextureParameteriv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glGetTextureSubImage(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, bufSize: u32, pixels: *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.GetTextureSubImage(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, bufSize as _, pixels) }
+        unsafe { self.fns.GetTextureSubImage(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, GLenum(format as u32), GLenum(type_ as u32), bufSize as _, pixels) }
     }
 
     pub fn glGetTransformFeedbacki64_v(&self, xfb: u32, pname: TransformFeedbackPName, index: u32, param: *mut i64) {
         // Unreviewed
-        unsafe { self.fns.GetTransformFeedbacki64_v(xfb, pname, index, param) }
+        unsafe { self.fns.GetTransformFeedbacki64_v(xfb, GLenum(pname as u32), index, param) }
     }
 
     pub fn glGetTransformFeedbacki_v(&self, xfb: u32, pname: TransformFeedbackPName, index: u32, param: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetTransformFeedbacki_v(xfb, pname, index, param) }
+        unsafe { self.fns.GetTransformFeedbacki_v(xfb, GLenum(pname as u32), index, param) }
     }
 
     pub fn glGetTransformFeedbackiv(&self, xfb: u32, pname: TransformFeedbackPName, param: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetTransformFeedbackiv(xfb, pname, param) }
+        unsafe { self.fns.GetTransformFeedbackiv(xfb, GLenum(pname as u32), param) }
     }
 
     pub fn glGetUniformSubroutineuiv(&self, shadertype: ShaderType, location: i32, params: *mut u32) {
         // Unreviewed
-        unsafe { self.fns.GetUniformSubroutineuiv(shadertype, location, params) }
+        unsafe { self.fns.GetUniformSubroutineuiv(GLenum(shadertype as u32), location, params) }
     }
 
     pub fn glGetUniformdv(&self, program: u32, location: i32, params: *mut f64) {
@@ -2367,32 +2334,32 @@ impl GLWrapper {
 
     pub fn glGetVertexArrayIndexed64iv(&self, vaobj: u32, index: u32, pname: VertexArrayPName, param: *mut i64) {
         // Unreviewed
-        unsafe { self.fns.GetVertexArrayIndexed64iv(vaobj, index, pname, param) }
+        unsafe { self.fns.GetVertexArrayIndexed64iv(vaobj, index, GLenum(pname as u32), param) }
     }
 
     pub fn glGetVertexArrayIndexediv(&self, vaobj: u32, index: u32, pname: VertexArrayPName, param: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetVertexArrayIndexediv(vaobj, index, pname, param) }
+        unsafe { self.fns.GetVertexArrayIndexediv(vaobj, index, GLenum(pname as u32), param) }
     }
 
     pub fn glGetVertexArrayiv(&self, vaobj: u32, pname: VertexArrayPName, param: *mut i32) {
         // Unreviewed
-        unsafe { self.fns.GetVertexArrayiv(vaobj, pname, param) }
+        unsafe { self.fns.GetVertexArrayiv(vaobj, GLenum(pname as u32), param) }
     }
 
     pub fn glGetVertexAttribLdv(&self, index: u32, pname: VertexAttribEnum, params: *mut f64) {
         // Unreviewed
-        unsafe { self.fns.GetVertexAttribLdv(index, pname, params) }
+        unsafe { self.fns.GetVertexAttribLdv(index, GLenum(pname as u32), params) }
     }
 
     pub fn glGetnCompressedTexImage(&self, target: TextureTarget, lod: i32, bufSize: u32, pixels: *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.GetnCompressedTexImage(target, lod, bufSize as _, pixels) }
+        unsafe { self.fns.GetnCompressedTexImage(GLenum(target as u32), lod, bufSize as _, pixels) }
     }
 
     pub fn glGetnTexImage(&self, target: TextureTarget, level: i32, format: PixelFormat, type_: PixelType, bufSize: u32, pixels: *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.GetnTexImage(target, level, format, type_, bufSize as _, pixels) }
+        unsafe { self.fns.GetnTexImage(GLenum(target as u32), level, GLenum(format as u32), GLenum(type_ as u32), bufSize as _, pixels) }
     }
 
     pub fn glGetnUniformdv(&self, program: u32, location: i32, bufSize: u32, params: *mut f64) {
@@ -2425,22 +2392,22 @@ impl GLWrapper {
 
     pub fn glInvalidateFramebuffer(&self, target: FramebufferTarget, numAttachments: u32, attachments: *const InvalidateFramebufferAttachment) {
         // Unreviewed
-        unsafe { self.fns.InvalidateFramebuffer(target, numAttachments as _, attachments) }
+        unsafe { self.fns.InvalidateFramebuffer(GLenum(target as u32), numAttachments as _, attachments as _) }
     }
 
     pub fn glInvalidateNamedFramebufferData(&self, framebuffer: u32, numAttachments: u32, attachments: *const FramebufferAttachment) {
         // Unreviewed
-        unsafe { self.fns.InvalidateNamedFramebufferData(framebuffer, numAttachments as _, attachments) }
+        unsafe { self.fns.InvalidateNamedFramebufferData(framebuffer, numAttachments as _, attachments as _) }
     }
 
     pub fn glInvalidateNamedFramebufferSubData(&self, framebuffer: u32, numAttachments: u32, attachments: *const FramebufferAttachment, x: i32, y: i32, width: u32, height: u32) {
         // Unreviewed
-        unsafe { self.fns.InvalidateNamedFramebufferSubData(framebuffer, numAttachments as _, attachments, x, y, width as _, height as _) }
+        unsafe { self.fns.InvalidateNamedFramebufferSubData(framebuffer, numAttachments as _, attachments as _, x, y, width as _, height as _) }
     }
 
     pub fn glInvalidateSubFramebuffer(&self, target: FramebufferTarget, numAttachments: u32, attachments: *const InvalidateFramebufferAttachment, x: i32, y: i32, width: u32, height: u32) {
         // Unreviewed
-        unsafe { self.fns.InvalidateSubFramebuffer(target, numAttachments as _, attachments, x, y, width as _, height as _) }
+        unsafe { self.fns.InvalidateSubFramebuffer(GLenum(target as u32), numAttachments as _, attachments as _, x, y, width as _, height as _) }
     }
 
     pub fn glInvalidateTexImage(&self, texture: u32, level: i32) {
@@ -2461,7 +2428,7 @@ impl GLWrapper {
 
     pub fn glMapNamedBuffer(&self, buffer: u32, access: BufferAccessARB) -> *mut c_void {
         // Unreviewed
-        unsafe { self.fns.MapNamedBuffer(buffer, access) }
+        unsafe { self.fns.MapNamedBuffer(buffer, GLenum(access as u32)) }
     }
 
     pub fn glMapNamedBufferRange(&self, buffer: u32, offset: isize, length: usize, access: GLbitfield) -> *mut c_void {
@@ -2483,22 +2450,22 @@ impl GLWrapper {
 
     pub fn glMultiDrawArraysIndirect(&self, mode: PrimitiveType, indirect: *const c_void, drawcount: u32, stride: u32) {
         // Unreviewed
-        unsafe { self.fns.MultiDrawArraysIndirect(mode, indirect, drawcount as _, stride as _) }
+        unsafe { self.fns.MultiDrawArraysIndirect(GLenum(mode as u32), indirect, drawcount as _, stride as _) }
     }
 
     pub fn glMultiDrawArraysIndirectCount(&self, mode: PrimitiveType, indirect: *const c_void, drawcount: isize, maxdrawcount: u32, stride: u32) {
         // Unreviewed
-        unsafe { self.fns.MultiDrawArraysIndirectCount(mode, indirect, drawcount, maxdrawcount as _, stride as _) }
+        unsafe { self.fns.MultiDrawArraysIndirectCount(GLenum(mode as u32), indirect, drawcount, maxdrawcount as _, stride as _) }
     }
 
     pub fn glMultiDrawElementsIndirect(&self, mode: PrimitiveType, type_: DrawElementsType, indirect: *const c_void, drawcount: u32, stride: u32) {
         // Unreviewed
-        unsafe { self.fns.MultiDrawElementsIndirect(mode, type_, indirect, drawcount as _, stride as _) }
+        unsafe { self.fns.MultiDrawElementsIndirect(GLenum(mode as u32), GLenum(type_ as u32), indirect, drawcount as _, stride as _) }
     }
 
     pub fn glMultiDrawElementsIndirectCount(&self, mode: PrimitiveType, type_: DrawElementsType, indirect: *const c_void, drawcount: isize, maxdrawcount: u32, stride: u32) {
         // Unreviewed
-        unsafe { self.fns.MultiDrawElementsIndirectCount(mode, type_, indirect, drawcount, maxdrawcount as _, stride as _) }
+        unsafe { self.fns.MultiDrawElementsIndirectCount(GLenum(mode as u32), GLenum(type_ as u32), indirect, drawcount, maxdrawcount as _, stride as _) }
     }
 
     pub fn glNamedBufferData(&self, buffer: u32, size: usize, data: *const c_void, usage: VertexBufferObjectUsage) {
@@ -2517,49 +2484,49 @@ impl GLWrapper {
     }
 
     pub fn glNamedFramebufferDrawBuffer(&self, framebuffer: u32, buf: ColorBuffer) {
-        unsafe { self.fns.NamedFramebufferDrawBuffer(framebuffer, buf) }
+        unsafe { self.fns.NamedFramebufferDrawBuffer(framebuffer, GLenum(buf as u32)) }
     }
 
     pub fn glNamedFramebufferDrawBuffers(&self, framebuffer: u32, n: u32, bufs: *const ColorBuffer) {
         // Unreviewed
-        unsafe { self.fns.NamedFramebufferDrawBuffers(framebuffer, n as _, bufs) }
+        unsafe { self.fns.NamedFramebufferDrawBuffers(framebuffer, n as _, bufs as _) }
     }
 
     pub fn glNamedFramebufferParameteri(&self, framebuffer: u32, pname: FramebufferParameterName, param: i32) {
-        unsafe { self.fns.NamedFramebufferParameteri(framebuffer, pname, param) }
+        unsafe { self.fns.NamedFramebufferParameteri(framebuffer, GLenum(pname as u32), param) }
     }
 
     pub fn glNamedFramebufferReadBuffer(&self, framebuffer: u32, src: ColorBuffer) {
-        unsafe { self.fns.NamedFramebufferReadBuffer(framebuffer, src) }
+        unsafe { self.fns.NamedFramebufferReadBuffer(framebuffer, GLenum(src as u32)) }
     }
 
     pub fn glNamedFramebufferRenderbuffer(&self, framebuffer: u32, attachment: FramebufferAttachment, renderbuffertarget: RenderbufferTarget, renderbuffer: u32) {
-        unsafe { self.fns.NamedFramebufferRenderbuffer(framebuffer, attachment, renderbuffertarget, renderbuffer) }
+        unsafe { self.fns.NamedFramebufferRenderbuffer(framebuffer, GLenum(attachment as u32), GLenum(renderbuffertarget as u32), renderbuffer) }
     }
 
     pub fn glNamedFramebufferTexture(&self, framebuffer: u32, attachment: FramebufferAttachment, texture: u32, level: i32) {
-        unsafe { self.fns.NamedFramebufferTexture(framebuffer, attachment, texture, level) }
+        unsafe { self.fns.NamedFramebufferTexture(framebuffer, GLenum(attachment as u32), texture, level) }
     }
 
     pub fn glNamedFramebufferTextureLayer(&self, framebuffer: u32, attachment: FramebufferAttachment, texture: u32, level: i32, layer: i32) {
-        unsafe { self.fns.NamedFramebufferTextureLayer(framebuffer, attachment, texture, level, layer) }
+        unsafe { self.fns.NamedFramebufferTextureLayer(framebuffer, GLenum(attachment as u32), texture, level, layer) }
     }
 
     pub fn glNamedRenderbufferStorage(&self, renderbuffer: u32, internalformat: InternalFormat, width: u32, height: u32) {
-        unsafe { self.fns.NamedRenderbufferStorage(renderbuffer, internalformat, width as _, height as _) }
+        unsafe { self.fns.NamedRenderbufferStorage(renderbuffer, GLenum(internalformat as u32), width as _, height as _) }
     }
 
     pub fn glNamedRenderbufferStorageMultisample(&self, renderbuffer: u32, samples: u32, internalformat: InternalFormat, width: u32, height: u32) {
-        unsafe { self.fns.NamedRenderbufferStorageMultisample(renderbuffer, samples as _, internalformat, width as _, height as _) }
+        unsafe { self.fns.NamedRenderbufferStorageMultisample(renderbuffer, samples as _, GLenum(internalformat as u32), width as _, height as _) }
     }
 
     pub fn glPatchParameterfv(&self, pname: PatchParameterName, values: *const f32) {
         // Unreviewed
-        unsafe { self.fns.PatchParameterfv(pname, values) }
+        unsafe { self.fns.PatchParameterfv(GLenum(pname as u32), values) }
     }
 
     pub fn glPatchParameteri(&self, pname: PatchParameterName, value: i32) {
-        unsafe { self.fns.PatchParameteri(pname, value) }
+        unsafe { self.fns.PatchParameteri(GLenum(pname as u32), value) }
     }
 
     pub fn glPauseTransformFeedback(&self) {
@@ -2576,7 +2543,7 @@ impl GLWrapper {
     }
 
     pub fn glProgramParameteri(&self, program: u32, pname: ProgramParameterPName, value: i32) {
-        unsafe { self.fns.ProgramParameteri(program, pname, value) }
+        unsafe { self.fns.ProgramParameteri(program, GLenum(pname as u32), value) }
     }
 
     pub fn glProgramUniform1d(&self, program: u32, location: i32, v0: f64) {
@@ -2815,7 +2782,7 @@ impl GLWrapper {
 
     pub fn glReadnPixels(&self, x: i32, y: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, bufSize: u32, data: *mut c_void) {
         // Unreviewed
-        unsafe { self.fns.ReadnPixels(x, y, width as _, height as _, format, type_, bufSize as _, data) }
+        unsafe { self.fns.ReadnPixels(x, y, width as _, height as _, GLenum(format as u32), GLenum(type_ as u32), bufSize as _, data) }
     }
 
     pub fn glReleaseShaderCompiler(&self) {
@@ -2842,7 +2809,7 @@ impl GLWrapper {
 
     pub fn glShaderBinary(&self, count: u32, shaders: *const u32, binaryFormat: ShaderBinaryFormat, binary: *const c_void, length: u32) {
         // Unreviewed
-        unsafe { self.fns.ShaderBinary(count as _, shaders, binaryFormat, binary, length as _) }
+        unsafe { self.fns.ShaderBinary(count as _, shaders, GLenum(binaryFormat as u32), binary, length as _) }
     }
 
     pub fn glShaderStorageBlockBinding(&self, program: u32, storageBlockIndex: u32, storageBlockBinding: u32) {
@@ -2855,27 +2822,27 @@ impl GLWrapper {
     }
 
     pub fn glTexBufferRange(&self, target: TextureTarget, internalformat: InternalFormat, buffer: u32, offset: isize, size: usize) {
-        unsafe { self.fns.TexBufferRange(target, internalformat, buffer, offset, size as _) }
+        unsafe { self.fns.TexBufferRange(GLenum(target as u32), GLenum(internalformat as u32), buffer, offset, size as _) }
     }
 
     pub fn glTexStorage1D(&self, target: TextureTarget, levels: u32, internalformat: InternalFormat, width: u32) {
-        unsafe { self.fns.TexStorage1D(target, levels as _, internalformat, width as _) }
+        unsafe { self.fns.TexStorage1D(GLenum(target as u32), levels as _, GLenum(internalformat as u32), width as _) }
     }
 
     pub fn glTexStorage2D(&self, target: TextureTarget, levels: u32, internalformat: InternalFormat, width: u32, height: u32) {
-        unsafe { self.fns.TexStorage2D(target, levels as _, internalformat, width as _, height as _) }
+        unsafe { self.fns.TexStorage2D(GLenum(target as u32), levels as _, GLenum(internalformat as u32), width as _, height as _) }
     }
 
     pub fn glTexStorage2DMultisample(&self, target: TextureTarget, samples: u32, internalformat: InternalFormat, width: u32, height: u32, fixedsamplelocations: bool) {
-        unsafe { self.fns.TexStorage2DMultisample(target, samples as _, internalformat, width as _, height as _, fixedsamplelocations as _) }
+        unsafe { self.fns.TexStorage2DMultisample(GLenum(target as u32), samples as _, GLenum(internalformat as u32), width as _, height as _, fixedsamplelocations as _) }
     }
 
     pub fn glTexStorage3D(&self, target: TextureTarget, levels: u32, internalformat: InternalFormat, width: u32, height: u32, depth: u32) {
-        unsafe { self.fns.TexStorage3D(target, levels as _, internalformat, width as _, height as _, depth as _) }
+        unsafe { self.fns.TexStorage3D(GLenum(target as u32), levels as _, GLenum(internalformat as u32), width as _, height as _, depth as _) }
     }
 
     pub fn glTexStorage3DMultisample(&self, target: TextureTarget, samples: u32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, fixedsamplelocations: bool) {
-        unsafe { self.fns.TexStorage3DMultisample(target, samples as _, internalformat, width as _, height as _, depth as _, fixedsamplelocations as _) }
+        unsafe { self.fns.TexStorage3DMultisample(GLenum(target as u32), samples as _, GLenum(internalformat as u32), width as _, height as _, depth as _, fixedsamplelocations as _) }
     }
 
     pub fn glTextureBarrier(&self) {
@@ -2883,75 +2850,75 @@ impl GLWrapper {
     }
 
     pub fn glTextureBuffer(&self, texture: u32, internalformat: InternalFormat, buffer: u32) {
-        unsafe { self.fns.TextureBuffer(texture, internalformat, buffer) }
+        unsafe { self.fns.TextureBuffer(texture, GLenum(internalformat as u32), buffer) }
     }
 
     pub fn glTextureBufferRange(&self, texture: u32, internalformat: InternalFormat, buffer: u32, offset: isize, size: usize) {
-        unsafe { self.fns.TextureBufferRange(texture, internalformat, buffer, offset, size as _) }
+        unsafe { self.fns.TextureBufferRange(texture, GLenum(internalformat as u32), buffer, offset, size as _) }
     }
 
     pub fn glTextureParameterIiv(&self, texture: u32, pname: TextureParameterName, params: *const i32) {
         // Unreviewed
-        unsafe { self.fns.TextureParameterIiv(texture, pname, params) }
+        unsafe { self.fns.TextureParameterIiv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glTextureParameterIuiv(&self, texture: u32, pname: TextureParameterName, params: *const u32) {
         // Unreviewed
-        unsafe { self.fns.TextureParameterIuiv(texture, pname, params) }
+        unsafe { self.fns.TextureParameterIuiv(texture, GLenum(pname as u32), params) }
     }
 
     pub fn glTextureParameterf(&self, texture: u32, pname: TextureParameterName, param: f32) {
-        unsafe { self.fns.TextureParameterf(texture, pname, param) }
+        unsafe { self.fns.TextureParameterf(texture, GLenum(pname as u32), param) }
     }
 
     pub fn glTextureParameterfv(&self, texture: u32, pname: TextureParameterName, param: *const f32) {
         // Unreviewed
-        unsafe { self.fns.TextureParameterfv(texture, pname, param) }
+        unsafe { self.fns.TextureParameterfv(texture, GLenum(pname as u32), param) }
     }
 
     pub fn glTextureParameteri(&self, texture: TextureTarget, pname: TextureParameterName, param: GLenum) {
-        unsafe { self.fns.TextureParameteri(texture.0 as _, pname, param.0 as _) }
+        unsafe { self.fns.TextureParameteri(texture as u32, GLenum(pname as u32), param.0 as _) }
     }
 
     pub fn glTextureParameteriv(&self, texture: u32, pname: TextureParameterName, param: *const i32) {
         // Unreviewed
-        unsafe { self.fns.TextureParameteriv(texture, pname, param) }
+        unsafe { self.fns.TextureParameteriv(texture, GLenum(pname as u32), param) }
     }
 
     pub fn glTextureStorage1D(&self, texture: u32, levels: u32, internalformat: InternalFormat, width: u32) {
-        unsafe { self.fns.TextureStorage1D(texture, levels as _, internalformat, width as _) }
+        unsafe { self.fns.TextureStorage1D(texture, levels as _, GLenum(internalformat as u32), width as _) }
     }
 
     pub fn glTextureStorage2D(&self, texture: u32, levels: u32, internalformat: InternalFormat, width: u32, height: u32) {
-        unsafe { self.fns.TextureStorage2D(texture, levels as _, internalformat, width as _, height as _) }
+        unsafe { self.fns.TextureStorage2D(texture, levels as _, GLenum(internalformat as u32), width as _, height as _) }
     }
 
     pub fn glTextureStorage2DMultisample(&self, texture: u32, samples: u32, internalformat: InternalFormat, width: u32, height: u32, fixedsamplelocations: bool) {
-        unsafe { self.fns.TextureStorage2DMultisample(texture, samples as _, internalformat, width as _, height as _, fixedsamplelocations as _) }
+        unsafe { self.fns.TextureStorage2DMultisample(texture, samples as _, GLenum(internalformat as u32), width as _, height as _, fixedsamplelocations as _) }
     }
 
     pub fn glTextureStorage3D(&self, texture: u32, levels: u32, internalformat: InternalFormat, width: u32, height: u32, depth: u32) {
-        unsafe { self.fns.TextureStorage3D(texture, levels as _, internalformat, width as _, height as _, depth as _) }
+        unsafe { self.fns.TextureStorage3D(texture, levels as _, GLenum(internalformat as u32), width as _, height as _, depth as _) }
     }
 
     pub fn glTextureStorage3DMultisample(&self, texture: u32, samples: u32, internalformat: InternalFormat, width: u32, height: u32, depth: u32, fixedsamplelocations: bool) {
-        unsafe { self.fns.TextureStorage3DMultisample(texture, samples as _, internalformat, width as _, height as _, depth as _, fixedsamplelocations as _) }
+        unsafe { self.fns.TextureStorage3DMultisample(texture, samples as _, GLenum(internalformat as u32), width as _, height as _, depth as _, fixedsamplelocations as _) }
     }
 
     pub unsafe fn glTextureSubImage1D(&self, texture: u32, level: i32, xoffset: i32, width: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
-        self.fns.TextureSubImage1D(texture, level, xoffset, width as _, format, type_, pixels.as_ptr() as _)
+        self.fns.TextureSubImage1D(texture, level, xoffset, width as _, GLenum(format as u32), GLenum(type_ as u32), pixels.as_ptr() as _)
     }
 
     pub unsafe fn glTextureSubImage2D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, width: u32, height: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
-        self.fns.TextureSubImage2D(texture, level, xoffset, yoffset, width as _, height as _, format, type_, pixels.as_ptr() as _)
+        self.fns.TextureSubImage2D(texture, level, xoffset, yoffset, width as _, height as _, GLenum(format as u32), GLenum(type_ as u32), pixels.as_ptr() as _)
     }
 
     pub unsafe fn glTextureSubImage3D(&self, texture: u32, level: i32, xoffset: i32, yoffset: i32, zoffset: i32, width: u32, height: u32, depth: u32, format: PixelFormat, type_: PixelType, pixels: &[u8]) {
-        self.fns.TextureSubImage3D(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, format, type_, pixels.as_ptr() as _)
+        self.fns.TextureSubImage3D(texture, level, xoffset, yoffset, zoffset, width as _, height as _, depth as _, GLenum(format as u32), GLenum(type_ as u32), pixels.as_ptr() as _)
     }
 
     pub fn glTextureView(&self, texture: u32, target: TextureTarget, origtexture: u32, internalformat: InternalFormat, minlevel: u32, numlevels: u32, minlayer: u32, numlayers: u32) {
-        unsafe { self.fns.TextureView(texture, target, origtexture, internalformat, minlevel, numlevels, minlayer, numlayers) }
+        unsafe { self.fns.TextureView(texture, GLenum(target as u32), origtexture, GLenum(internalformat as u32), minlevel, numlevels, minlayer, numlayers) }
     }
 
     pub fn glTransformFeedbackBufferBase(&self, xfb: u32, index: u32, buffer: u32) {
@@ -3045,7 +3012,7 @@ impl GLWrapper {
 
     pub fn glUniformSubroutinesuiv(&self, shadertype: ShaderType, count: u32, indices: *const u32) {
         // Unreviewed
-        unsafe { self.fns.UniformSubroutinesuiv(shadertype, count as _, indices) }
+        unsafe { self.fns.UniformSubroutinesuiv(GLenum(shadertype as u32), count as _, indices) }
     }
 
     pub fn glUnmapNamedBuffer(&self, buffer: u32) -> bool {
@@ -3065,15 +3032,15 @@ impl GLWrapper {
     }
 
     pub fn glVertexArrayAttribFormat(&self, vaobj: u32, attribindex: u32, size: i32, type_: VertexAttribType, normalized: bool, relativeoffset: u32) {
-        unsafe { self.fns.VertexArrayAttribFormat(vaobj, attribindex, size, type_, normalized as _, relativeoffset) }
+        unsafe { self.fns.VertexArrayAttribFormat(vaobj, attribindex, size, GLenum(type_ as u32), normalized as _, relativeoffset) }
     }
 
     pub fn glVertexArrayAttribIFormat(&self, vaobj: u32, attribindex: u32, size: i32, type_: VertexAttribIType, relativeoffset: u32) {
-        unsafe { self.fns.VertexArrayAttribIFormat(vaobj, attribindex, size, type_, relativeoffset) }
+        unsafe { self.fns.VertexArrayAttribIFormat(vaobj, attribindex, size, GLenum(type_ as u32), relativeoffset) }
     }
 
     pub fn glVertexArrayAttribLFormat(&self, vaobj: u32, attribindex: u32, size: i32, type_: VertexAttribLType, relativeoffset: u32) {
-        unsafe { self.fns.VertexArrayAttribLFormat(vaobj, attribindex, size, type_, relativeoffset) }
+        unsafe { self.fns.VertexArrayAttribLFormat(vaobj, attribindex, size, GLenum(type_ as u32), relativeoffset) }
     }
 
     pub fn glVertexArrayBindingDivisor(&self, vaobj: u32, bindingindex: u32, divisor: u32) {
@@ -3098,11 +3065,11 @@ impl GLWrapper {
     }
 
     pub fn glVertexAttribFormat(&self, attribindex: u32, size: i32, type_: VertexAttribType, normalized: bool, relativeoffset: u32) {
-        unsafe { self.fns.VertexAttribFormat(attribindex, size, type_, normalized as _, relativeoffset) }
+        unsafe { self.fns.VertexAttribFormat(attribindex, size, GLenum(type_ as u32), normalized as _, relativeoffset) }
     }
 
     pub fn glVertexAttribIFormat(&self, attribindex: u32, size: i32, type_: VertexAttribIType, relativeoffset: u32) {
-        unsafe { self.fns.VertexAttribIFormat(attribindex, size, type_, relativeoffset) }
+        unsafe { self.fns.VertexAttribIFormat(attribindex, size, GLenum(type_ as u32), relativeoffset) }
     }
 
     pub fn glVertexAttribL1d(&self, index: u32, x: f64) {
@@ -3142,12 +3109,12 @@ impl GLWrapper {
     }
 
     pub fn glVertexAttribLFormat(&self, attribindex: u32, size: i32, type_: VertexAttribLType, relativeoffset: u32) {
-        unsafe { self.fns.VertexAttribLFormat(attribindex, size, type_, relativeoffset) }
+        unsafe { self.fns.VertexAttribLFormat(attribindex, size, GLenum(type_ as u32), relativeoffset) }
     }
 
     pub fn glVertexAttribLPointer(&self, index: u32, size: i32, type_: VertexAttribLType, stride: u32, pointer: *const c_void) {
         // Unreviewed
-        unsafe { self.fns.VertexAttribLPointer(index, size, type_, stride as _, pointer) }
+        unsafe { self.fns.VertexAttribLPointer(index, size, GLenum(type_ as u32), stride as _, pointer) }
     }
 
     pub fn glVertexBindingDivisor(&self, bindingindex: u32, divisor: u32) {
@@ -3169,7 +3136,7 @@ impl GLWrapper {
     }
 
     pub fn glGetImageHandleARB(&self, texture: u32, level: i32, layered: bool, layer: i32, format: PixelFormat) -> u64 {
-        unsafe { self.fns.GetImageHandleARB(texture, level, layered as _, layer, format) }
+        unsafe { self.fns.GetImageHandleARB(texture, level, layered as _, layer, GLenum(format as u32)) }
     }
 
     pub fn glGetTextureHandleARB(&self, texture: u32) -> u64 {
@@ -3183,7 +3150,7 @@ impl GLWrapper {
 
     pub fn glGetVertexAttribLui64vARB(&self, index: u32, pname: VertexAttribEnum, params: *mut u64) {
         // Unreviewed
-        unsafe { self.fns.GetVertexAttribLui64vARB(index, pname, params) }
+        unsafe { self.fns.GetVertexAttribLui64vARB(index, GLenum(pname as u32), params) }
     }
 
     pub fn glIsImageHandleResidentARB(&self, handle: u64) -> bool {

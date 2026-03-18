@@ -1,8 +1,7 @@
 use gl_types::matrices::Mat4;
 use gl_types::vectors::Vec3;
-use gl46::{GL_TEXTURE_2D, GL_TEXTURE0, GL_TRIANGLES};
-use libc::AF_LOCAL;
 
+use crate::engine::graphics::gl_enums::PrimitiveType;
 use crate::engine::graphics::terrain::Terrain;
 use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader, embed_shader_source};
 use crate::engine::errors::Result;
@@ -103,7 +102,7 @@ impl TerrainRenderer {
         // uniform vec3 viewPos;
         gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
 
-        gfx.glDrawElementsInstanced(GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width() * terrain.height());
+        gfx.glDrawElementsInstanced(PrimitiveType::GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width() * terrain.height());
 
         // todo!()
     }

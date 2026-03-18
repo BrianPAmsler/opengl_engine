@@ -1,6 +1,4 @@
-use gl46::{GL_FRAGMENT_SHADER, GL_COMPILE_STATUS, GL_VERTEX_SHADER};
-
-use crate::engine::{graphics::Graphics, errors::{Result, GraphicsError}};
+use crate::engine::{errors::{GraphicsError, Result}, graphics::{Graphics, gl_enums::{ShaderParameterName, ShaderType}}};
 
 use self::private::Seal;
 
@@ -28,7 +26,7 @@ fn compile_shader(gfx: &Graphics, shader: u32, shader_filename: &str) -> Result<
     gfx.glCompileShader(shader);
 
     let mut status = 0;
-    gfx.glGetShaderiv(shader, GL_COMPILE_STATUS, &mut status);
+    gfx.glGetShaderiv(shader, ShaderParameterName::GL_COMPILE_STATUS, &mut status);
 
     if status == 0 {
         let error_message = gfx.glGetShaderInfoLog(shader);
@@ -67,7 +65,7 @@ impl ShaderTrait for VertexShader {
 
 impl VertexShader {
     pub fn compile_shader(gfx: &Graphics, source: ShaderSource) -> Result<VertexShader> {
-        let shader = gfx.glCreateShader(GL_VERTEX_SHADER);
+        let shader = gfx.glCreateShader(ShaderType::GL_VERTEX_SHADER);
 
         gfx.glShaderSource(shader, &source.source);
         compile_shader(gfx, shader, &source.filename)?;
@@ -95,7 +93,7 @@ impl ShaderTrait for FragmentShader {
 
 impl FragmentShader {
     pub fn compile_shader(gfx: &Graphics, source: ShaderSource) -> Result<FragmentShader> {
-        let shader = gfx.glCreateShader(GL_FRAGMENT_SHADER);
+        let shader = gfx.glCreateShader(ShaderType::GL_FRAGMENT_SHADER);
 
         gfx.glShaderSource(shader, &source.source);
         compile_shader(gfx, shader, &source.filename)?;

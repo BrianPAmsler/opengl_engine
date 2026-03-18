@@ -1,8 +1,8 @@
-use gl46::{GL_DYNAMIC_DRAW, GL_RGBA, GL_SHADER_STORAGE_BUFFER, GL_TEXTURE_2D, GL_TEXTURE0, GL_TRIANGLES};
-use gl_types::matrices::{Mat4, MatN};
+use gl_types::matrices::Mat4;
 use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
 
+use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, InternalFormat, PrimitiveType, TextureTarget, TextureUnit};
 use crate::engine::graphics::image::Image;
 use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader, embed_shader_source};
 
@@ -81,7 +81,7 @@ impl SpriteRenderer {
         let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
         let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
 
-        let sprite_sheet = sprite_sheet.as_texture(gfx, GL_RGBA);
+        let sprite_sheet = sprite_sheet.as_texture(gfx, InternalFormat::GL_RGBA);
 
         let vertex_data = Box::new([
             Vertex { x: 0.0, y: 0.0, z: 0.0 }, // bottom left
@@ -114,9 +114,9 @@ impl SpriteRenderer {
         
         let mut sprite_ssbo = 0;
         gfx.glGenBuffer(&mut sprite_ssbo);
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, sprite_ssbo);
-        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, initial_buffer_size, GL_DYNAMIC_DRAW);
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, sprite_ssbo);
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sprite_ssbo);
+        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, initial_buffer_size, BufferUsageARB::GL_DYNAMIC_DRAW);
+        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, sprite_ssbo);
 
         let mut spritesheet_ssbo = 0;
         gfx.glGenBuffer(&mut spritesheet_ssbo);
@@ -142,34 +142,34 @@ impl SpriteRenderer {
     }
 
     pub fn update_sprite_map(&self, gfx: &Graphics) {
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.spritesheet_ssbo);
-        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, self.sprite_map.len() * size_of::<Vec4>() + SSBO_OFFSET as usize, GL_DYNAMIC_DRAW);
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, self.spritesheet_ssbo);
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.spritesheet_ssbo);
+        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.sprite_map.len() * size_of::<Vec4>() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW);
+        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 3, self.spritesheet_ssbo);
 
         // Buffer length data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, &[self.sprite_map.len()]); 
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, &[self.sprite_map.len()]); 
         // Buffer sprite data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.sprite_map[..]); 
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.sprite_map[..]); 
 
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0);
     }
 
     fn buffer_sprite_data(&mut self, gfx: &Graphics) {
         let data_size = self.render_queue.len() * std::mem::size_of::<GLSpriteStruct>() + SSBO_OFFSET as usize;
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.sprite_ssbo);
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.sprite_ssbo);
 
         if data_size > self.buffersize {
             // Multiply new szie by 50% to give some wiggle room
             self.buffersize = (data_size * 3) / 2;
-            gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, self.buffersize, GL_DYNAMIC_DRAW);
-            gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
+            gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.buffersize, BufferUsageARB::GL_DYNAMIC_DRAW);
+            gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
         }
 
         // Buffer length data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, &[self.render_queue.len()]); 
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, &[self.render_queue.len()]); 
         // Buffer sprite data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue[..]); 
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue[..]); 
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0);
     }
 
     pub fn queue_sprite_instance(&mut self, sprite: SpriteData) {
@@ -191,8 +191,8 @@ impl SpriteRenderer {
         gfx.glBindVertexArray(self.mesh.vao());
         gfx.glUseProgram(self.program.program());
         self.buffer_sprite_data(gfx);
-        gfx.glActiveTexture(GL_TEXTURE0);
-        gfx.glBindTexture(GL_TEXTURE_2D, self.sprite_sheet.texture_id());
+        gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
+        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.sprite_sheet.texture_id());
 
         let texel_offset = vec2!(1.0) / (vec2!(self.sprite_sheet.width(), self.sprite_sheet.height()) * 2.0);
 
@@ -207,7 +207,7 @@ impl SpriteRenderer {
         // println!("v1: {:?}", v1);
         // println!("v2: {:?}\n", v2);
 
-        gfx.glDrawArraysInstanced(GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
+        gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
         self.render_queue.clear();
 
         // let mut debug = [0.0f32; 32];
@@ -221,7 +221,6 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
-    use gl46::{GL_DYNAMIC_DRAW, GL_SHADER_STORAGE_BUFFER, GL_TRIANGLES};
     use gl_types::{vec3, vec4};
     
     impl PartialEq for GLSpriteStruct {
@@ -230,7 +229,7 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{embed_shader_source, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}, FragmentShader, Graphics, ShaderProgramBuilder, VertexShader};
+    use crate::engine::graphics::{FragmentShader, Graphics, ShaderProgramBuilder, VertexShader, embed_shader_source, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
 
     use super::SpriteRenderer;
 
@@ -264,24 +263,24 @@ mod tests {
 
         let mut data_in = [GLSpriteStruct::default(); 2];
 
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, ssbo);
         // Allocate space
-        gfx.glBufferNull(GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SSBO_OFFSET as usize, GL_DYNAMIC_DRAW); 
+        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW); 
         // Buffer length data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
         // Buffer sprite data
-        gfx.glBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET,&sprite_structs); 
-        gfx.glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo);
+        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET,&sprite_structs); 
+        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, ssbo);
 
         gfx.glUseProgram(program.program());
         gfx.glBindVertexArray(renderer.mesh.vao());
-        gfx.glDrawArrays(GL_TRIANGLES, 0, renderer.mesh.len() as _);
+        gfx.glDrawArrays(PrimitiveType::GL_TRIANGLES, 0, renderer.mesh.len() as _);
 
-        unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
+        unsafe { gfx.glGetBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
 
         println!("{:?}", data_in); 
 
-        gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0); // unbind
         
         let expected = [
             GLSpriteStruct {

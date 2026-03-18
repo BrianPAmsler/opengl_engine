@@ -1,9 +1,8 @@
 use std::path::Path;
 
-use gl46::{GL_RGBA, InternalFormat};
 use image::{ImageBuffer, ImageReader, Rgba};
 
-use crate::engine::graphics::builder::TextureBuilder;
+use crate::engine::graphics::{builder::TextureBuilder, gl_enums::{InternalFormat, PixelFormat}};
 
 use super::{Graphics, Texture};
 
@@ -85,7 +84,7 @@ impl Image {
         // Flip image since OpenGL expects the first pixel to be bottom-left
         image::imageops::flip_vertical_in_place(&mut self.image_buffer_mut());
         // This is safe because we know the underlying image data is the correct length for the RGBA pixel format
-        unsafe { TextureBuilder::from_raw_pixels_unchecked(&self.data, self.width as u32, self.height as u32, internal_format, GL_RGBA) }.finish(gfx)
+        unsafe { TextureBuilder::from_raw_pixels_unchecked(&self.data, self.width as u32, self.height as u32, internal_format, PixelFormat::GL_RGBA) }.finish(gfx)
     }
 
     pub fn blit(&mut self, src: &Image, x: u32, y: u32) {

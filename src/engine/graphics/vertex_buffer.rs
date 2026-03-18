@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use gl46::{GL_ARRAY_BUFFER, GL_STATIC_DRAW, GL_FLOAT};
+use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, VertexAttribPointerType};
 
 use super::{Graphics, Mesh, Normal, RGBColor, Tangent, Vertex, UV};
 
@@ -95,8 +95,8 @@ impl VBOBufferer {
     pub fn buffer_data(self, gfx: &Graphics) -> VBO {
         let total_size = self.vertex_data + self.color_data + self.uv_data + self.normal_data + self.custom_data;
 
-        gfx.glBindBuffer(GL_ARRAY_BUFFER, self.vbo);
-        gfx.glBufferNull(GL_ARRAY_BUFFER, total_size, GL_STATIC_DRAW);
+        gfx.glBindBuffer(BufferTargetARB::GL_ARRAY_BUFFER, self.vbo);
+        gfx.glBufferNull(BufferTargetARB::GL_ARRAY_BUFFER, total_size, BufferUsageARB::GL_STATIC_DRAW);
 
         let mut vertex_offset = 0;
         let mut color_offset = self.vertex_data;
@@ -110,13 +110,13 @@ impl VBOBufferer {
             gfx.glGenVertexArray(&mut vao);
             gfx.glBindVertexArray(VAO(vao));
     
-            gfx.glBufferSubData(GL_ARRAY_BUFFER, vertex_offset as isize, &mesh.vertex_data);
+            gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, vertex_offset as isize, &mesh.vertex_data);
     
             // Enable pos attribute pointer
             gfx.glVertexAttribPointer(
                 0,
                 3,
-                GL_FLOAT,
+                VertexAttribPointerType::GL_FLOAT,
                 false,
                 0,
                 0,
@@ -127,13 +127,13 @@ impl VBOBufferer {
     
             let mut index = 1;
             if mesh.has_color_data() {
-                gfx.glBufferSubData(GL_ARRAY_BUFFER, color_offset as _, &mesh.color_data);
+                gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, color_offset as _, &mesh.color_data);
 
                 // Enable color attribute pointer
                 gfx.glVertexAttribPointer(
                     index,
                     3,
-                    GL_FLOAT,
+                    VertexAttribPointerType::GL_FLOAT,
                     true,
                     0,
                     color_offset as _,
@@ -146,13 +146,13 @@ impl VBOBufferer {
             }
     
             if mesh.has_uv_data() {
-                gfx.glBufferSubData(GL_ARRAY_BUFFER, uv_offset as _, &mesh.uv_data);
+                gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, uv_offset as _, &mesh.uv_data);
     
                 // Enable uv attribute pointer
                 gfx.glVertexAttribPointer(
                     index,
                     2,
-                    GL_FLOAT,
+                    VertexAttribPointerType::GL_FLOAT,
                     false,
                     0,
                     uv_offset as _,
@@ -165,13 +165,13 @@ impl VBOBufferer {
             }
     
             if mesh.has_normal_data() {
-                gfx.glBufferSubData(GL_ARRAY_BUFFER, normal_offset as _, &mesh.normal_data);
+                gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, normal_offset as _, &mesh.normal_data);
     
                 // Enable normal attribute pointer
                 gfx.glVertexAttribPointer(
                     index,
                     3,
-                    GL_FLOAT,
+                    VertexAttribPointerType::GL_FLOAT,
                     true,
                     0,
                     normal_offset as _,
@@ -184,13 +184,13 @@ impl VBOBufferer {
             }
     
             if mesh.has_tangent_data() {
-                gfx.glBufferSubData(GL_ARRAY_BUFFER, tangent_offset as _, &mesh.tangent_data);
+                gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, tangent_offset as _, &mesh.tangent_data);
     
                 // Enable tangent attribute pointer
                 gfx.glVertexAttribPointer(
                     index,
                     3,
-                    GL_FLOAT,
+                    VertexAttribPointerType::GL_FLOAT,
                     true,
                     0,
                     tangent_offset as _,
@@ -203,7 +203,7 @@ impl VBOBufferer {
             }
     
             for data in &mesh.custom_data {
-                gfx.glBufferSubData(GL_ARRAY_BUFFER, custom_offset as _, data.data());
+                gfx.glBufferSubData(BufferTargetARB::GL_ARRAY_BUFFER, custom_offset as _, data.data());
     
                 // Enable custom attribute pointer
                 gfx.glVertexAttribPointer(

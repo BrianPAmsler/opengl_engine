@@ -4,7 +4,7 @@ mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
-use gl_types::{angle_trig::radians, clip_space::{ortho, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl_types::{angle_trig::radians, clip_space::{ortho, ortho_aspect, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
 use image::imageops;
 use regex::Regex;
@@ -81,8 +81,8 @@ impl Component for Renderer {
 
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
-        // self.projection_matrix  = ortho(-2.0, 2.0, -1.5, 1.5, 0.0, 1000.0);
-        self.projection_matrix = perspective(radians(90.0), 2.0 / 1.5, 0.1, 1000.0);
+        self.projection_matrix  = ortho_aspect(10.0, 16.0 / 9.0, -100.0, 100.0);
+        // self.projection_matrix = perspective(radians(90.0), 16.0/9.0, 0.1, 1000.0);
 
         self.sprite_renderer.update_sprite_map(gfx);
         gfx.glEnable(EnableCap::GL_CULL_FACE);
@@ -167,7 +167,7 @@ impl Component for Renderer {
         // println!("Cell:\t{}, {}\n\t{}, {}", cell.top_left, cell.top_right, cell.bottom_left, cell.bottom_right);
 
         let offset = vec3!(f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
-        let mat = lookAt(self.position, vec3!(1, 0, 1), vec3!(0, 1, 0));
+        let mat = lookAt(self.position, self.position + vec3!(1, -0.5, 1), vec3!(0, 1, 0));
 
         self.view_matrix = mat;
 
@@ -193,7 +193,7 @@ impl Component for Renderer {
 
 fn start_game() -> Result<()> {
     let mut engine = Engine::new()?;
-    engine.create_window("Test Window", 800, 600, engine::WindowMode::Windowed)?;
+    engine.create_window("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
 
     let world = engine.get_world();
 

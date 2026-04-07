@@ -6536,3 +6536,6 @@ pub enum PathElementType {
     GL_UTF8_NV = 0x0000909A,
     GL_UTF16_NV = 0x0000909B,
 }
+
+// TODO: Implement bit flag types
+// TODO: Find some way to do sub-types

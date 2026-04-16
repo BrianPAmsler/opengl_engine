@@ -1,9 +1,10 @@
 use gl_types::matrices::Mat4;
 use gl_types::vectors::Vec3;
+use embed_shader_source::embed_shader_source;
 
 use crate::engine::graphics::gl_enums::PrimitiveType;
 use crate::engine::graphics::terrain::Terrain;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader, embed_shader_source};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader};
 use crate::engine::errors::Result;
 
 
@@ -56,8 +57,8 @@ impl TerrainRenderer {
     pub fn new(gfx: &Graphics) -> Result<TerrainRenderer> {
         let mut shader_program = ShaderProgramBuilder::new(gfx);
 
-        let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/terrain.vert");
-        let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/terrain.frag");
+        let vertex_shader_source = embed_shader_source!("terrain.vert");
+        let fragment_shader_source = embed_shader_source!("terrain.frag");
 
         let vertex_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
         let fragment_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;

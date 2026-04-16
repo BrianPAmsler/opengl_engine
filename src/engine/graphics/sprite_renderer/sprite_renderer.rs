@@ -1,10 +1,11 @@
 use gl_types::matrices::Mat4;
 use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
+use embed_shader_source::embed_shader_source;
 
 use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, InternalFormat, PrimitiveType, TextureTarget, TextureUnit};
 use crate::engine::graphics::image::Image;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader, embed_shader_source};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader};
 
 use crate::engine::errors::Result;
 
@@ -64,8 +65,8 @@ impl SpriteRenderer {
     pub fn new(gfx: &Graphics, initial_buffer_size: usize, sprite_sheet: Image) -> Result<SpriteRenderer> {
         let mut program = ShaderProgramBuilder::new(gfx);
         
-        let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite.vert");
-        let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite.frag");
+        let vertex_shader_source = embed_shader_source!("sprite.vert");
+        let fragment_shader_source = embed_shader_source!("sprite.frag");
 
         let vert_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
         let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?; 
@@ -221,7 +222,10 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use gl_types::{vec3, vec4};
+    use embed_shader_source::embed_shader_source;
     
     impl PartialEq for GLSpriteStruct {
         fn eq(&self, other: &Self) -> bool {
@@ -229,7 +233,7 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{FragmentShader, Graphics, ShaderProgramBuilder, VertexShader, embed_shader_source, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
+    use crate::engine::graphics::{FragmentShader, Graphics, ShaderProgramBuilder, VertexShader, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
 
     use super::SpriteRenderer;
 
@@ -243,8 +247,8 @@ mod tests {
 
         let mut program = ShaderProgramBuilder::new(&gfx);
         
-        let vertex_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite_struct_test.vert");
-        let fragment_shader_source = embed_shader_source!("src/engine/graphics/shaders/sprite_struct_test.frag");
+        let vertex_shader_source = embed_shader_source!("sprite_struct_test.vert");
+        let fragment_shader_source = embed_shader_source!("sprite_struct_test.frag"); 
 
         let vert_shader = VertexShader::compile_shader(&gfx, vertex_shader_source).unwrap();
         let frag_shader = FragmentShader::compile_shader(&gfx, fragment_shader_source).unwrap();

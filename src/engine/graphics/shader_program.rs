@@ -3,24 +3,9 @@ use crate::engine::{errors::{GraphicsError, Result}, graphics::{Graphics, gl_enu
 use self::private::Seal;
 
 pub struct ShaderSource {
-    pub source: String,
+    pub source: &'static str,
     pub filename: String
 }
-
-macro_rules! embed_shader_source {
-    ($s:literal) => {
-        {
-            let filename = $s.to_owned();
-            #[allow(non_upper_case_globals)]
-            let bytes = include_crypt_bytes::include_bytes_obfuscate!($s).unwrap();
-            let source = String::from_utf8(bytes).unwrap();
-
-            crate::engine::graphics::ShaderSource { source, filename }
-        }
-    };
-}
-
-pub(crate) use embed_shader_source;
 
 fn compile_shader(gfx: &Graphics, shader: u32, shader_filename: &str) -> Result<()> {
     gfx.glCompileShader(shader);

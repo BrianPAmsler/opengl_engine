@@ -4,9 +4,9 @@ mod engine;
 
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
-use gl_types::{angle_trig::radians, clip_space::{ortho, ortho_aspect, perspective}, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use gl_types::{angle_trig::radians, clip_space::{ortho, ortho_aspect, perspective}, geometric::normalize, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
 use glfw::Key;
-use image::imageops;
+use image::{ImageBuffer, Luma, imageops};
 use regex::Regex;
 
 use crate::engine::graphics::{gl_enums::{DepthFunction, EnableCap}, terrain::{Terrain, terrain_renderer::{TerrainRenderer}}};
@@ -81,7 +81,7 @@ impl Component for Renderer {
 
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
-        self.projection_matrix  = ortho_aspect(10.0, 16.0 / 9.0, -100.0, 100.0);
+        self.projection_matrix  = ortho_aspect(100.0, 16.0 / 9.0, -100.0, 100.0);
         // self.projection_matrix = perspective(radians(90.0), 16.0/9.0, 0.1, 1000.0);
 
         self.sprite_renderer.update_sprite_map(gfx);
@@ -95,19 +95,19 @@ impl Component for Renderer {
     }
 
     fn update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
-        let speed = 1.0;
+        let speed = 10.0;
         if input.get_key_state(Key::W).is_down {
-            self.position += vec3!(0, 0, 1) * delta_time * speed;
+            self.position += normalize(vec3!(1, 0, 1)) * delta_time * speed;
         }
 
         if input.get_key_state(Key::A).is_down {
-            self.position += vec3!(-1, 0, 0) * delta_time * speed;
+            self.position += normalize(vec3!(-1, 0, 1)) * delta_time * speed;
         }
         if input.get_key_state(Key::S).is_down {
-            self.position += vec3!(0, 0, -1) * delta_time * speed;
+            self.position += normalize(vec3!(-1, 0, -1)) * delta_time * speed;
         }
         if input.get_key_state(Key::D).is_down {
-            self.position += vec3!(1, 0, 0) * delta_time * speed;
+            self.position += normalize(vec3!(1, 0, -1)) * delta_time * speed;
         }
         if input.get_key_state(Key::Space).is_down {
             self.position += vec3!(0, 1, 0) * delta_time * speed;
@@ -167,7 +167,7 @@ impl Component for Renderer {
         // println!("Cell:\t{}, {}\n\t{}, {}", cell.top_left, cell.top_right, cell.bottom_left, cell.bottom_right);
 
         let offset = vec3!(f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
-        let mat = lookAt(self.position, self.position + vec3!(1, -0.5, 1), vec3!(0, 1, 0));
+        let mat = lookAt(self.position, self.position + vec3!(1, -1, 1), vec3!(0, 1, 0));
 
         self.view_matrix = mat;
 
@@ -209,9 +209,16 @@ fn start_game() -> Result<()> {
     let mut grid = grid.to_rgb8();
     imageops::flip_vertical_in_place(&mut grid);
 
+    let height_map = image::ImageReader::open("height_map.png")?.decode()?;
+    let height_map = height_map.to_rgb8();
+    let (width, height) = height_map.dimensions();
+    let height_map: Vec<u8> = height_map.into_raw().into_iter().step_by(3).collect();
+    let mut height_map: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, height_map).unwrap();
+    imageops::flip_vertical_in_place(&mut height_map);
+
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
-    let terrain = Terrain::from_raw(gfx, vec![0; 201 * 201].into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
+    let terrain = Terrain::from_raw(gfx, height_map.into_raw().into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
     let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();

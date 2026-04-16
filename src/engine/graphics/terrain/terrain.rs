@@ -107,7 +107,7 @@ impl Terrain {
     pub fn from_raw(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
         // Height data is per corner, rather than per cell, so each dimension needs one extra value to represent all corners
         if height_data.len() != ((width + 1) * (height + 1)) as usize {
-            panic!("Height data size does not match given dimensions.");
+            panic!("Height data size does not match given dimensions. ({})", height_data.len());
         }
 
         if color_data.len() != (width * height) as usize * BYTES_PER_COLOR * COLORS_PER_CELL {

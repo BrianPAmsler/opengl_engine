@@ -41,6 +41,8 @@ void main()
     vec2 anchor = sprite.dimensions.xy;
     vec2 scale = sprite.dimensions.zw;
 
+    vec3 offsetPos = position - vec3(anchor, 0);
+
     // Map 0 to 1 and 1 to -1.
     // Offset direction based on the position of the mesh vertex.
     // This makes sure the half-texel offset stays inside the bounds of the texture.
@@ -49,7 +51,7 @@ void main()
     // Any other mesh will have unexpected resutls
     vec2 offsetDirection = -((position.xy - 0.5) * 2);
 
-    vec3 translation = sprite.position - vec3(anchor * scale, 0);
+    vec3 translation = sprite.position;
 
     mat4 scaleMatrix = transpose(mat4(
         scale.x,    0,          0,  0,
@@ -70,7 +72,9 @@ void main()
 
     mat4 model = translationMatrix * rotationMatrix * scaleMatrix;
 
-    gl_Position = projection * view * model * vec4(position, 1);
+    mat4 final_matrix = projection * view * model;
+
+    gl_Position = final_matrix * vec4(offsetPos, 1);
 
     vec4 bounds = spriteBounds[sprite.spriteID];
     texCoords = bounds.xy + uv * bounds.zw + texelOffset * offsetDirection;

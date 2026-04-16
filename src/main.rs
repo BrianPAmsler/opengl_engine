@@ -173,19 +173,19 @@ impl Component for Renderer {
 
         gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(0, 0, 0),
-            anchor: vec2!(0.5, 0.5),
+            position: vec3!(0, 0.5, 0),
+            anchor: vec2!(0.5, 0),
             dimensions: vec2!(1),
             sprite_id: 1,
         });
         self.sprite_renderer.queue_sprite_instance(SpriteData {
             position: self.sprite_position,
-            anchor: vec2!(0.5, 0.5),
+            anchor: vec2!(0.5, 0),
             dimensions: vec2!(2),
             sprite_id: 0,
         });
-        // self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
         self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
+        self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
 
         Ok(())   
     }

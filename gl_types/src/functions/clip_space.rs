@@ -10,7 +10,11 @@ pub fn frustum(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32
     )
 }
 
-pub fn ortho(width: f32, height: f32, zNear: f32, zFar: f32) -> Mat4 {
+pub fn ortho(width: f32, height: f32, mut zNear: f32, mut zFar: f32) -> Mat4 {
+    // Swap to invert depth in order to be consistent with the
+    // inverted depth of the perspective projection (caused by left-handed coordinates).
+    std::mem::swap(&mut zNear, &mut zFar);
+    
     let right = width / 2.0;
     let left = -right;
     let top = height / 2.0;

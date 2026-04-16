@@ -1,8 +1,6 @@
 #version 430 core
 
 uniform float ambientIntensity = 0.2;
-uniform float specularStrength = 0.5;
-uniform float shininess = 32;
 uniform vec3 globalLightDir = vec3(-1, -1, -1);
 uniform vec3 viewPos;
 
@@ -30,14 +28,7 @@ void main()
     // Ambient
     vec3 ambient = vec3(ambientIntensity) * color;
 
-    // Specular
-    vec3 viewDir = normalize(viewPos - fragPos);
-    vec3 reflectDir = reflect(-lightDir, normal);
-
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec3 specular = vec3(specularStrength * spec);  
-
-    vec3 final = diffuse + ambient + specular;
+    vec3 final = diffuse + ambient;
 
     outColor = vec4(final, 1);
 }

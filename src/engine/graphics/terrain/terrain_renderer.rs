@@ -99,7 +99,7 @@ impl TerrainRenderer {
         // uniform uvec2 terrainDimensions;
         gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width(), terrain.height());
         // uniform float heightScale;
-        gfx.glUniform1f(self.height_scale_location, 50.0);
+        gfx.glUniform1f(self.height_scale_location, 15.0);
         // uniform vec3 viewPos;
         gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
 

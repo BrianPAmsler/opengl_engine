@@ -199,23 +199,10 @@ impl SpriteRenderer {
 
         gfx.glUniformMatrix4f(self.view_location, false, &view_matrix);
         gfx.glUniformMatrix4f(self.projection_location, false, &projection_matrix);
-        gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y()); 
-        // let mat = &debug[0..16];
-        // let v1 = &debug[16..19];
-        // let v2 = &debug[20..24];
-
-        // println!("mat:\t{:?}\n\t{:?}\n\t{:?}\n\t{:?}", &mat[0..4], &mat[4..8], &mat[8..12], &mat[12..16]);
-        // println!("v1: {:?}", v1);
-        // println!("v2: {:?}\n", v2);
+        gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y());
 
         gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, self.render_queue.len() as u32);
         self.render_queue.clear();
-
-        // let mut debug = [0.0f32; 32];
-        // gfx.glBindBuffer(GL_SHADER_STORAGE_BUFFER, self.debug_ssbo);
-        // unsafe { gfx.glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 32 * 4, debug.as_mut_ptr() as _) };
-
-        // println!("{:?}", debug);
 
     }
 }
@@ -281,8 +268,6 @@ mod tests {
         gfx.glDrawArrays(PrimitiveType::GL_TRIANGLES, 0, renderer.mesh.len() as _);
 
         unsafe { gfx.glGetBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
-
-        println!("{:?}", data_in); 
 
         gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0); // unbind
         

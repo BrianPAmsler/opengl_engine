@@ -180,7 +180,6 @@ impl SpriteSheetBuilder {
         }
 
         fn grow_right<'a, 'b>(root: &'a mut Node<'b>, img: &'b ImageCell) -> &'a mut Node<'b> {
-            println!("grow right");
             let w = img.img.width();
             let h = img.img.height();
 
@@ -224,7 +223,6 @@ impl SpriteSheetBuilder {
         }
 
         fn grow_down<'a, 'b>(root: &'a mut Node<'b>, img: &'b ImageCell) -> &'a mut Node<'b> {
-            println!("grow down");
             let w = img.img.width();
             let h = img.img.height();
 
@@ -272,7 +270,6 @@ impl SpriteSheetBuilder {
             let height = img.img.height();
             match find_node(&mut root, width, height) {
                 Some(node) => {
-                    println!("don't grow");
                     insert_img(node, img);
                 },
                 None => {

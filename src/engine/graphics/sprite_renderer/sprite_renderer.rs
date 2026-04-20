@@ -5,7 +5,7 @@ use embed_shader_source::embed_shader_source;
 
 use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, InternalFormat, PrimitiveType, TextureTarget, TextureUnit};
 use crate::engine::graphics::image::Image;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GeometryShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader};
 
 use crate::engine::errors::Result;
 
@@ -220,7 +220,7 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{FragmentShader, Graphics, ShaderProgramBuilder, VertexShader, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
+    use crate::engine::graphics::{FragmentShader, GeometryShader, Graphics, ShaderProgramBuilder, VertexShader, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, image::Image, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
 
     use super::SpriteRenderer;
 

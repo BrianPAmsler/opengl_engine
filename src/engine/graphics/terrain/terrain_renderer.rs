@@ -4,7 +4,7 @@ use embed_shader_source::embed_shader_source;
 
 use crate::engine::graphics::gl_enums::PrimitiveType;
 use crate::engine::graphics::terrain::Terrain;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GeometryShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, VBOBufferer, Vertex, VertexShader};
 use crate::engine::errors::Result;
 
 
@@ -58,12 +58,15 @@ impl TerrainRenderer {
         let mut shader_program = ShaderProgramBuilder::new(gfx);
 
         let vertex_shader_source = embed_shader_source!("terrain.vert");
+        let geometry_shader_source = embed_shader_source!("terrain.geom");
         let fragment_shader_source = embed_shader_source!("terrain.frag");
 
         let vertex_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
+        let geometry_shader = GeometryShader::compile_shader(gfx, geometry_shader_source)?;
         let fragment_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;
 
         shader_program.attach_shader(vertex_shader);
+        shader_program.attach_shader(geometry_shader);
         shader_program.attach_shader(fragment_shader);
 
         let shader_program = shader_program.finish();

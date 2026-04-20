@@ -87,6 +87,34 @@ impl FragmentShader {
     }
 }
 
+pub struct GeometryShader {
+    shader: u32,
+    filename: String
+}
+
+impl Seal for GeometryShader {}
+
+impl ShaderTrait for GeometryShader {
+    fn get_shader(&self) -> u32 {
+        self.shader 
+    }
+
+    fn get_source_filename(&self) -> &str {
+        &self.filename
+    }
+}
+
+impl GeometryShader {
+    pub fn compile_shader(gfx: &Graphics, source: ShaderSource) -> Result<GeometryShader> {
+        let shader = gfx.glCreateShader(ShaderType::GL_GEOMETRY_SHADER);
+
+        gfx.glShaderSource(shader, &source.source);
+        compile_shader(gfx, shader, &source.filename)?;
+
+        Ok(GeometryShader { shader, filename: source.filename })
+    }
+}
+
 pub struct ShaderProgramBuilder<'a> {
     program: u32,
     shaders: Vec<Box<dyn ShaderTrait>>,

@@ -193,7 +193,7 @@ impl Component for Renderer {
 
 fn start_game() -> Result<()> {
     let mut engine = Engine::new()?;
-    engine.create_window("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
+    engine.create_window("Test Window", 2560, 1440, engine::WindowMode::FullScreen(None))?;
 
     let world = engine.get_world();
 

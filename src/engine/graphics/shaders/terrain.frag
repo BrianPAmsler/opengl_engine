@@ -60,5 +60,5 @@ void main()
 
     vec3 final = diffuse + ambient;
 
-    outColor = vec4(final, 1);
+    outColor = vec4(final + noise, 1);
 }

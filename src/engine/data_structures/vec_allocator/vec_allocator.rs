@@ -226,7 +226,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 #[cfg(test)]
 mod tests {
 
-    use rand::Rng;
+    use rand::{Rng, RngExt};
 
     use super::{Slot, VecAllocator};
 
@@ -324,11 +324,11 @@ mod tests {
         compare_vecs(&expected, &allocator)?;
 
         for _ in 0..10000 {
-            let mut rng = rand::thread_rng();
-            let choice: f32 = rng.gen();
+            let mut rng = rand::rng();
+            let choice: f32 = rng.random();
 
             if entries.len() == 0 || choice > 0.45 {
-                let value = rng.gen_range(0..100);
+                let value = rng.random_range(0..100);
 
                 println!("Inserting value {}...", value);
                 insert(&mut test_vec, value);
@@ -337,7 +337,7 @@ mod tests {
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;
             } else {
-                let index = rng.gen_range(0..entries.len());
+                let index = rng.random_range(0..entries.len());
                 let entry = entries.remove(index);
 
                 println!("Removing at index {}...", entry.index);
@@ -350,11 +350,11 @@ mod tests {
         }
         
         for _ in 0..1000 {
-            let mut rng = rand::thread_rng();
-            let choice: f32 = rng.gen();
+            let mut rng = rand::rng();
+            let choice: f32 = rng.random();
 
             if entries.len() == 0 || choice > 0.9 {
-                let value = rng.gen_range(0..100);
+                let value = rng.random_range(0..100);
 
                 println!("Inserting value {}...", value);
                 insert(&mut test_vec, value);
@@ -363,7 +363,7 @@ mod tests {
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;
             } else {
-                let index = rng.gen_range(0..entries.len());
+                let index = rng.random_range(0..entries.len());
                 let entry = entries.remove(index);
 
                 println!("Removing at index {}...", entry.index);
@@ -376,11 +376,11 @@ mod tests {
         }
 
         for _ in 0..1000 {
-            let mut rng = rand::thread_rng();
-            let choice: f32 = rng.gen();
+            let mut rng = rand::rng();
+            let choice: f32 = rng.random();
 
             if entries.len() == 0 || choice > 0.1 {
-                let value = rng.gen_range(0..100);
+                let value = rng.random_range(0..100);
 
                 println!("Inserting value: {}...", value);
                 insert(&mut test_vec, value);
@@ -389,7 +389,7 @@ mod tests {
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;
             } else {
-                let index = rng.gen_range(0..entries.len());
+                let index = rng.random_range(0..entries.len());
                 let entry = entries.remove(index);
 
                 println!("Removing at index: {}...", entry.index);

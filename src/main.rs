@@ -81,7 +81,7 @@ impl Component for Renderer {
 
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
 
-        self.projection_matrix  = ortho_aspect(100.0, 16.0 / 9.0, -100.0, 100.0);
+        self.projection_matrix  = ortho_aspect(10.0, 16.0 / 9.0, -100.0, 100.0);
         // self.projection_matrix = perspective(radians(90.0), 16.0/9.0, 0.1, 1000.0);
 
         self.sprite_renderer.update_sprite_map(gfx);

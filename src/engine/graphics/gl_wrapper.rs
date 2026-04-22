@@ -1264,8 +1264,8 @@ impl GLWrapper {
         self.fns.Uniform1fv(location, count, value)
     }
     
-    pub unsafe fn glUniform1i(&self, location: i32, v0: i32) {
-        self.fns.Uniform1i(location, v0)
+    pub fn glUniform1i(&self, location: GlUniformLocation, v0: i32) {
+        unsafe { self.fns.Uniform1i(location.0, v0) }
     }
     
     pub unsafe fn glUniform1iv(&self, location: i32, count: i32, value: *const i32) {

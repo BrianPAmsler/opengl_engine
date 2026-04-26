@@ -69,7 +69,8 @@ pub struct Renderer {
     position: Vec3,
     sprite_position: Vec3,
     rot_y: f32,
-    rot_x: f32
+    rot_x: f32,
+    camera_size: f32
 }
 
 impl Component for Renderer {
@@ -136,6 +137,11 @@ impl Component for Renderer {
             self.sprite_position += vec3!(0, -1, 0) * delta_time * speed;
         }
 
+        if input.get_key_state(Key::Kp9).press {
+            self.camera_size += 5.0;
+        }
+        self.camera_size -= input.get_scroll_y() as f32;
+
         if input.get_key_state(Key::Q).is_down {
             self.rot_y -= 0.5 * delta_time;
         }
@@ -149,6 +155,8 @@ impl Component for Renderer {
         } else {
             1
         };
+
+        self.projection_matrix  = ortho_aspect(self.camera_size, 16.0 / 9.0, -100.0, 100.0);
         // let mut cell = self.terrain.get_cell_mut(2, 2).unwrap();
         // if input.get_key_state(Key::Kp1).press {
         //     *cell.bottom_left = cell.bottom_left.saturating_add_signed(change);
@@ -193,7 +201,7 @@ impl Component for Renderer {
 
 fn start_game() -> Result<()> {
     let mut engine = Engine::new()?;
-    engine.create_window("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
+    engine.create_window("Test Window", 2560, 1440, engine::WindowMode::FullScreen(None))?;
 
     let world = engine.get_world();
 
@@ -219,7 +227,7 @@ fn start_game() -> Result<()> {
     let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
     let terrain = Terrain::from_raw(gfx, height_map.into_raw().into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
-    let renderer = Renderer { sprite_renderer, terrain_renderer, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
+    let renderer = Renderer { sprite_renderer, terrain_renderer, camera_size: 10.0, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
 
     let world = engine.get_world();
 

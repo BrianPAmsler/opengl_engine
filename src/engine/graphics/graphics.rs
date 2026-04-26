@@ -120,7 +120,7 @@ impl Graphics {
         // let (mut window, events) = glfw.create_window(width, height, window_title, window_mode).ok_or(anyhow!(GraphicsError::WindowCreationFailError))?;
 
         window.make_current();
-        window.set_key_polling(true);
+        window.set_all_polling(true);
 
         let window = RefCell::new(window);
 

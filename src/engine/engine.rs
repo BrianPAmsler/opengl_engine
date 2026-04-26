@@ -76,6 +76,28 @@ impl Engine {
                         fixed_key_state.release = true;
                         fixed_key_state.is_down = false;
                     },
+                    (_, WindowEvent::MouseButton(button, Action::Press, _)) => {
+                        let key_state = self.input.modify_mouse_button_state(button as u32);
+                        key_state.press = true;
+                        key_state.is_down = true;
+
+                        let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
+                        fixed_key_state.press = true;
+                        fixed_key_state.is_down = true;
+                    },
+                    (_, WindowEvent::MouseButton(button, Action::Release, _)) => {
+                        let key_state = self.input.modify_mouse_button_state(button as u32);
+                        key_state.release = true;
+                        key_state.is_down = false;
+
+                        let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
+                        fixed_key_state.release = true;
+                        fixed_key_state.is_down = false;
+                    },
+                    (_, WindowEvent::Scroll(x, y)) => {
+                        self.input.add_scroll_delta(x, y);
+                        self.fixed_input.add_scroll_delta(x, y);
+                    }
                     // (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
                     // (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
                     _ => ()
@@ -91,6 +113,11 @@ impl Engine {
                 key.press = false;
                 key.release = false;
             });
+            self.input.modify_all_mouse_button_states(|button| {
+                button.press = false;
+                button.release = false;
+            });
+            self.input.set_scroll_delta(0.0, 0.0);
 
             let fixed_diff = current_time - last_fixed_tick - self.fixed_tick_duration;
 
@@ -104,6 +131,11 @@ impl Engine {
                     key.press = false;
                     key.release = false;
                 });
+                self.fixed_input.modify_all_mouse_button_states(|button| {
+                    button.press = false;
+                    button.release = false;
+                });
+                self.fixed_input.set_scroll_delta(0.0, 0.0);
             }
 
             self.log_errors();

@@ -1,6 +1,6 @@
 use glfw::{Action, WindowEvent};
 
-use crate::engine::errors::{Result, Error, GraphicsError};
+use crate::engine::{errors::{Error, GraphicsError, Result}};
 
 use super::{game_object::World, graphics::Graphics, input::Input};
 

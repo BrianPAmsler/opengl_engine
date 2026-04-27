@@ -5,7 +5,7 @@ use glfw::{fail_on_errors, Glfw, Context, PWindow, GlfwReceiver, WindowEvent, Mo
 use libc::strlen;
 use libffi::high::Closure0;
 
-use crate::engine::{WindowMode, errors::{Error, GraphicsError, Result}, graphics::gl_enums::{PixelStoreParameter}};
+use crate::engine::{WindowMode, errors::{Error, GraphicsError, Result}, graphics::{gl_enums::PixelStoreParameter, sprite_renderer::SpriteRenderer}};
 
 use super::GLWrapper;
 
@@ -86,6 +86,7 @@ fn get_monitor_fingerprint(monitor: &Monitor) -> u64 {
 pub struct Graphics {
     gl: GLWrapper,
     glfw: RefCell<Glfw>,
+    sprite_renderer: RefCell<Option<SpriteRenderer>>,
     window: RefCell<PWindow>,
     events: GlfwReceiver<(f64, WindowEvent)>
 }
@@ -143,7 +144,13 @@ impl Graphics {
 
         unsafe { gl.glPixelStorei(PixelStoreParameter::GL_UNPACK_ALIGNMENT, 1) };
 
-        Ok(Graphics { gl, glfw, window, events })
+
+        let gfx = Graphics { gl, glfw, sprite_renderer: RefCell::new(None), window, events };
+        
+        let sprite_renderer = SpriteRenderer::new(&gfx)?;
+        gfx.sprite_renderer.replace(Some(sprite_renderer));
+
+        Ok(gfx)
     }
 
     #[cfg(test)]
@@ -168,7 +175,12 @@ impl Graphics {
 
         let glfw = RefCell::new(glfw);
 
-        Ok(Graphics { gl, glfw, window, events })
+        let gfx = Graphics { gl, glfw, sprite_renderer: RefCell::new(None), window, events };
+        
+        let sprite_renderer = SpriteRenderer::new(&gfx)?;
+        gfx.sprite_renderer.replace(Some(sprite_renderer));
+
+        Ok(gfx)
     }
 
     pub fn get_window_mode(&self) -> WindowMode {
@@ -178,6 +190,10 @@ impl Graphics {
                 glfw::WindowMode::Windowed => WindowMode::Windowed,
             }
         })
+    }
+
+    pub(in crate::engine::graphics) fn sprite_renderer<'a>(&'a self) -> RefMut<'a, SpriteRenderer> {
+        RefMut::map(self.sprite_renderer.borrow_mut(), |v| v .as_mut().unwrap())
     }
 
     pub fn swap_buffers(&self) {

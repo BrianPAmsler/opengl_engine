@@ -27,6 +27,7 @@ regex = "1.10.6"
 spez = "0.1.2"
 thiserror = "1.0.56"
 rand = "0.10.1"
+log = "0.4.29"
 
 [profile.release]
 debug=true

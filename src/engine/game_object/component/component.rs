@@ -8,6 +8,7 @@ pub trait Component: Downcast {
     fn init(&mut self, gfx: &Graphics, world: &World, owner: ObjectID) -> Result<()> {Ok(())}
     fn update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
     fn fixed_update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
+    fn on_remove(&mut self, gfx: &Graphics, world: &World, owner: ObjectID) -> Result<()> {Ok(())}
 }
 
 impl_downcast!(Component);

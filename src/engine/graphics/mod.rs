@@ -4,6 +4,7 @@ mod mesh;
 mod shader_program;
 mod vertex_buffer;
 mod texture;
+mod camera;
 
 pub mod sprite_renderer;
 pub mod image;
@@ -16,6 +17,7 @@ pub use mesh::*;
 pub use shader_program::*;
 pub use vertex_buffer::*;
 pub use texture::*;
+pub use camera::*;
 
 #[cfg(test)]
 pub mod test_lock {

@@ -192,7 +192,7 @@ impl Graphics {
         })
     }
 
-    pub(in crate::engine::graphics) fn sprite_renderer<'a>(&'a self) -> RefMut<'a, SpriteRenderer> {
+    pub(in crate::engine) fn sprite_renderer<'a>(&'a self) -> RefMut<'a, SpriteRenderer> {
         RefMut::map(self.sprite_renderer.borrow_mut(), |v| v .as_mut().unwrap())
     }
 

@@ -63,6 +63,11 @@ pub enum Error {
     StringError {
         msg: String,
         backtrace: BT
+    },
+    #[error("{msg}")]
+    StaticStringError {
+        msg: &'static str,
+        backtrace: BT
     }
 }
 
@@ -104,7 +109,7 @@ impl From<String> for Error {
 
 impl From<&'static str> for Error {
     fn from(value: &'static str) -> Self {
-        Error::StringError { msg: value.to_owned(), backtrace: BT::new() }
+        Error::StaticStringError { msg: value, backtrace: BT::new() }
     }
 }
 
@@ -115,7 +120,8 @@ impl Error {
             Error::GraphicsError { backtrace, .. } => backtrace,
             Error::StringError { backtrace, .. } => backtrace,
             Error::ImageError { backtrace, .. } => backtrace,
-            Error::IoError { backtrace, .. } => backtrace
+            Error::IoError { backtrace, .. } => backtrace,
+            Error::StaticStringError { backtrace, .. } => backtrace
         }
     }
 }

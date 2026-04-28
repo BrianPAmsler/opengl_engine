@@ -104,7 +104,7 @@ impl<T: Unpin> VecAllocator<T> {
         }
     }
 
-    pub fn remove(&mut self, element: AllocationIndex) -> Result<()> {
+    pub fn remove(&mut self, element: AllocationIndex) -> Result<T> {
         if !element.ptr_eq(self) {
             return Err(super::error::Error::IndexPointerMismatchError);
         }
@@ -149,7 +149,12 @@ impl<T: Unpin> VecAllocator<T> {
         }
 
         let new_hole = Slot::Hole { id: id + 1, next };
-        self.vec[element.index] = new_hole;
+        let old = std::mem::replace(&mut self.vec[element.index], new_hole);
+
+        let old = match old {
+            Slot::Element { value, .. } => value,
+            Slot::Hole { .. } => panic!("this shouldn't be possible."),
+        };
 
         if element.index < self.first_hole {
             self.first_hole = element.index;
@@ -157,7 +162,7 @@ impl<T: Unpin> VecAllocator<T> {
 
         self.count -= 1;
 
-        Ok(())
+        Ok(old)
     }
 
     pub fn get(&self, element: AllocationIndex) -> Result<&T> {
@@ -197,6 +202,21 @@ impl<T: Unpin> VecAllocator<T> {
     pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         Iter { allocator: self, index: 0 }
     }
+
+    pub fn for_each_mut<E, F: FnMut(AllocationIndex, &mut T) -> std::result::Result<(), E>>(&mut self, mut f: F) -> std::result::Result<(), E> {
+        let ptr = self.vec.deref() as *const _ as *const _;
+        for (index, slot) in &mut self.vec.iter_mut().enumerate() {
+            match slot {
+                Slot::Element { id, value } => {
+                    let idx = AllocationIndex { ptr, index, id: *id };
+                    f(idx, value);
+                },
+                Slot::Hole { .. } => (),
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub struct Iter<'a, T> {
@@ -211,7 +231,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
         while self.index < self.allocator.vec.len() {
             match &self.allocator.vec[self.index] {
                 Slot::Element { id, value, .. } => {
-                    let index = AllocationIndex { ptr: self.allocator as *const _ as *const (), index: self.index, id: *id };
+                    let index = AllocationIndex { ptr: self.allocator.vec.deref() as *const _ as *const (), index: self.index, id: *id };
                     self.index += 1;
                     return Some((index, &value));
                 },
@@ -226,7 +246,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 #[cfg(test)]
 mod tests {
 
-    use rand::{Rng, RngExt};
+    use rand::{RngExt};
 
     use super::{Slot, VecAllocator};
 

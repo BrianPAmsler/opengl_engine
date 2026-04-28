@@ -1,6 +1,9 @@
+use std::{cell::RefCell, rc::Rc};
+
+use gl_types::matrices::Mat4;
 use glfw::{Action, WindowEvent};
 
-use crate::engine::{errors::{Error, GraphicsError, Result}};
+use crate::engine::{errors::{Error, GraphicsError, Result}, graphics::Camera};
 
 use super::{game_object::World, graphics::Graphics, input::Input};
 
@@ -141,6 +144,11 @@ impl Engine {
             self.log_errors();
 
             let gfx = self.gfx.as_ref().unwrap();
+            gfx.sprite_renderer().render(gfx, &Mat4::IDENTITY, &Mat4::IDENTITY);
+
+            for (owner, mut component) in self.world.get_removed_components() {
+                component.on_remove(gfx, &self.world, owner);
+            }
 
             // Render
             // gfx.render();

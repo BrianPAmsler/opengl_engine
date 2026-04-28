@@ -5,6 +5,7 @@ use gl_types::{vec2, vec3, vec4};
 use gl_types::vectors::{Vec2, Vec3, Vec4};
 use embed_shader_source::embed_shader_source;
 
+use crate::engine::data_structures::{AllocationIndex, VecAllocator};
 use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, InternalFormat, PrimitiveType, TextureTarget, TextureUnit};
 use crate::engine::graphics::image::Image;
 use crate::engine::graphics::{BufferedMesh, FragmentShader, GeometryShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader};
@@ -79,13 +80,13 @@ impl SpriteSheet {
 }
 
 #[derive(Clone, Copy)]
-pub struct SpriteSheetID(usize);
+pub struct SpriteSheetID(AllocationIndex);
 
 pub struct SpriteRenderer {
     program: ShaderProgram,
     mesh: BufferedMesh,
-    sprite_sheets: Vec<Option<SpriteSheet>>,
-    sprite_sheet_index: HashMap<String, usize>,
+    sprite_sheets: VecAllocator<SpriteSheet>,
+    sprite_sheet_index: HashMap<String, AllocationIndex>,
     view_location: GlUniformLocation,
     projection_location: GlUniformLocation,
     texel_offset_location: GlUniformLocation
@@ -141,7 +142,7 @@ impl SpriteRenderer {
 
         let mesh = mesh.take();
 
-        Ok(SpriteRenderer { program, mesh, sprite_sheets: Vec::new(), sprite_sheet_index: HashMap::new(), view_location, projection_location, texel_offset_location })
+        Ok(SpriteRenderer { program, mesh, sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new(), view_location, projection_location, texel_offset_location })
     }
 
     pub fn add_sprite_sheet(&mut self, name: &str, gfx: &Graphics, initial_buffer_size: usize, sprite_sheet: Image) -> Option<SpriteSheetID> {
@@ -170,33 +171,38 @@ impl SpriteRenderer {
             sprite_map: Vec::new(),
         };
 
-        let id = SpriteSheetID (self.sprite_sheets.len());
+        let id = self.sprite_sheets.insert(sprite_sheet);
+        self.sprite_sheet_index.insert(name.to_owned(), id);
 
-        self.sprite_sheets.push(Some(sprite_sheet));
-        self.sprite_sheet_index.insert(name.to_owned(), id.0);
-
-        Some(id)
+        Some(SpriteSheetID(id))
     }
 
     pub fn remove_sprite_sheet(&mut self, gfx: &Graphics, sprite_sheet: SpriteSheetID) {
-        let Some(old) = self.sprite_sheets[sprite_sheet.0].take() else { return };
+        let Ok(old) = self.sprite_sheets.remove(sprite_sheet.0) else { return };
 
         self.sprite_sheet_index.remove(&old.name);
         old.sprite_sheet.delete(gfx);
         gfx.glDeleteBuffers(&[old.sprite_ssbo, old.spritesheet_ssbo]);
     }
 
-    pub fn add_sprite(&mut self, sprite_sheet: SpriteSheetID, x: u32, y: u32, width: u32, height: u32) {
-        let Some(sheet) = self.sprite_sheets[sprite_sheet.0].as_mut() else { return; };
+    pub fn get_sprite_sheet_by_name(&self, name: &str) -> Option<SpriteSheetID> {
+        self.sprite_sheet_index.get(name).map(|idx| SpriteSheetID(*idx))
+    }
+
+    pub fn add_sprite(&mut self, sprite_sheet: SpriteSheetID, x: u32, y: u32, width: u32, height: u32) -> Option<usize> {
+        let Ok(sheet) = self.sprite_sheets.get_mut(sprite_sheet.0) else { return None; };
         // Convert pixel coordinates to uv coordinates
         let wh = vec2!(sheet.sprite_sheet.width(), sheet.sprite_sheet.height());
         let v = vec4!(x, sheet.sprite_sheet.height() - y - height, width, height) / vec4!(wh, wh);
 
+        let idx = sheet.sprite_map.len();
         sheet.sprite_map.push(v);
+
+        Some(idx)
     }
 
     pub fn update_sprite_map(&self, gfx: &Graphics, sprite_sheet: SpriteSheetID) {
-        let Some(sheet) = self.sprite_sheets[sprite_sheet.0].as_ref() else { return; };
+        let Ok(sheet) = self.sprite_sheets.get(sprite_sheet.0) else { return; };
 
         gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sheet.spritesheet_ssbo);
         gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sheet.sprite_map.len() * size_of::<Vec4>() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW);
@@ -211,7 +217,7 @@ impl SpriteRenderer {
     }
 
     pub fn queue_sprite_instance(&mut self, sprite: SpriteData, sprite_sheet: SpriteSheetID) {
-        let Some(sheet) = self.sprite_sheets[sprite_sheet.0].as_mut() else { return; };
+        let Ok(sheet) = self.sprite_sheets.get_mut(sprite_sheet.0) else { return; };
 
         let SpriteData { position, dimensions, anchor, sprite_id } = sprite;
         let dimensions = vec4!(anchor, dimensions);
@@ -228,7 +234,7 @@ impl SpriteRenderer {
     }
 
     pub fn render(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) {
-        for sheet in self.sprite_sheets.iter_mut().flatten() {
+        self.sprite_sheets.for_each_mut(|_, sheet| {
             gfx.glBindVertexArray(self.mesh.vao());
             gfx.glUseProgram(self.program.program());
             sheet.buffer_sprite_data(gfx);
@@ -243,7 +249,9 @@ impl SpriteRenderer {
 
             gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, sheet.render_queue.len() as u32);
             sheet.render_queue.clear();
-        }
+
+            Ok::<(), ()>(())
+        });
     }
 }
 

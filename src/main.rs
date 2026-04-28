@@ -2,6 +2,8 @@
 
 mod engine;
 
+use std::{cell::RefCell, rc::Rc};
+
 use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
 use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
 use gl_types::{angle_trig::radians, clip_space::{ortho, ortho_aspect, perspective}, geometric::normalize, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
@@ -9,7 +11,7 @@ use glfw::Key;
 use image::{ImageBuffer, Luma, imageops};
 use regex::Regex;
 
-use crate::engine::graphics::{gl_enums::{DepthFunction, EnableCap}, terrain::{Terrain, terrain_renderer::{TerrainRenderer}}};
+use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::{Terrain, terrain_renderer::TerrainRenderer}}};
 
 
 #[derive(Clone, Default)]
@@ -61,139 +63,94 @@ impl Component for FPSCounter {
 }
 
 pub struct Renderer {
-    sprite_renderer: SpriteRenderer,
     terrain_renderer: TerrainRenderer,
     terrain: Terrain,
-    view_matrix: Mat4,
-    projection_matrix: Mat4,
-    position: Vec3,
-    sprite_position: Vec3,
-    rot_y: f32,
-    rot_x: f32,
-    camera_size: f32
+    camera: Rc<RefCell<Camera>>,
+    camera_size: f32,
+    sprite1: Option<ComponentID>,
+    sprite2: Option<ComponentID>
 }
 
 impl Component for Renderer {
-    fn init(&mut self, gfx: &Graphics, _: &World, _: ObjectID) -> Result<()> {
+    fn init(&mut self, gfx: &Graphics, world: &World, _: ObjectID) -> Result<()> {
         gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
-        self.sprite_renderer.add_sprite(0, 0, 512, 512);
-        self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
-        self.sprite_renderer.add_sprite(512, 512, 1024, 1024);
-
         gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
-
-        self.projection_matrix  = ortho_aspect(10.0, 16.0 / 9.0, -100.0, 100.0);
-        // self.projection_matrix = perspective(radians(90.0), 16.0/9.0, 0.1, 1000.0);
-
-        self.sprite_renderer.update_sprite_map(gfx);
         gfx.glEnable(EnableCap::GL_CULL_FACE);
         gfx.glEnable(EnableCap::GL_DEPTH_TEST);
         gfx.glDepthFunc(DepthFunction::GL_GREATER);
         gfx.glClearDepth(0.0);
         gfx.glCullFace(GL_BACK);
 
+        let sprite1 = world.find_child(world.get_root(), "Sprite 1")?.unwrap();
+        let sprite2 = world.find_child(world.get_root(), "Sprite 2")?.unwrap();
+
+        let sprite1 = world.get_component::<Sprite>(sprite1)?;
+        let sprite2 = world.get_component::<Sprite>(sprite2)?;
+
+        self.sprite1 = Some(sprite1);
+        self.sprite2 = Some(sprite2);
+
         Ok(())
     }
 
-    fn update(&mut self, gfx: &Graphics, _: &World, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+    fn update(&mut self, gfx: &Graphics, world: &World, _: ObjectID, delta_time: f32, input: &Input) -> Result<()> {
+        let mut camera = self.camera.borrow_mut();
         let speed = 10.0;
         if input.get_key_state(Key::W).is_down {
-            self.position += normalize(vec3!(1, 0, 1)) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(1, 0, 1)) * delta_time * speed);
         }
 
         if input.get_key_state(Key::A).is_down {
-            self.position += normalize(vec3!(-1, 0, 1)) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(-1, 0, 1)) * delta_time * speed);
         }
         if input.get_key_state(Key::S).is_down {
-            self.position += normalize(vec3!(-1, 0, -1)) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(-1, 0, -1)) * delta_time * speed);
         }
         if input.get_key_state(Key::D).is_down {
-            self.position += normalize(vec3!(1, 0, -1)) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(1, 0, -1)) * delta_time * speed);
         }
         if input.get_key_state(Key::Space).is_down {
-            self.position += vec3!(0, 1, 0) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + vec3!(0, 1, 0) * delta_time * speed);
         }
         if input.get_key_state(Key::LeftControl).is_down {
-            self.position += vec3!(0, -1, 0) * delta_time * speed;
+            let pos = camera.position();
+            camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
         }
 
+        let mut sprite = world.borrow_component_mut::<Sprite>(self.sprite2.unwrap())?;
         if input.get_key_state(Key::Up).is_down {
-            self.sprite_position += vec3!(0, 0, 1) * delta_time * speed;
+            sprite.data.position += vec3!(0, 0, 1) * delta_time * speed;
         }
 
         if input.get_key_state(Key::Left).is_down {
-            self.sprite_position += vec3!(-1, 0, 0) * delta_time * speed;
+            sprite.data.position += vec3!(-1, 0, 0) * delta_time * speed;
         }
         if input.get_key_state(Key::Down).is_down {
-            self.sprite_position += vec3!(0, 0, -1) * delta_time * speed;
+            sprite.data.position += vec3!(0, 0, -1) * delta_time * speed;
         }
         if input.get_key_state(Key::Right).is_down {
-            self.sprite_position += vec3!(1, 0, 0) * delta_time * speed;
+            sprite.data.position += vec3!(1, 0, 0) * delta_time * speed;
         }
         if input.get_key_state(Key::RightShift).is_down {
-            self.sprite_position += vec3!(0, 1, 0) * delta_time * speed;
+            sprite.data.position += vec3!(0, 1, 0) * delta_time * speed;
         }
         if input.get_key_state(Key::RightControl).is_down {
-            self.sprite_position += vec3!(0, -1, 0) * delta_time * speed;
+            sprite.data.position += vec3!(0, -1, 0) * delta_time * speed;
         }
 
-        if input.get_key_state(Key::Kp9).press {
-            self.camera_size += 5.0;
-        }
         self.camera_size -= input.get_scroll_y() as f32;
 
-        if input.get_key_state(Key::Q).is_down {
-            self.rot_y -= 0.5 * delta_time;
+        match camera.projection_mut() {
+            Projection::Orthographic { width, .. } => *width = self.camera_size,
+            _ => ()
         }
 
-        if input.get_key_state(Key::E).is_down {
-            self.rot_y += 0.5 * delta_time;
-        }
-
-        let change = if input.get_key_state(Key::LeftShift).is_down {
-            -1
-        } else {
-            1
-        };
-
-        self.projection_matrix  = ortho_aspect(self.camera_size, 16.0 / 9.0, -100.0, 100.0);
-        // let mut cell = self.terrain.get_cell_mut(2, 2).unwrap();
-        // if input.get_key_state(Key::Kp1).press {
-        //     *cell.bottom_left = cell.bottom_left.saturating_add_signed(change);
-        // }
-        // if input.get_key_state(Key::Kp2).press {
-        //     *cell.bottom_right = cell.bottom_right.saturating_add_signed(change);
-        // }
-        // if input.get_key_state(Key::Kp4).press {
-        //     let mut top_left = cell.top_left();
-        //     *top_left.height() = top_left.height().saturating_add_signed(change);
-        // }
-        // if input.get_key_state(Key::Kp5).press {
-        //     *cell.top_right = cell.top_right.saturating_add_signed(change);
-        // }
-
-        // println!("Cell:\t{}, {}\n\t{}, {}", cell.top_left, cell.top_right, cell.bottom_left, cell.bottom_right);
-
-        let offset = vec3!(f32::sin(self.rot_y), 0 , f32::cos(self.rot_y));
-        let mat = lookAt(self.position, self.position + vec3!(1, -1, 1), vec3!(0, 1, 0));
-
-        self.view_matrix = mat;
-
-        gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: vec3!(0, 0.5, 0),
-            anchor: vec2!(0.5, 0),
-            dimensions: vec2!(1),
-            sprite_id: 1,
-        });
-        self.sprite_renderer.queue_sprite_instance(SpriteData {
-            position: self.sprite_position,
-            anchor: vec2!(0.5, 0),
-            dimensions: vec2!(2),
-            sprite_id: 0,
-        });
-        self.terrain_renderer.render(gfx, &mut self.terrain, self.view_matrix, self.projection_matrix, self.position);
-        self.sprite_renderer.render(gfx, &self.view_matrix, &self.projection_matrix);
+        self.terrain_renderer.render(gfx, &mut self.terrain, camera.view_matrix(), camera.projection_matrix(), camera.position());
 
         Ok(())   
     }
@@ -205,14 +162,38 @@ fn start_game() -> Result<()> {
 
     let world = engine.get_world();
 
-    let a = world.create_game_object("a".to_owned(), world.get_root())?;
-    let _b = world.create_game_object("b".to_owned(), a)?;
-    let c = world.create_game_object("c".to_owned(), a)?;
-    let _d = world.create_game_object("d".to_owned(), c)?;
+    let a = world.create_game_object("a", world.get_root())?;
+
+    let mut sprite_sheet = SpriteSheet::new("sprite_sheet.png");
+    sprite_sheet.add_sprite(0, 0, 512, 512);
+    sprite_sheet.add_sprite(512, 512, 1024, 1024);
+    world.add_component(a, sprite_sheet)?;
+    
+    let sprite1 = world.create_game_object("Sprite 1", world.get_root())?;
+    let sprite2 = world.create_game_object("Sprite 2", world.get_root())?;
+
+    let sprite_component1 = Sprite::new("sprite_sheet.png", 0);
+    let sprite_component2 = Sprite::new("sprite_sheet.png", 1);
+
+    world.add_component(sprite1, sprite_component1)?;
+    world.add_component(sprite2, sprite_component2)?;
+    
+    let camera = Rc::new(RefCell::new(Camera::new(
+        Projection::Orthographic {
+            width: 1.0,
+            aspect: 16.0 /9.0,
+            z_near: -100.0,
+            z_far: 100.0,
+        },
+        vec3!(0, 1, 0),
+        normalize(vec3!(1, -1, 1)),
+        vec3!(0, 1, 0)
+    )));
+
+    world.set_main_camera(camera.clone());
     
     let gfx = engine.get_graphics()?;
 
-    let sprite_map = Image::load_from_file("sprite_sheet.png")?;
     let grid = image::ImageReader::open("ground.png")?.decode()?;
     let mut grid = grid.to_rgb8();
     imageops::flip_vertical_in_place(&mut grid);
@@ -224,14 +205,14 @@ fn start_game() -> Result<()> {
     let mut height_map: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, height_map).unwrap();
     imageops::flip_vertical_in_place(&mut height_map);
 
-    let sprite_renderer = SpriteRenderer::new(gfx, 1024, sprite_map)?;
     let terrain_renderer = TerrainRenderer::new(gfx)?;
     let terrain = Terrain::from_raw(gfx, height_map.into_raw().into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
-    let renderer = Renderer { sprite_renderer, terrain_renderer, camera_size: 10.0, terrain, position: vec3!(-2, 2, -2), sprite_position: vec3!(2, 0, 0), view_matrix: Mat4::IDENTITY, projection_matrix: Mat4::IDENTITY, rot_x: 0.0, rot_y: 0.0 };
+
+    let renderer = Renderer { terrain_renderer, camera_size: 10.0, terrain, camera, sprite1: None, sprite2: None  };
 
     let world = engine.get_world();
 
-    world.add_component(_d, FPSCounter::default())?;
+    world.add_component(a, FPSCounter::default())?;
     world.add_component(a, renderer)?;
 
     engine.run()?;

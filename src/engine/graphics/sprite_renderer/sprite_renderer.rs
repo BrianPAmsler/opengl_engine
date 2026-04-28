@@ -251,7 +251,7 @@ impl SpriteRenderer {
             sheet.render_queue.clear();
 
             Ok::<(), ()>(())
-        });
+        }).ok();
     }
 }
 

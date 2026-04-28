@@ -1,10 +1,30 @@
-use std::{fs::File, path::Path};
+use std::{collections::VecDeque, path::Path};
+
+use gl_types::{vec2, vec3};
 
 use crate::engine::{errors::Result, game_object::{ObjectID, World, component::Component}, graphics::{Graphics, image::Image, sprite_renderer::SpriteSheetID}, input::Input};
 
+use super::SpriteData;
+
 pub struct SpriteSheet {
     id: Option<SpriteSheetID>,
-    filename: Option<String>
+    filename: Option<String>,
+    sprite_definitions: VecDeque<(u32, u32, u32, u32)>,
+    count: usize
+}
+
+impl SpriteSheet {
+    pub fn new(file_name: &str) -> SpriteSheet {
+        SpriteSheet { id: None, filename: Some(file_name.to_owned()), sprite_definitions: VecDeque::new(), count: 0 }
+    }
+
+    pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> u32 {
+        let idx = self.sprite_definitions.len() + self.count;
+
+        self.sprite_definitions.push_back((x, y, width, height));
+
+        idx as u32
+    }
 }
 
 impl SpriteSheet {
@@ -25,6 +45,16 @@ impl Component for SpriteSheet {
         Ok(())
     }
 
+    fn fixed_update(&mut self, gfx: &Graphics, _world: &World, _owner: ObjectID, _delta_time: f32, _input: &Input) -> Result<()> {
+        while !self.sprite_definitions.is_empty() {
+            let (x, y, width, height) = self.sprite_definitions.pop_front().unwrap();
+            gfx.sprite_renderer().add_sprite(self.id.unwrap(), x, y, width, height);
+            self.count += 1;
+        }
+
+        Ok(())
+    }
+
     fn on_remove(&mut self, gfx: &Graphics, _world: &World, _owner: ObjectID) -> Result<()> {
         gfx.sprite_renderer().remove_sprite_sheet(gfx, self.id.unwrap());
 
@@ -32,16 +62,47 @@ impl Component for SpriteSheet {
     }
 }
 
-pub struct Sprite {
-    sprite_sheet_id: SpriteSheetID,
-    sprite_index: usize,
+enum SpriteSheetEnum {
+    ID(SpriteSheetID),
+    Name(String)
+}
 
+pub struct Sprite {
+    sprite_sheet_id: SpriteSheetEnum,
+    pub data: SpriteData
+}
+
+impl Sprite {
+    pub fn new(sprite_sheet_name: &str, sprite_index: u32) -> Sprite {
+        Sprite {
+            sprite_sheet_id: SpriteSheetEnum::Name(sprite_sheet_name.to_owned()),
+            data: SpriteData { 
+                position: vec3!(0),
+                anchor: vec2!(0),
+                dimensions: vec2!(1),
+                sprite_id: sprite_index
+            }
+        }
+    }
 }
 
 impl Component for Sprite {
-    fn init(&mut self, gfx: &Graphics, world: &World, owner: ObjectID) -> Result<()> {Ok(())}
+    fn init(&mut self, gfx: &Graphics, _world: &World, _owner: ObjectID) -> Result<()> {
+        self.sprite_sheet_id = SpriteSheetEnum::ID(match &self.sprite_sheet_id {
+            SpriteSheetEnum::ID(_) => panic!("no"),
+            SpriteSheetEnum::Name(name) => gfx.sprite_renderer().get_sprite_sheet_by_name(name).ok_or(format!("Sprite sheet \"{}\" not found.", name))?,
+        });
 
-    fn update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
+        Ok(())
+    }
 
-    fn fixed_update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
+    fn update(&mut self, gfx: &Graphics, _world: &World, _owner: ObjectID, _delta_time: f32, _input: &Input) -> Result<()> {
+        let SpriteSheetEnum::ID(sprite_sheet) = self.sprite_sheet_id else { return Ok(()); };
+        gfx.sprite_renderer().queue_sprite_instance(
+            self.data,
+            sprite_sheet
+        );
+
+        Ok(())
+    }
 }

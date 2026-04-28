@@ -184,9 +184,10 @@ impl World {
         Ok(downcast)
     }
 
-    pub fn create_game_object(&mut self, name: String, parent: ObjectID) -> Result<ObjectID> {
+    pub fn create_game_object<S: Into<String>>(&mut self, name: S, parent: ObjectID) -> Result<ObjectID> {
         self.objects.get(parent.idx).map_err(obj_error)?;
 
+        let name = name.into();
         let new_obj = GameObject { name, parent: self.root, components: Vec::new(), children: HashSet::new() };
         let new_obj = ObjectID { idx: self.objects.insert(new_obj) };
 
@@ -224,6 +225,20 @@ impl World {
         let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
         Ok(obj.children.iter().map(|child| child.to_owned()).collect())
+    }
+
+    pub fn find_child(&self, object: ObjectID, name: &str) -> Result<Option<ObjectID>> {
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
+
+        for child in &obj.children {
+            let child_name = self.get_name(*child).unwrap();
+
+            if name == child_name {
+                return Ok(Some(*child));
+            }
+        }
+
+        Ok(None)
     }
 
     pub fn get_parent(&self, object: ObjectID) -> Result<ObjectID> {

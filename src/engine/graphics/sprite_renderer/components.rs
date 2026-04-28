@@ -46,10 +46,16 @@ impl Component for SpriteSheet {
     }
 
     fn fixed_update(&mut self, gfx: &Graphics, _world: &World, _owner: ObjectID, _delta_time: f32, _input: &Input) -> Result<()> {
+        let mut update = false;
         while !self.sprite_definitions.is_empty() {
             let (x, y, width, height) = self.sprite_definitions.pop_front().unwrap();
             gfx.sprite_renderer().add_sprite(self.id.unwrap(), x, y, width, height);
             self.count += 1;
+            update = true;
+        }
+
+        if update {
+            gfx.sprite_renderer().update_sprite_map(gfx, self.id.unwrap());
         }
 
         Ok(())

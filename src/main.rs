@@ -4,9 +4,9 @@ mod engine;
 
 use std::{cell::RefCell, rc::Rc};
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::{image::Image, sprite_renderer::{SpriteData, SpriteRenderer}, Graphics}, input::Input, Engine};
-use gl46::{GL_BACK, GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
-use gl_types::{angle_trig::radians, clip_space::{ortho, ortho_aspect, perspective}, geometric::normalize, matrices::Mat4, transform::lookAt, vec2, vec3, vectors::Vec3};
+use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID, World}, graphics::Graphics, input::Input, Engine};
+use gl46::GL_BACK;
+use gl_types::{geometric::normalize, vec2, vec3};
 use glfw::Key;
 use image::{ImageBuffer, Luma, imageops};
 use regex::Regex;
@@ -172,8 +172,10 @@ fn start_game() -> Result<()> {
     let sprite1 = world.create_game_object("Sprite 1", world.get_root())?;
     let sprite2 = world.create_game_object("Sprite 2", world.get_root())?;
 
-    let sprite_component1 = Sprite::new("sprite_sheet.png", 0);
-    let sprite_component2 = Sprite::new("sprite_sheet.png", 1);
+    let mut sprite_component1 = Sprite::new("sprite_sheet.png", 0);
+    sprite_component1.data.anchor = vec2!(0.5, 0);
+    let mut sprite_component2 = Sprite::new("sprite_sheet.png", 1);
+    sprite_component2.data.anchor = vec2!(0.5, 0);
 
     world.add_component(sprite1, sprite_component1)?;
     world.add_component(sprite2, sprite_component2)?;

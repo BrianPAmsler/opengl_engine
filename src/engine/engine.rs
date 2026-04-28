@@ -1,10 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
 
-use gl_types::matrices::Mat4;
 use gl46::{GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
 use glfw::{Action, WindowEvent};
 
-use crate::engine::{errors::{Error, GraphicsError, Result}, graphics::Camera};
+use crate::engine::errors::{Error, GraphicsError, Result};
 
 use super::{game_object::World, graphics::Graphics, input::Input};
 
@@ -114,7 +112,7 @@ impl Engine {
             
             // Game tick
             let current_time = gfx.get_glfw_time();
-            self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32, &self.input)?;
+            self.world.update(self.gfx.as_ref().unwrap(), (current_time - last_tick) as f32, &self.input)?; // TODO: This is not supposed to crash, catch and log errors
             last_tick = current_time;
 
             self.input.modify_all_key_states(|key| {
@@ -132,7 +130,7 @@ impl Engine {
             // Add overflow to adjust for errors in timing
             if fixed_diff + fixed_tick_overflow >= 0.0 {
                 fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
-                self.world.fixed_update(self.gfx.as_ref().unwrap(), (current_time - last_fixed_tick) as f32, &self.fixed_input)?;
+                self.world.fixed_update(self.gfx.as_ref().unwrap(), (current_time - last_fixed_tick) as f32, &self.fixed_input)?; // TODO: This is not supposed to crash, catch and log errors
                 last_fixed_tick = current_time;
 
                 self.fixed_input.modify_all_key_states(|key| {
@@ -158,7 +156,7 @@ impl Engine {
             }
 
             for (owner, mut component) in self.world.get_removed_components() {
-                component.on_remove(gfx, &self.world, owner);
+                component.on_remove(gfx, &self.world, owner)?; // TODO: This is not supposed to crash, catch and log errors
             }
 
             // Render

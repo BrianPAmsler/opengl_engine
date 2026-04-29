@@ -6,7 +6,7 @@ use rand::RngExt;
 use crate::engine::graphics::builder::TextureBuilder;
 use crate::engine::graphics::gl_enums::{InternalFormat, PixelFormat, PrimitiveType, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit, TextureWrapMode};
 use crate::engine::graphics::terrain::Terrain;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GeometryShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader};
+use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader};
 use crate::engine::errors::Result;
 
 
@@ -93,7 +93,6 @@ impl TerrainRenderer {
 
         let mut rng = rand::rng();
         let pixels: Vec<u8> = (0..1024u32.pow(2)).map(|_| rng.random()).collect();
-        println!("first 10: {:?}", &pixels[..10]);
         let noise_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&pixels, 1024, 1024, InternalFormat::GL_RED, PixelFormat::GL_RED) }
             .mag_filter(TextureMagFilter::GL_NEAREST)
             .min_filter(TextureMinFilter::GL_NEAREST)

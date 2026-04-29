@@ -1,3 +1,5 @@
+use log::warn;
+
 use crate::engine::graphics::gl_enums::{PixelFormat, PixelType, TextureTarget};
 
 use super::Graphics;
@@ -10,7 +12,6 @@ pub struct Texture {
 
 impl Texture {
     pub unsafe fn update_texture(&self, gfx: &Graphics, texture_data: &[u8], format: PixelFormat) {
-
         gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.texture_id);
         gfx.glTextureSubImage2D(self.texture_id, 0, 0, 0, self.width, self.height, format, PixelType::GL_UNSIGNED_BYTE, texture_data);
         gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, 0);
@@ -26,6 +27,19 @@ impl Texture {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    pub fn delete(mut self, gfx: &Graphics) {
+        gfx.glDeleteTextures(&[self.texture_id]);
+        self.texture_id = 0;
+    }
+}
+
+impl Drop for Texture {
+    fn drop(&mut self) {
+        if self.texture_id != 0 {
+            warn!("Texture leaked!")
+        }
     }
 }
 

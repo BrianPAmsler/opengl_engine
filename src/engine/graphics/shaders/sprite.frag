@@ -8,4 +8,7 @@ out vec4 outColor;
 void main()
 {
     outColor = texture(spriteSheet, texCoords);
+
+    if (outColor.a < 0.1)
+        discard;
 }

@@ -1,13 +1,15 @@
 use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, rc::Rc};
 
-use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Graphics, input::Input};
+use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::{Camera, Graphics}, input::Input};
 
 use super::{component::{components::Transform, Component}, game_object::GameObject};
 
 pub struct World {
     pub(in crate::engine::game_object) root: ObjectID,
     pub(in crate::engine::game_object) objects: VecAllocator<GameObject>,
-    pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>
+    pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>, // TODO: rethink component storage
+    removed_comonents: Vec<(ObjectID, Box<dyn Component>)>,
+    main_camera: RefCell<Option<Rc<RefCell<Camera>>>> // yikes
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -18,11 +20,12 @@ pub struct ObjectID {
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ComponentID {
     idx: AllocationIndex,
+    owner: ObjectID,
     type_: TypeId
 }
 
 impl World {
-    pub fn new() -> World {
+    pub(in crate::engine) fn new() -> World {
         let mut objects = VecAllocator::new();
         let root = objects.insert(GameObject { name: "root".to_owned(), parent: ObjectID { idx: AllocationIndex::null() }, components: Vec::new(), children: HashSet::new() });
         let root = ObjectID { idx: root };
@@ -30,7 +33,9 @@ impl World {
         let mut world = World {
             root,
             objects,
-            components: VecAllocator::new()
+            components: VecAllocator::new(),
+            removed_comonents: Vec::new(),
+            main_camera: RefCell::new(None)
         };
 
         world.add_component(world.root, Transform::ZERO).expect("This also shouldn't happen!");
@@ -38,7 +43,7 @@ impl World {
         world
     }
 
-    pub fn init(&mut self, graphics: &Graphics) -> Result<()> {
+    pub(in crate::engine) fn init(&mut self, graphics: &Graphics) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -64,7 +69,7 @@ impl World {
         })
     }
 
-    pub fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
+    pub(in crate::engine) fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -90,7 +95,7 @@ impl World {
         })
     }
 
-    pub fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
+    pub(in crate::engine) fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
         let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
@@ -116,6 +121,14 @@ impl World {
         })
     }
 
+    pub fn get_main_camera(&self) -> Option<Rc<RefCell<Camera>>> {
+        self.main_camera.borrow().clone()
+    }
+
+    pub fn set_main_camera(&self, camera: Rc<RefCell<Camera>>) {
+        *self.main_camera.borrow_mut() = Some(camera)
+    }
+
     pub fn get_name(&self, object: ObjectID) -> Result<&str> {
         let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
@@ -136,10 +149,17 @@ impl World {
 
     pub fn add_component<C: Component>(&mut self, object: ObjectID, component: C) -> Result<()> {
         let idx = self.components.insert(Rc::new(RefCell::new(Box::new(component))));
-
+        let owner = object;
         let object = self.objects.get_mut(object.idx).map_err(obj_error)?;
 
-        object.components.push(ComponentID { idx, type_: TypeId::of::<C>() });
+        object.components.push(ComponentID { idx, type_: TypeId::of::<C>(), owner });
+
+        Ok(())
+    }
+
+    pub fn remove_component(&mut self, component: ComponentID) -> Result<()> {
+        let c = self.components.remove(component.idx).map_err(comp_error)?;
+        self.removed_comonents.push((component.owner, Rc::into_inner(c).ok_or("Component still owned somewhere.")?.into_inner()));
 
         Ok(())
     }
@@ -164,9 +184,10 @@ impl World {
         Ok(downcast)
     }
 
-    pub fn create_game_object(&mut self, name: String, parent: ObjectID) -> Result<ObjectID> {
+    pub fn create_game_object<S: Into<String>>(&mut self, name: S, parent: ObjectID) -> Result<ObjectID> {
         self.objects.get(parent.idx).map_err(obj_error)?;
 
+        let name = name.into();
         let new_obj = GameObject { name, parent: self.root, components: Vec::new(), children: HashSet::new() };
         let new_obj = ObjectID { idx: self.objects.insert(new_obj) };
 
@@ -206,6 +227,20 @@ impl World {
         Ok(obj.children.iter().map(|child| child.to_owned()).collect())
     }
 
+    pub fn find_child(&self, object: ObjectID, name: &str) -> Result<Option<ObjectID>> {
+        let obj = self.objects.get(object.idx).map_err(obj_error)?;
+
+        for child in &obj.children {
+            let child_name = self.get_name(*child).unwrap();
+
+            if name == child_name {
+                return Ok(Some(*child));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub fn get_parent(&self, object: ObjectID) -> Result<ObjectID> {
         let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
@@ -229,6 +264,10 @@ impl World {
         Ok(())
     }
 
+    pub fn get_owner(&self, component: ComponentID) -> ObjectID {
+        component.owner
+    }
+
     pub fn destroy(&mut self, object: ObjectID) -> Result<()> {
         let obj = self.objects.get(object.idx).map_err(obj_error)?;
 
@@ -238,6 +277,12 @@ impl World {
         self.objects.remove(object.idx).map_err(obj_error)?;
 
         Ok(())
+    }
+
+    pub(in crate::engine) fn get_removed_components(&mut self) -> Vec<(ObjectID, Box<dyn Component>)> {
+        let removed = std::mem::replace(&mut self.removed_comonents, Vec::new());
+
+        removed
     }
 }
 

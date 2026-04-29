@@ -51,7 +51,6 @@ impl Engine {
         let mut last_fixed_tick = last_tick;
         let mut fixed_tick_overflow = 0.0;
 
-        self.world.init(self.gfx.as_ref().unwrap())?;
         self.log_errors();
 
         while !self.gfx.as_ref().unwrap().should_close() {

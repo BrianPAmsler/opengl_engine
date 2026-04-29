@@ -1,4 +1,4 @@
-use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::HashSet, rc::Rc};
+use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::{BTreeMap, HashSet}, rc::Rc};
 
 use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::{Camera, Graphics}, input::Input};
 
@@ -8,6 +8,8 @@ pub struct World {
     pub(in crate::engine::game_object) root: ObjectID,
     pub(in crate::engine::game_object) objects: VecAllocator<GameObject>,
     pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>, // TODO: rethink component storage
+    ordered_components: BTreeMap<i32, HashSet<ComponentID>>,
+    uninitialized_components: BTreeMap<i32, HashSet<ComponentID>>,
     removed_comonents: Vec<(ObjectID, Box<dyn Component>)>,
     main_camera: RefCell<Option<Rc<RefCell<Camera>>>> // yikes
 }
@@ -19,7 +21,7 @@ pub struct ObjectID {
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ComponentID {
-    idx: AllocationIndex,
+    index: AllocationIndex,
     owner: ObjectID,
     type_: TypeId
 }
@@ -34,6 +36,8 @@ impl World {
             root,
             objects,
             components: VecAllocator::new(),
+            ordered_components: BTreeMap::new(),
+            uninitialized_components: BTreeMap::new(),
             removed_comonents: Vec::new(),
             main_camera: RefCell::new(None)
         };
@@ -43,21 +47,16 @@ impl World {
         world
     }
 
-    pub(in crate::engine) fn init(&mut self, graphics: &Graphics) -> Result<()> {
+    fn init(&mut self, graphics: &Graphics) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
-
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
+        let components: Vec<ComponentID> = self.uninitialized_components.iter().flat_map(|(_, set)| {
+            set.iter().cloned()
         }).collect();
+        self.uninitialized_components.clear();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
+        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+            let owner = component.owner;
+            let rc = self.components.get(component.index).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -71,19 +70,15 @@ impl World {
 
     pub(in crate::engine) fn update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
+        self.init(graphics)?;
 
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
+        let components: Vec<ComponentID> = self.ordered_components.iter().flat_map(|(_, set)| {
+            set.iter().cloned()
         }).collect();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
+        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+            let owner = component.owner;
+            let rc = self.components.get(component.index).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -98,18 +93,13 @@ impl World {
     pub(in crate::engine) fn fixed_update(&mut self, graphics: &Graphics, delta_time: f32, input: &Input) -> Result<()> {
         // I really hope the compiler can optimize this nonsense
 
-        let components: Vec<(ObjectID, ComponentID)> = self.objects.iter().flat_map(|(idx, obj)| {
-            let owner = ObjectID { idx };
-
-            let children: Vec<_> = obj.components.iter().map(|child| {
-                (owner, child.to_owned())
-            }).collect();
-
-            children
+        let components: Vec<ComponentID> = self.ordered_components.iter().flat_map(|(_, set)| {
+            set.iter().cloned()
         }).collect();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|(owner, component)| {
-            let rc = self.components.get(component.idx).map_err(comp_error)?;
+        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+            let owner = component.owner;
+            let rc = self.components.get(component.index).map_err(comp_error)?;
 
             Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ObjectError>((owner, rc.clone()))
         }).collect::<std::result::Result<Vec<_>, ObjectError>>()?;
@@ -148,24 +138,39 @@ impl World {
     }
 
     pub fn add_component<C: Component>(&mut self, object: ObjectID, component: C) -> Result<()> {
-        let idx = self.components.insert(Rc::new(RefCell::new(Box::new(component))));
+        let priority = *component.priority();
+        let index = self.components.insert(Rc::new(RefCell::new(Box::new(component))));
         let owner = object;
         let object = self.objects.get_mut(object.idx).map_err(obj_error)?;
 
-        object.components.push(ComponentID { idx, type_: TypeId::of::<C>(), owner });
+        let id = ComponentID { index, type_: TypeId::of::<C>(), owner };
+        object.components.push(id);
+
+        let set = self.ordered_components.entry(priority).or_insert(HashSet::new());
+        set.insert(id);
+
+        let uninitialized = self.uninitialized_components.entry(priority).or_insert(HashSet::new());
+        uninitialized.insert(id);
 
         Ok(())
     }
 
     pub fn remove_component(&mut self, component: ComponentID) -> Result<()> {
-        let c = self.components.remove(component.idx).map_err(comp_error)?;
-        self.removed_comonents.push((component.owner, Rc::into_inner(c).ok_or("Component still owned somewhere.")?.into_inner()));
+        let c = self.components.remove(component.index).map_err(comp_error)?;
+        let c = Rc::into_inner(c).ok_or("Component still owned somewhere.")?.into_inner();
+
+        match self.ordered_components.get_mut(c.priority()) {
+            Some(list) => list.remove(&component),
+            None => unreachable!(),
+        };
+
+        self.removed_comonents.push((component.owner, c));
 
         Ok(())
     }
 
     pub fn borrow_component<'a, C: Component>(&'a self, component: ComponentID) -> Result<Ref<'a, C>> {
-        let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow();
+        let ref_ = self.components.get(component.index).map_err(obj_error)?.borrow();
 
         let downcast = Ref::filter_map(ref_, |t| {
             t.downcast_ref()
@@ -175,7 +180,7 @@ impl World {
     }
 
     pub fn borrow_component_mut<'a, C: Component>(&'a self, component: ComponentID) -> Result<RefMut<'a, C>> {
-        let ref_ = self.components.get(component.idx).map_err(obj_error)?.borrow_mut();
+        let ref_ = self.components.get(component.index).map_err(obj_error)?.borrow_mut();
 
         let downcast = RefMut::filter_map(ref_, |t| {
             t.downcast_mut()

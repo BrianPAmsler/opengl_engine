@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, path::Path};
+use std::{collections::VecDeque, i32, path::Path};
 
 use gl_types::{vec2, vec3};
 
@@ -66,6 +66,10 @@ impl Component for SpriteSheet {
 
         Ok(())
     }
+
+    fn priority(&self) -> &'static i32 {
+        &i32::MIN
+    }
 }
 
 enum SpriteSheetEnum {
@@ -110,5 +114,9 @@ impl Component for Sprite {
         );
 
         Ok(())
+    }
+
+    fn priority(&self) -> &'static i32 {
+        &i32::MAX
     }
 }

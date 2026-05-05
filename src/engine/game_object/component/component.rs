@@ -9,6 +9,9 @@ pub trait Component: Downcast {
     fn update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
     fn fixed_update(&mut self, gfx: &Graphics, world: &World, owner: ObjectID, delta_time: f32, input: &Input) -> Result<()> {Ok(())}
     fn on_remove(&mut self, gfx: &Graphics, world: &World, owner: ObjectID) -> Result<()> {Ok(())}
+    
+    /// Priority determines execution order. The return value of this function should not change.
+    fn priority(&self) -> &'static i32 { &0 }
 }
 
 impl_downcast!(Component);

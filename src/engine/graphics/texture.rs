@@ -4,6 +4,7 @@ use crate::engine::graphics::gl_enums::{PixelFormat, PixelType, TextureTarget};
 
 use super::Graphics;
 
+
 pub struct Texture {
     texture_id: u32,
     width: u32,

@@ -1,4 +1,6 @@
-use crate::engine::graphics::{Graphics, Texture, builder::{TextureBuilder}, gl_enums::{InternalFormat, PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit}};
+use image::{ImageBuffer, Luma, imageops};
+
+use crate::engine::{errors::{BasicError}, game_object::component::Component, graphics::{Graphics, Texture, builder::TextureBuilder, gl_enums::{InternalFormat, PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit}}};
 
 pub enum Corner {
     TopLeft,
@@ -68,30 +70,40 @@ impl<'a> TerrainCellMut<'a> {
     }
 }
 
-pub struct Terrain {
-    height_data: Box<[u8]>,
-    color_data: Box<[u8]>,
-    width: u32,
-    height: u32,
-    height_texture: Texture,
-    color_texture: Texture,
-    height_dirty: bool,
-    color_dirty: bool
+enum TerrainInner {
+    Initialized {
+        height_data: Box<[u8]>,
+        color_data: Box<[u8]>,
+        width: u32,
+        height: u32,
+        height_texture: Texture,
+        color_texture: Texture,
+        height_dirty: bool,
+        color_dirty: bool
+    },
+    Uninitialized {
+        height_file: String,
+        color_file: String
+    }
 }
+
+impl Default for TerrainInner {
+    fn default() -> Self {
+        Self::Uninitialized { height_file: String::new(), color_file: String::new() }
+    }
+}
+
+pub struct Terrain(TerrainInner);
 
 const BYTES_PER_COLOR: usize = 3;
 const COLORS_PER_CELL: usize = 4;
 
 impl Terrain {
-    pub fn new(gfx: &Graphics, width: u32, height: u32) -> Terrain {
-        // Height data is per corner, rather than per cell, so each dimension needs one extra value to represent all corners
-        let height_data = vec![0; (width + 1) as usize * (height + 1) as usize].into_boxed_slice();
-        let color_data = vec![0; (width * height) as usize * BYTES_PER_COLOR * COLORS_PER_CELL].into_boxed_slice();
-
-        unsafe { Self::from_raw_unchecked(gfx, height_data, color_data, width, height) }
+    pub fn new(height_file: &str, color_file: &str) -> Terrain {
+        Terrain(TerrainInner::Uninitialized { height_file: height_file.to_owned(), color_file: color_file.to_owned() })
     } 
 
-    pub unsafe fn from_raw_unchecked(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
+    unsafe fn from_raw_unchecked(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
         let height_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&height_data, width + 1, height + 1, InternalFormat::GL_RED, PixelFormat::GL_RED) }
             .min_filter(TextureMinFilter::GL_NEAREST)
             .mag_filter(TextureMagFilter::GL_NEAREST)
@@ -101,10 +113,10 @@ impl Terrain {
             .mag_filter(TextureMagFilter::GL_NEAREST)
             .finish(gfx);
 
-        Terrain { height_data, color_data, width, height, height_texture, color_texture, height_dirty: false, color_dirty: false }
+        Terrain(TerrainInner::Initialized { height_data, color_data, width, height, height_texture, color_texture, height_dirty: false, color_dirty: false })
     }
 
-    pub fn from_raw(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
+    fn from_raw(gfx :&Graphics, height_data: Box<[u8]>, color_data: Box<[u8]>, width: u32, height: u32) -> Terrain {
         // Height data is per corner, rather than per cell, so each dimension needs one extra value to represent all corners
         if height_data.len() != ((width + 1) * (height + 1)) as usize {
             panic!("Height data size does not match given dimensions. ({})", height_data.len());
@@ -117,12 +129,15 @@ impl Terrain {
         unsafe { Self::from_raw_unchecked(gfx, height_data, color_data, width, height) }
     }
 
-    pub fn get_raw_height(&self) -> &[u8] {
-        &self.height_data
+    pub fn get_raw_height(&self) -> Option<&[u8]> {
+        let Self(TerrainInner::Initialized { height_data, .. }) = self else { return None };
+        Some(height_data)
     }
 
-    pub fn get_raw_colors(&self) -> &[u8] {
-        &self.color_data
+    pub fn get_raw_colors(&self) -> Option<&[u8]> {
+        let Self(TerrainInner::Initialized { color_data, .. }) = self else { return None };
+
+        Some(color_data)
     }
 
     // pub fn get_cell<'a>(&'a self, x: u32, z: u32) -> Option<TerrainCell<'a>> {
@@ -149,24 +164,25 @@ impl Terrain {
     //     Some(TerrainCell { top_left, top_right, bottom_left, bottom_right, color })
     // }
 
-    pub fn get_cell_mut<'a>(&'a mut self, x: u32, z: u32) -> Option<TerrainCellMut<'a>> {
-        if x >= self.width || z >= self.height {
-            return None;
+    pub fn get_cell_mut<'a>(&'a mut self, x: u32, z: u32) -> Result<TerrainCellMut<'a>, BasicError> {
+        let Self(TerrainInner::Initialized { height_data , color_data, width, height, height_dirty, color_dirty, .. }) = self else { return Err(BasicError::Uninitialized)? };
+        if x >= *width || z >= *height {
+            return Err(BasicError::OutOfBounds)?;
         }
 
         // All of these point to different elements of the array, so this should be fine.
         // Using slice.split_at_mut to do the same thing was way too complicated
         unsafe {
-            let ptr = (&mut self.color_data[..]).as_mut_ptr();
-            let i = (x * 2 + z * self.width * 4) as usize * BYTES_PER_COLOR; // spooky numbers
+            let ptr = (&mut color_data[..]).as_mut_ptr();
+            let i = (x * 2 + z * *width * 4) as usize * BYTES_PER_COLOR; // spooky numbers
             let bottom_left_color = (std::slice::from_raw_parts_mut(ptr.add(i), BYTES_PER_COLOR)).try_into().unwrap();
             let bottom_right_color = (std::slice::from_raw_parts_mut(ptr.add(i + BYTES_PER_COLOR), BYTES_PER_COLOR)).try_into().unwrap();
-            let top_left_color = (std::slice::from_raw_parts_mut(ptr.add(i + self.width as usize * BYTES_PER_COLOR * 2), BYTES_PER_COLOR)).try_into().unwrap();
-            let top_right_color = (std::slice::from_raw_parts_mut(ptr.add(i + self.width as usize * BYTES_PER_COLOR * 2 + BYTES_PER_COLOR), BYTES_PER_COLOR)).try_into().unwrap();
+            let top_left_color = (std::slice::from_raw_parts_mut(ptr.add(i + *width as usize * BYTES_PER_COLOR * 2), BYTES_PER_COLOR)).try_into().unwrap();
+            let top_right_color = (std::slice::from_raw_parts_mut(ptr.add(i + *width as usize * BYTES_PER_COLOR * 2 + BYTES_PER_COLOR), BYTES_PER_COLOR)).try_into().unwrap();
 
-            let height_data_width = self.width + 1;
+            let height_data_width = *width + 1;
 
-            let ptr = (&mut self.height_data[..]).as_mut_ptr();
+            let ptr = (&mut height_data[..]).as_mut_ptr();
             let i = x + z * height_data_width;
             let bottom_left_height = &mut *(ptr.add(i as usize));
 
@@ -179,7 +195,7 @@ impl Terrain {
             let i = (x + 1) + (z + 1) * height_data_width;
             let top_right_height = &mut *(ptr.add(i as usize));
             
-            Some(TerrainCellMut {
+            Ok(TerrainCellMut {
                 top_left_height,
                 top_right_height,
                 bottom_left_height,
@@ -188,40 +204,75 @@ impl Terrain {
                 top_right_color,
                 bottom_left_color,
                 bottom_right_color,
-                color_changed: &mut self.color_dirty,
-                height_changed: &mut self.height_dirty
+                color_changed: color_dirty,
+                height_changed: height_dirty
             })
         }
 
     }
 
-    pub fn width(&self) -> u32 {
-        self.width
+    pub fn width(&self) -> Result<u32, BasicError> {
+        let Self(TerrainInner::Initialized { width, .. }) = self else { return Err(BasicError::Uninitialized)? };
+        Ok(*width)
     }
 
-    pub fn height(&self) -> u32 {
-        self.height
+    pub fn height(&self) -> Result<u32, BasicError> {
+        let Self(TerrainInner::Initialized { height, .. }) = self else { return Err(BasicError::Uninitialized)? };
+        Ok(*height)
     }
 
-    pub(in crate::engine::graphics::terrain) fn update_textures(&mut self, gfx: &Graphics) {
-        if self.height_dirty {
+    pub(in crate::engine::graphics::terrain) fn update_textures(&mut self, gfx: &Graphics) -> Result<(), BasicError> {
+        let Self(TerrainInner::Initialized { height_dirty, height_texture, height_data, color_data, color_dirty, color_texture, .. }) = self else { return Err(BasicError::Uninitialized)? };
+
+        if *height_dirty {
             // Terrain enforces correct data buffer size, so this is safe
-            unsafe { self.height_texture.update_texture(gfx, &self.height_data, PixelFormat::GL_RED) };
-            self.height_dirty = false;
+            unsafe { height_texture.update_texture(gfx, height_data, PixelFormat::GL_RED) };
+            *height_dirty = false;
         }
 
-        if self.color_dirty {
+        if *color_dirty {
             // Terrain enforces correct data buffer size, so this is safe
-            unsafe { self.color_texture.update_texture(gfx, &self.color_data, PixelFormat::GL_RGB) };
-            self.color_dirty = false;
+            unsafe { color_texture.update_texture(gfx, color_data, PixelFormat::GL_RGB) };
+            *color_dirty = false;
         }
+
+        Ok(())
+    }
+}
+
+impl Component for Terrain {
+    fn init(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::engine::errors::Result<()> {
+        let TerrainInner::Uninitialized { height_file, color_file  } = std::mem::take(&mut self.0) else { Err(BasicError::Uninitialized)? };
+
+        let grid = image::ImageReader::open(color_file)?.decode()?;
+        let mut grid = grid.to_rgb8();
+        imageops::flip_vertical_in_place(&mut grid);
+
+        let height_map = image::ImageReader::open(height_file)?.decode()?;
+        let height_map = height_map.to_rgb8();
+        let (width, height) = height_map.dimensions();
+        let height_map: Vec<u8> = height_map.into_raw().into_iter().step_by(3).collect();
+        let mut height_map: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, height_map).unwrap();
+        imageops::flip_vertical_in_place(&mut height_map);
+
+        // Height map uses offset pixel grid, so it ends up being +1 in each dimension.
+        let (width, height) = (width - 1, height - 1);
+
+        *self = Self::from_raw(&engine.gfx, height_map.into_raw().into_boxed_slice(), grid.into_raw().into_boxed_slice(), width, height);
+        Ok(())
     }
 
-    pub(in crate::engine::graphics::terrain) fn bind_textures(&mut self, gfx: &Graphics) {
-        gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
-        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.height_texture.texture_id());
+    fn update(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID, _delta_time: f32) -> crate::engine::errors::Result<()> {
+        self.update_textures(&engine.gfx)?;
 
-        gfx.glActiveTexture(TextureUnit::GL_TEXTURE1);
-        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.color_texture.texture_id());
+        let TerrainInner::Initialized { width, height, height_texture, color_texture, .. } = &self.0 else { Err(BasicError::Uninitialized)? };
+        engine.terrain_renderer.queue_terrain(*width, *height, height_texture.texture_id(), color_texture.texture_id());
+        Ok(())
     }
+
+    fn on_remove(&mut self, _engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::engine::errors::Result<()> {
+        Err("Unimplemented")?
+    }
+
+    fn priority(&self) -> &'static i32 { &0 }
 }

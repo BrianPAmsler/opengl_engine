@@ -38,6 +38,14 @@ pub enum GraphicsError {
 }
 
 #[derive(Error, Debug)]
+pub enum BasicError {
+    #[error("Uninitialized")]
+    Uninitialized,
+    #[error("Out of bounds")]
+    OutOfBounds
+}
+
+#[derive(Error, Debug)]
 pub enum Error {
     #[error("{source}")]
     ObjectError {
@@ -55,8 +63,17 @@ pub enum Error {
         backtrace: BT
     },
     #[error("{source}")]
+    BasicError {
+        source: BasicError,
+        backtrace: BT
+    },
+    #[error("{source}")]
     IoError {
         source: std::io::Error,
+        backtrace: BT
+    },
+    #[error("Option contained None value.")]
+    OptionError {
         backtrace: BT
     },
     #[error("{msg}")]
@@ -101,6 +118,12 @@ impl From<glfw::InitError> for Error {
     }
 }
 
+impl From<BasicError> for Error {
+    fn from(value: BasicError) -> Self {
+        Error::BasicError { source: value, backtrace: BT::new() }
+    }
+}
+
 impl From<String> for Error {
     fn from(value: String) -> Self {
         Error::StringError { msg: value, backtrace: BT::new() }
@@ -121,7 +144,9 @@ impl Error {
             Error::StringError { backtrace, .. } => backtrace,
             Error::ImageError { backtrace, .. } => backtrace,
             Error::IoError { backtrace, .. } => backtrace,
-            Error::StaticStringError { backtrace, .. } => backtrace
+            Error::StaticStringError { backtrace, .. } => backtrace,
+            Error::OptionError { backtrace } => backtrace,
+            Error::BasicError { backtrace, .. } => backtrace
         }
     }
 }

@@ -64,8 +64,6 @@ impl Component for FPSCounter {
 }
 
 pub struct Renderer {
-    terrain_renderer: TerrainRenderer,
-    terrain: Terrain,
     camera: Rc<RefCell<Camera>>,
     camera_size: f32,
     sprite1: Option<ComponentID>,
@@ -151,8 +149,6 @@ impl Component for Renderer {
             _ => ()
         }
 
-        self.terrain_renderer.render(&engine.gfx, &mut self.terrain, camera.view_matrix(), camera.projection_matrix(), camera.position());
-
         Ok(())   
     }
 }
@@ -192,21 +188,10 @@ fn start_game() -> Result<()> {
 
     engine.world.set_main_camera(camera.clone());
 
-    let grid = image::ImageReader::open("ground.png")?.decode()?;
-    let mut grid = grid.to_rgb8();
-    imageops::flip_vertical_in_place(&mut grid);
+    let terrain = Terrain::new("height_map.png", "ground.png");
+    engine.world.add_component(a, terrain)?;
 
-    let height_map = image::ImageReader::open("height_map.png")?.decode()?;
-    let height_map = height_map.to_rgb8();
-    let (width, height) = height_map.dimensions();
-    let height_map: Vec<u8> = height_map.into_raw().into_iter().step_by(3).collect();
-    let mut height_map: ImageBuffer<Luma<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, height_map).unwrap();
-    imageops::flip_vertical_in_place(&mut height_map);
-
-    let terrain_renderer = TerrainRenderer::new(&engine.gfx)?;
-    let terrain = Terrain::from_raw(&engine.gfx, height_map.into_raw().into_boxed_slice(), grid.into_raw().into_boxed_slice(), 200, 200);
-
-    let renderer = Renderer { terrain_renderer, camera_size: 10.0, terrain, camera, sprite1: None, sprite2: None  };
+    let renderer = Renderer { camera_size: 10.0, camera, sprite1: None, sprite2: None  };
 
     engine.world.add_component(a, FPSCounter::default())?;
     engine.world.add_component(a, renderer)?;

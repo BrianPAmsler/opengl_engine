@@ -34,12 +34,14 @@ impl SpriteSheet {
 }
 
 impl Component for SpriteSheet {
+    // TODO: Is defferring initialization until the next frame actaully better than initializing in the constructor??
     fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
         let path = Path::new(self.filename.as_ref().unwrap());
         let sprite_map = Image::load_from_file(path)?;
+        let name: Option<_> = (|| Some(path.file_name()?.to_str()?))();
 
         // If add_sprite_sheet returns None it should panic, so rewrap the unwrapped result.
-        self.id = Some(engine.sprite_renderer.add_sprite_sheet(path.file_name().unwrap().to_str().unwrap(), &engine.gfx, 1024, sprite_map).unwrap());
+        self.id = Some(engine.sprite_renderer.add_sprite_sheet(name.ok_or("None value")?, &engine.gfx, 1024, sprite_map).ok_or("None value")?);
         self.filename = None;
 
         Ok(())

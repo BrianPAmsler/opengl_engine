@@ -46,9 +46,17 @@ const TERRAIN_CELL_ELEMENTS: &[u32] = &[
     3,
 ];
 
+struct TerrainInfo {
+    width: u32,
+    height: u32,
+    height_texture: u32,
+    color_texture: u32,
+}
+
 pub struct TerrainRenderer {
     shader_program: ShaderProgram,
     mesh: BufferedMesh,
+    render_queue: Vec<TerrainInfo>,
     vp_location: GlUniformLocation,
     terrain_dimensions_location: GlUniformLocation,
     height_scale_location: GlUniformLocation,
@@ -100,31 +108,39 @@ impl TerrainRenderer {
             .wrap_t(TextureWrapMode::GL_REPEAT)
             .finish(gfx);
 
-        Ok(TerrainRenderer { shader_program, mesh, vp_location, terrain_dimensions_location, height_scale_location, view_pos_location, pixel_size_location, noise_map_size_location, noise_texture })
+        Ok(TerrainRenderer { shader_program, mesh, render_queue: Vec::new(), vp_location, terrain_dimensions_location, height_scale_location, view_pos_location, pixel_size_location, noise_map_size_location, noise_texture })
     }
 
-    pub fn render(&self, gfx: &Graphics, terrain: &mut Terrain, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
-        gfx.glBindVertexArray(self.mesh.vao());
-        gfx.glUseProgram(self.shader_program.program());
-        terrain.update_textures(gfx);
-        terrain.bind_textures(gfx);
+    pub fn queue_terrain(&mut self, width: u32, height: u32, height_texture: u32, color_texture: u32) {
+        self.render_queue.push(TerrainInfo { width, height, height_texture, color_texture });
+    }
 
-        gfx.glActiveTexture(TextureUnit::GL_TEXTURE2);
-        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.noise_texture.texture_id());
+    pub fn render(&mut self, gfx: &Graphics, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
+        for terrain in self.render_queue.drain(..) {
+            gfx.glBindVertexArray(self.mesh.vao());
+            gfx.glUseProgram(self.shader_program.program());
+            
+            gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
+            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, terrain.height_texture);
 
-        // uniform mat4 vp;
-        let vp = projection_matrix * view_matrix;
-        gfx.glUniformMatrix4f(self.vp_location, false, &vp);
-        // uniform uvec2 terrainDimensions;
-        gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width(), terrain.height());
-        // uniform float heightScale;
-        gfx.glUniform1f(self.height_scale_location, 15.0);
-        // uniform vec3 viewPos;
-        gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
-        gfx.glUniform1i(self.noise_map_size_location, self.noise_texture.width() as i32);
+            gfx.glActiveTexture(TextureUnit::GL_TEXTURE1);
+            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, terrain.color_texture);
 
-        gfx.glDrawElementsInstanced(PrimitiveType::GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width() * terrain.height());
+            gfx.glActiveTexture(TextureUnit::GL_TEXTURE2);
+            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.noise_texture.texture_id());
 
-        // todo!()
+            // uniform mat4 vp;
+            let vp = projection_matrix * view_matrix;
+            gfx.glUniformMatrix4f(self.vp_location, false, &vp);
+            // uniform uvec2 terrainDimensions;
+            gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width, terrain.height);
+            // uniform float heightScale;
+            gfx.glUniform1f(self.height_scale_location, 15.0);
+            // uniform vec3 viewPos;
+            gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
+            gfx.glUniform1i(self.noise_map_size_location, self.noise_texture.width() as i32);
+
+            gfx.glDrawElementsInstanced(PrimitiveType::GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width * terrain.height);
+        }
     }
 }

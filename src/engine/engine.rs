@@ -2,7 +2,7 @@
 use gl46::{GL_COLOR_BUFFER_BIT, GL_DEPTH_BUFFER_BIT};
 use glfw::{Action, WindowEvent};
 
-use crate::engine::{errors::{Error, Result}, graphics::sprite_renderer::SpriteRenderer};
+use crate::engine::{errors::{Error, Result}, graphics::{sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}};
 
 use super::{game_object::World, graphics::Graphics, input::Input};
 
@@ -11,6 +11,7 @@ pub struct Engine {
     pub world: World,
     pub input: Input,
     pub(in crate::engine) sprite_renderer: SpriteRenderer,
+    pub(in crate::engine) terrain_renderer: TerrainRenderer,
     fixed_tick_duration: f64,
     fixed_input: Input,
     error_queue: Vec<Error>
@@ -29,8 +30,9 @@ impl Engine {
         let world = World::new();
 
         let sprite_renderer = SpriteRenderer::new(&gfx)?;
+        let terrain_renderer = TerrainRenderer::new(&gfx)?;
         
-        Ok(Engine { gfx, world, sprite_renderer, fixed_tick_duration: 1.0 / 60.0, error_queue: Vec::new(), input: Input::new(), fixed_input: Input::new() })
+        Ok(Engine { gfx, world, sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, error_queue: Vec::new(), input: Input::new(), fixed_input: Input::new() })
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -133,6 +135,7 @@ impl Engine {
                 Some(camera) => {
                     let mut camera = camera.borrow_mut();
                     self.sprite_renderer.render(&self.gfx, &camera.view_matrix(), &camera.projection_matrix());
+                    self.terrain_renderer.render(&self.gfx, camera.view_matrix(), camera.projection_matrix(), camera.position());
                 },
                 _ => ()
             }

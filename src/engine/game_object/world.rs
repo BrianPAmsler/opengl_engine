@@ -11,7 +11,7 @@ pub struct World {
     ordered_components: BTreeMap<i32, HashSet<ComponentID>>,
     uninitialized_components: BTreeMap<i32, HashSet<ComponentID>>,
     removed_comonents: Vec<(ObjectID, Box<dyn Component>)>,
-    main_camera: RefCell<Option<Rc<RefCell<Camera>>>> // yikes
+    main_camera: Option<Rc<RefCell<Camera>>> // yikes
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
@@ -39,7 +39,7 @@ impl World {
             ordered_components: BTreeMap::new(),
             uninitialized_components: BTreeMap::new(),
             removed_comonents: Vec::new(),
-            main_camera: RefCell::new(None)
+            main_camera: None
         };
 
         world.add_component(world.root, Transform::ZERO).expect("This also shouldn't happen!");
@@ -112,11 +112,11 @@ impl World {
     }
 
     pub fn get_main_camera(&self) -> Option<Rc<RefCell<Camera>>> {
-        self.main_camera.borrow().clone()
+        self.main_camera.clone()
     }
 
-    pub fn set_main_camera(&self, camera: Rc<RefCell<Camera>>) {
-        *self.main_camera.borrow_mut() = Some(camera)
+    pub fn set_main_camera(&mut self, camera: Rc<RefCell<Camera>>) {
+        self.main_camera = Some(camera)
     }
 
     pub fn get_name(&self, object: ObjectID) -> Result<&str> {

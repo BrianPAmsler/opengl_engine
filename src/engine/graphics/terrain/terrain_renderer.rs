@@ -5,7 +5,6 @@ use rand::RngExt;
 
 use crate::engine::graphics::builder::TextureBuilder;
 use crate::engine::graphics::gl_enums::{InternalFormat, PixelFormat, PrimitiveType, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit, TextureWrapMode};
-use crate::engine::graphics::terrain::Terrain;
 use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader};
 use crate::engine::errors::Result;
 

@@ -8,10 +8,9 @@ use engine::{errors::{Error, Result}, game_object::{component::Component, Object
 use gl46::GL_BACK;
 use gl_types::{geometric::normalize, vec2, vec3};
 use glfw::Key;
-use image::{ImageBuffer, Luma, imageops};
 use regex::Regex;
 
-use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::{Terrain, terrain_renderer::TerrainRenderer}}};
+use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
 
 #[derive(Clone, Default)]

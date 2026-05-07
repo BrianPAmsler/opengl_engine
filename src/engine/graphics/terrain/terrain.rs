@@ -1,6 +1,6 @@
 use image::{ImageBuffer, Luma, imageops};
 
-use crate::engine::{errors::{BasicError}, game_object::component::Component, graphics::{Graphics, Texture, builder::TextureBuilder, gl_enums::{InternalFormat, PixelFormat, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit}}};
+use crate::engine::{errors::{BasicError}, game_object::component::Component, graphics::{Graphics, Texture, builder::TextureBuilder, gl_enums::{InternalFormat, PixelFormat, TextureMagFilter, TextureMinFilter}}};
 
 pub enum Corner {
     TopLeft,

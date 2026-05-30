@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, i32, path::Path};
 
-use gl_types::{vec2, vec3};
+use gl_types::{vec2, vec3, vectors::Vec2};
 
 use crate::engine::{Engine, errors::Result, game_object::{ObjectID, component::Component}, graphics::{image::Image, sprite_renderer::SpriteSheetID}};
 
@@ -81,19 +81,16 @@ enum SpriteSheetEnum {
 
 pub struct Sprite {
     sprite_sheet_id: SpriteSheetEnum,
-    pub data: SpriteData
+    pub anchor: Vec2,
+    sprite_index: u32
 }
 
 impl Sprite {
     pub fn new(sprite_sheet_name: &str, sprite_index: u32) -> Sprite {
         Sprite {
             sprite_sheet_id: SpriteSheetEnum::Name(sprite_sheet_name.to_owned()),
-            data: SpriteData { 
-                position: vec3!(0),
-                anchor: vec2!(0),
-                dimensions: vec2!(1),
-                sprite_id: sprite_index
-            }
+            anchor: Vec2::ZERO,
+            sprite_index
         }
     }
 }
@@ -108,10 +105,12 @@ impl Component for Sprite {
         Ok(())
     }
 
-    fn update(&mut self, engine: &mut Engine, _owner: ObjectID, _delta_time: f32) -> Result<()> {
+    fn update(&mut self, engine: &mut Engine, owner: ObjectID, _delta_time: f32) -> Result<()> {
         let SpriteSheetEnum::ID(sprite_sheet) = self.sprite_sheet_id else { return Ok(()); };
+        let transform = engine.world.get_transform(owner)?;
+
         engine.sprite_renderer.queue_sprite_instance(
-            self.data,
+            SpriteData { position: *transform.position(), anchor: self.anchor, dimensions: transform.scale().xy(), sprite_id: self.sprite_index },
             sprite_sheet
         );
 

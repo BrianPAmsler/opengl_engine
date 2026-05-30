@@ -1,8 +1,10 @@
 use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::{BTreeMap, HashSet}, rc::Rc};
 
-use crate::engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, graphics::Camera};
+use gl_types::vectors::Vec3;
 
-use super::{component::{components::Transform, Component}, game_object::GameObject};
+use crate::engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, errors::{ObjectError, Result}, game_object::game_object::Transform, graphics::Camera};
+
+use super::{component::Component, game_object::GameObject};
 
 pub struct World {
     pub(in crate::engine::game_object) root: ObjectID,
@@ -29,10 +31,10 @@ pub struct ComponentID {
 impl World {
     pub(in crate::engine) fn new() -> World {
         let mut objects = VecAllocator::new();
-        let root = objects.insert(GameObject { name: "root".to_owned(), parent: ObjectID { idx: AllocationIndex::null() }, components: Vec::new(), children: HashSet::new() });
+        let root = objects.insert(GameObject { name: "root".to_owned(), parent: ObjectID { idx: AllocationIndex::null() }, position: Vec3::ZERO, rotation: Vec3::ZERO, scale: Vec3::ONE, components: Vec::new(), children: HashSet::new() });
         let root = ObjectID { idx: root };
 
-        let mut world = World {
+        World {
             root,
             objects,
             components: VecAllocator::new(),
@@ -40,11 +42,7 @@ impl World {
             uninitialized_components: BTreeMap::new(),
             removed_comonents: Vec::new(),
             main_camera: None
-        };
-
-        world.add_component(world.root, Transform::ZERO).expect("This also shouldn't happen!");
-
-        world
+        }
     }
 
     fn init(engine: &mut Engine) -> Result<()> {
@@ -193,10 +191,9 @@ impl World {
         self.objects.get(parent.idx).map_err(obj_error)?;
 
         let name = name.into();
-        let new_obj = GameObject { name, parent: self.root, components: Vec::new(), children: HashSet::new() };
+        let new_obj = GameObject { name, parent: self.root, position: Vec3::ZERO, rotation: Vec3::ZERO, scale: Vec3::ONE, components: Vec::new(), children: HashSet::new() };
         let new_obj = ObjectID { idx: self.objects.insert(new_obj) };
 
-        self.add_component(new_obj, Transform::ZERO).expect("This shouldn't happen!");
         self.set_parent(new_obj, parent).unwrap();
 
         Ok(new_obj)
@@ -271,6 +268,12 @@ impl World {
 
     pub fn get_owner(&self, component: ComponentID) -> ObjectID {
         component.owner
+    }
+
+    pub fn get_transform(&mut self, object: ObjectID) -> Result<Transform<'_>> {
+        let obj = self.objects.get_mut(object.idx).map_err(obj_error)?;
+
+        Ok(Transform { obj })
     }
 
     pub fn destroy(&mut self, object: ObjectID) -> Result<()> {

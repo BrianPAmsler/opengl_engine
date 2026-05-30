@@ -65,8 +65,8 @@ impl Component for FPSCounter {
 pub struct Renderer {
     camera: Rc<RefCell<Camera>>,
     camera_size: f32,
-    sprite1: Option<ComponentID>,
-    sprite2: Option<ComponentID>
+    sprite1: Option<ObjectID>,
+    sprite2: Option<ObjectID>
 }
 
 impl Component for Renderer {
@@ -81,9 +81,6 @@ impl Component for Renderer {
 
         let sprite1 = engine.world.find_child(engine.world.get_root(), "Sprite 1")?.unwrap();
         let sprite2 = engine.world.find_child(engine.world.get_root(), "Sprite 2")?.unwrap();
-
-        let sprite1 = engine.world.get_component::<Sprite>(sprite1)?;
-        let sprite2 = engine.world.get_component::<Sprite>(sprite2)?;
 
         self.sprite1 = Some(sprite1);
         self.sprite2 = Some(sprite2);
@@ -120,25 +117,25 @@ impl Component for Renderer {
             camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
         }
 
-        let mut sprite = engine.world.borrow_component_mut::<Sprite>(self.sprite2.unwrap())?;
+        let mut sprite = engine.world.get_transform(self.sprite2.unwrap())?;
         if engine.input.get_key_state(Key::Up).is_down {
-            sprite.data.position += vec3!(0, 0, 1) * delta_time * speed;
+            *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
         }
 
         if engine.input.get_key_state(Key::Left).is_down {
-            sprite.data.position += vec3!(-1, 0, 0) * delta_time * speed;
+            *sprite.position_mut() += vec3!(-1, 0, 0) * delta_time * speed;
         }
         if engine.input.get_key_state(Key::Down).is_down {
-            sprite.data.position += vec3!(0, 0, -1) * delta_time * speed;
+            *sprite.position_mut() += vec3!(0, 0, -1) * delta_time * speed;
         }
         if engine.input.get_key_state(Key::Right).is_down {
-            sprite.data.position += vec3!(1, 0, 0) * delta_time * speed;
+            *sprite.position_mut() += vec3!(1, 0, 0) * delta_time * speed;
         }
         if engine.input.get_key_state(Key::RightShift).is_down {
-            sprite.data.position += vec3!(0, 1, 0) * delta_time * speed;
+            *sprite.position_mut() += vec3!(0, 1, 0) * delta_time * speed;
         }
         if engine.input.get_key_state(Key::RightControl).is_down {
-            sprite.data.position += vec3!(0, -1, 0) * delta_time * speed;
+            *sprite.position_mut() += vec3!(0, -1, 0) * delta_time * speed;
         }
 
         self.camera_size -= engine.input.get_scroll_y() as f32;
@@ -166,9 +163,9 @@ fn start_game() -> Result<()> {
     let sprite2 = engine.world.create_game_object("Sprite 2", engine.world.get_root())?;
 
     let mut sprite_component1 = Sprite::new("sprite_sheet.png", 0);
-    sprite_component1.data.anchor = vec2!(0.5, 0);
+    sprite_component1.anchor = vec2!(0.5, 0);
     let mut sprite_component2 = Sprite::new("sprite_sheet.png", 1);
-    sprite_component2.data.anchor = vec2!(0.5, 0);
+    sprite_component2.anchor = vec2!(0.5, 0);
 
     engine.world.add_component(sprite1, sprite_component1)?;
     engine.world.add_component(sprite2, sprite_component2)?;

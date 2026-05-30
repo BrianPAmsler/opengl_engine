@@ -129,15 +129,15 @@ impl Terrain {
         unsafe { Self::from_raw_unchecked(gfx, height_data, color_data, width, height) }
     }
 
-    pub fn get_raw_height(&self) -> Option<&[u8]> {
-        let Self(TerrainInner::Initialized { height_data, .. }) = self else { return None };
-        Some(height_data)
+    pub fn get_raw_height(&self) -> Result<&[u8], BasicError> {
+        let Self(TerrainInner::Initialized { height_data, .. }) = self else { return Err(BasicError::Uninitialized) };
+        Ok(height_data)
     }
 
-    pub fn get_raw_colors(&self) -> Option<&[u8]> {
-        let Self(TerrainInner::Initialized { color_data, .. }) = self else { return None };
+    pub fn get_raw_colors(&self) -> Result<&[u8], BasicError> {
+        let Self(TerrainInner::Initialized { color_data, .. }) = self else { return Err(BasicError::Uninitialized) };
 
-        Some(color_data)
+        Ok(color_data)
     }
 
     // pub fn get_cell<'a>(&'a self, x: u32, z: u32) -> Option<TerrainCell<'a>> {

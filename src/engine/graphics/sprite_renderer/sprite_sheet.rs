@@ -1,8 +1,9 @@
 use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, ops::DerefMut};
 
+use image::{RgbaImage, imageops};
 use lazy_static::lazy_static;
 
-use crate::engine::graphics::{Graphics, Texture, gl_enums::InternalFormat, image::Image};
+use crate::engine::graphics::{Graphics, Texture, builder::TextureBuilder};
 
 struct SpriteCell {
     x: u32,
@@ -27,7 +28,7 @@ impl PartialEq for SpriteCell {
 impl Eq for SpriteCell {}
 
 struct ImageCell {
-    img: Image, 
+    img: RgbaImage, 
     name: String
 }
 
@@ -88,7 +89,7 @@ impl SpriteSheetBuilder {
         (SpriteSheetBuilder { max_texture_size, sprites: set1}, SpriteSheetBuilder { max_texture_size, sprites: set2 })
     }
 
-    pub fn add_image(&mut self, img: Image, name: String) {
+    pub fn add_image(&mut self, img: RgbaImage, name: String) {
         self.sprites.insert(ImageCell { img, name });
     }
 
@@ -117,7 +118,7 @@ impl SpriteSheetBuilder {
         let initial_size = first_image.img.width().max(first_image.img.height());
         let mut root = Node { x: 0, y: 0, w: initial_size, h: initial_size, img: None, right: None, down:  None };
 
-        lazy_static! { static ref EMPTY_CELL: ImageCell = ImageCell { img: Image::empty(0, 0), name: String::from("") }; }
+        lazy_static! { static ref EMPTY_CELL: ImageCell = ImageCell { img: RgbaImage::new(0, 0), name: String::from("") }; }
 
         fn find_node<'a, 'b>(root: &'a mut Node<'b>, width: u32, height: u32) -> Option<&'a mut Node<'b>> {
             match root {
@@ -299,7 +300,7 @@ impl SpriteSheetBuilder {
             return Err(self);
         }
 
-        let mut final_sheet = Image::empty(root.w + 1, root.h + 1);
+        let mut final_sheet = RgbaImage::new(root.w + 1, root.h + 1);
 
         let mut sprite_list = Vec::new();
         let mut q = VecDeque::new();
@@ -318,7 +319,7 @@ impl SpriteSheetBuilder {
                             name: name.clone(),
                         };
 
-                        final_sheet.blit(&img, sprite.x, sprite.y);
+                        imageops::replace(&mut final_sheet, img, sprite.x as i64, sprite.y as i64);
                         sprite_list.push(sprite);
                     }
 
@@ -357,16 +358,16 @@ impl SpriteSheetBuilder {
 }
 
 pub struct SpriteSheet {
-    sheet: Image,
+    sheet: RgbaImage,
     sprites: Vec<SpriteCell>
 }
 
 impl SpriteSheet {
     pub fn as_texture(self, gfx: &Graphics) -> Texture {
-        self.sheet.as_texture(gfx, InternalFormat::GL_RGBA)
+        TextureBuilder::from_image(self.sheet).finish(gfx).unwrap()
     }
 
-    pub fn image(&self) -> &Image {
+    pub fn image(&self) -> &RgbaImage {
         &self.sheet
     }
 
@@ -379,9 +380,8 @@ impl SpriteSheet {
 mod tests {
     use std::{ffi::OsStr, fs::OpenOptions};
 
+    use image::ImageReader;
     use pathbuf::pathbuf;
-
-    use crate::engine::graphics::image::Image;
 
     use super::SpriteSheetBuilder;
 
@@ -403,7 +403,7 @@ mod tests {
         }
 
         let mut builder = SpriteSheetBuilder::new(100000000);
-        files.into_iter().map(|file| (Image::load_from_file(&file).unwrap(), file.file_name().unwrap().to_str().unwrap().to_owned()))
+        files.into_iter().map(|file| (image::open(&file).unwrap().to_rgba8(), file.file_name().unwrap().to_str().unwrap().to_owned()))
         .for_each(|(img, name)| {
             builder.add_image(img, name);
         });
@@ -412,8 +412,7 @@ mod tests {
         
         let mut sheet_file = OpenOptions::new().create(true).write(true).open(pathbuf!("test_files", "output", "sprite_sheet.png")).unwrap();
         
-        let out = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(sprite_sheet.image().width(), sprite_sheet.image().height(), sprite_sheet.image().data()).unwrap();
-        out.write_to(&mut sheet_file, image::ImageFormat::Png).unwrap();
+        sprite_sheet.sheet.write_to(&mut sheet_file, image::ImageFormat::Png).unwrap();
 
         panic!("This test is not automated. Manually verify the result at: test_files/output/sprite_sheet.png");
     }

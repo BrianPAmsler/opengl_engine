@@ -1,25 +1,37 @@
-use log::warn;
+use std::sync::Arc;
 
-use crate::engine::graphics::gl_enums::{PixelFormat, PixelType, TextureTarget};
+use vulkano::{buffer::{Buffer, BufferCreateInfo, BufferUsage}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo}, image::{Image, sampler::Sampler, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, sync::GpuFuture as _};
+
+use crate::engine::errors::Result;
 
 use super::Graphics;
 
-
+#[derive(Clone)]
 pub struct Texture {
-    texture_id: u32,
+    image: Arc<Image>,
+    view: Arc<ImageView>,
+    sampler: Arc<Sampler>,
     width: u32,
     height: u32
 }
 
 impl Texture {
-    pub unsafe fn update_texture(&self, gfx: &Graphics, texture_data: &[u8], format: PixelFormat) {
-        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.texture_id);
-        gfx.glTextureSubImage2D(self.texture_id, 0, 0, 0, self.width, self.height, format, PixelType::GL_UNSIGNED_BYTE, texture_data);
-        gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, 0);
+    pub unsafe fn update_texture(&self, gfx: &Graphics, image_data: Vec<u8>) -> Result<()> {
+        buffer_to_image(gfx, image_data, &self.image)?;
+
+        Ok(())
     }
 
-    pub fn texture_id(&self) -> u32 {
-        self.texture_id
+    pub(in crate::engine::graphics) fn image(&self) -> &Arc<Image> {
+        &self.image
+    }
+
+    pub(in crate::engine::graphics) fn view(&self) -> &Arc<ImageView> {
+        &self.view
+    }
+
+    pub(in crate::engine::graphics) fn sampler(&self) -> &Arc<Sampler> {
+        &self.sampler
     }
 
     pub fn width(&self) -> u32 {
@@ -29,99 +41,125 @@ impl Texture {
     pub fn height(&self) -> u32 {
         self.height
     }
-
-    pub fn delete(mut self, gfx: &Graphics) {
-        gfx.glDeleteTextures(&[self.texture_id]);
-        self.texture_id = 0;
-    }
 }
 
-impl Drop for Texture {
-    fn drop(&mut self) {
-        if self.texture_id != 0 {
-            warn!("Texture leaked!")
-        }
-    }
+fn buffer_to_image(gfx: &Graphics, image_data: Vec<u8>, image: &Arc<Image>) -> Result<()> {
+    let staging_buffer = Buffer::from_iter(
+        gfx.memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::TRANSFER_SRC,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        image_data,
+    )?;
+    
+    let mut builder = AutoCommandBufferBuilder::primary(
+        gfx.command_buffer_allocator.clone(),
+        gfx.queue.queue_family_index(),
+        CommandBufferUsage::OneTimeSubmit,
+    )?;
+
+    builder.copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+        staging_buffer.clone(),
+        image.clone(),
+    ))?;
+
+    let command_buffer = builder.build().unwrap();
+    let future = vulkano::sync::now(gfx.device.clone())
+        .then_execute(gfx.queue.clone(), command_buffer)?
+        .then_signal_fence_and_flush()?;
+
+    future.wait(None)?;
+
+    Ok(())
 }
 
 pub mod builder {
-    use crate::engine::graphics::{Graphics, Texture, gl_enums::{InternalFormat, PixelFormat, PixelType, TextureMagFilter, TextureMinFilter, TextureParameterName, TextureTarget, TextureWrapMode}};
+    use image::{RgbaImage, imageops};
+    use vulkano::{format::Format, image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode}, view::{ImageView, ImageViewCreateInfo}}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}};
 
-    pub struct TextureBuilder<'a> {
-        data: &'a [u8],
-        width: u32,
-        height: u32,
-        internal_format: InternalFormat,
-        format: PixelFormat,
-        wrap_s: TextureWrapMode,
-        wrap_t: TextureWrapMode,
-        min_filter: TextureMinFilter,
-        mag_filter: TextureMagFilter,
+    use crate::engine::{errors::Result, graphics::{Graphics, Texture, texture::buffer_to_image}};
+
+    pub struct TextureBuilder {
+        image: RgbaImage,
+        wrap_s: SamplerAddressMode,
+        wrap_t: SamplerAddressMode,
+        min_filter: Filter,
+        mag_filter: Filter,
     }
 
-    impl<'a> TextureBuilder<'a> {
-        pub unsafe fn from_raw_pixels_unchecked(data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder<'_> {
+    impl TextureBuilder {
+        pub fn from_image(image: RgbaImage) -> TextureBuilder {
             TextureBuilder {
-                data,
-                width,
-                height,
-                internal_format,
-                format,
-                wrap_s: TextureWrapMode::GL_REPEAT,
-                wrap_t: TextureWrapMode::GL_REPEAT,
-                min_filter: TextureMinFilter::GL_LINEAR,
-                mag_filter: TextureMagFilter::GL_LINEAR,
+                image,
+                wrap_s: SamplerAddressMode::Repeat,
+                wrap_t: SamplerAddressMode::Repeat,
+                min_filter: Filter::Linear,
+                mag_filter: Filter::Linear,
             }
         }
 
-        pub fn from_raw_pixels(data: &[u8], width: u32, height: u32, internal_format: InternalFormat, format: PixelFormat) -> TextureBuilder<'_> {
-            let _ignore = (data, width, height, internal_format, format);
-            let todo = todo!("Cannot be implemented until pixel format enums are properly wrapped.");
-            // unsafe { Self::from_raw_data(data, width, height) }
-        }
-
-        pub fn wrap_s(mut self, wrap_s: TextureWrapMode) -> Self {
+        pub fn wrap_s(mut self, wrap_s: SamplerAddressMode) -> Self {
             self.wrap_s = wrap_s;
             self
         }
 
-        pub fn wrap_t(mut self, wrap_t: TextureWrapMode) -> Self {
+        pub fn wrap_t(mut self, wrap_t: SamplerAddressMode) -> Self {
             self.wrap_t = wrap_t;
             self
         }
 
-        pub fn min_filter(mut self, min_filter: TextureMinFilter) -> Self {
+        pub fn min_filter(mut self, min_filter: Filter) -> Self {
             self.min_filter = min_filter;
             self
         }
 
-        pub fn mag_filter(mut self, mag_filter: TextureMagFilter) -> Self {
+        pub fn mag_filter(mut self, mag_filter: Filter) -> Self {
             self.mag_filter = mag_filter;
             self
         }
 
-        pub fn finish(self, gfx: &Graphics) -> Texture {
-            let Self { data, width, height, internal_format, format, wrap_s, wrap_t, min_filter, mag_filter } = self;
+        pub fn finish(self, gfx: &Graphics) -> Result<Texture> {
+            let Self { image, wrap_s, wrap_t, min_filter, mag_filter } = self;
 
-            let mut texture_id = 0;
-            gfx.glGenTexture(&mut texture_id);
+            let (width, height) = image.dimensions();
+            let data = image.into_raw();
+            let image = Image::new(
+                gfx.memory_allocator.clone(),
+                ImageCreateInfo {
+                    image_type: ImageType::Dim2d,
+                    format: Format::R8G8B8A8_SRGB,
+                    extent: [width, height, 1],
+                    usage: ImageUsage::TRANSFER_DST | ImageUsage::SAMPLED,
+                    ..Default::default()
+                },
+                AllocationCreateInfo {
+                    memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+                    ..Default::default()
+                },
+            )?;
 
-            if data.len() > 0 {
-                gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, texture_id);
+            buffer_to_image(gfx, data, &image)?;
 
-                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_WRAP_S, gl46::GLenum(wrap_s as u32));	
-                gfx.glTexParameteri( TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_WRAP_T, gl46::GLenum(wrap_t as u32));
-                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_MIN_FILTER, gl46::GLenum(min_filter as u32));
-                gfx.glTexParameteri(TextureTarget::GL_TEXTURE_2D, TextureParameterName::GL_TEXTURE_MAG_FILTER, gl46::GLenum(mag_filter as u32));
+            let sampler = Sampler::new(
+                gfx.device.clone(),
+                SamplerCreateInfo {
+                    mag_filter,
+                    min_filter,
+                    mipmap_mode: SamplerMipmapMode::Nearest,
+                    address_mode: [wrap_s, wrap_t, SamplerAddressMode::Repeat],
+                    mip_lod_bias: 0.0,
+                    ..Default::default()
+                },
+            )?;
 
-                unsafe { gfx.glTexImage2D(TextureTarget::GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, PixelType::GL_UNSIGNED_BYTE, data) };
-                // TODO: mipmaps
-                // gfx.glGenerateMipmap(GL_TEXTURE_2D);
+            let view = ImageView::new_default(image.clone())?;
 
-                gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, 0);
-            }
-
-            Texture { texture_id, width, height }
+            Ok(Texture { image, view, sampler, width, height  })
         }
     }
 }

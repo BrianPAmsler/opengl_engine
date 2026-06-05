@@ -31,10 +31,28 @@ pub enum GraphicsError {
     GraphicsNotInitializedError,
     #[error("Failed to create window!")]
     WindowCreationFailError,
-    #[error("{msg}")]
-    GLLoadError{msg: &'static str},
     #[error(transparent)]
-    GLInitError(#[from] glfw::InitError)
+    VulkanLoadingError(#[from] vulkano::LoadingError),
+    #[error(transparent)]
+    ValidatedVulkanError(#[from] vulkano::Validated<vulkano::VulkanError>),
+    #[error(transparent)]
+    VulkanError(#[from] vulkano::VulkanError),
+    #[error(transparent)]
+    EventLoopError(#[from] winit::error::EventLoopError),
+    #[error(transparent)]
+    FromWindowError(#[from] vulkano::swapchain::FromWindowError),
+    #[error(transparent)]
+    HandleError(#[from] winit::raw_window_handle::HandleError),
+    #[error(transparent)]
+    AllocatedBufferError(#[from] vulkano::Validated<vulkano::buffer::AllocateBufferError>),
+    #[error(transparent)]
+    AllocateImageError(#[from] vulkano::Validated<vulkano::image::AllocateImageError>),
+    #[error(transparent)]
+    HostAccessError(#[from] vulkano::sync::HostAccessError),
+    #[error(transparent)]
+    VulkanoValidationError(#[from] Box<vulkano::ValidationError>),
+    #[error(transparent)]
+    CommandBufferExecError(#[from] vulkano::command_buffer::CommandBufferExecError)
 }
 
 #[derive(Error, Debug)]
@@ -73,7 +91,7 @@ pub enum Error {
         backtrace: BT
     },
     #[error("Option contained None value.")]
-    OptionError {
+    NoneError {
         backtrace: BT
     },
     #[error("{msg}")]
@@ -88,14 +106,21 @@ pub enum Error {
     }
 }
 
+pub fn none_error() -> Error {
+    Error::NoneError { backtrace: BT::new() }
+}
+
 impl From<ObjectError> for Error {
     fn from(value: ObjectError) -> Self {
         Error::ObjectError { source: value, backtrace: BT::new() }
     }
 }
 
-impl From<GraphicsError> for Error {
-    fn from(value: GraphicsError) -> Self {
+impl<T> From<T> for Error
+where 
+    GraphicsError: From<T> {
+    fn from(value: T) -> Self {
+        let value = GraphicsError::from(value);
         Error::GraphicsError { source: value, backtrace: BT::new() }
     }
 }
@@ -109,12 +134,6 @@ impl From<ImageError> for Error {
 impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
         Error::IoError { source: value, backtrace: BT::new() }
-    }
-}
-
-impl From<glfw::InitError> for Error {
-    fn from(value: glfw::InitError) -> Self {
-        GraphicsError::from(value).into()
     }
 }
 
@@ -145,7 +164,7 @@ impl Error {
             Error::ImageError { backtrace, .. } => backtrace,
             Error::IoError { backtrace, .. } => backtrace,
             Error::StaticStringError { backtrace, .. } => backtrace,
-            Error::OptionError { backtrace } => backtrace,
+            Error::NoneError { backtrace } => backtrace,
             Error::BasicError { backtrace, .. } => backtrace
         }
     }

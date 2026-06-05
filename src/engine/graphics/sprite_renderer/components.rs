@@ -1,27 +1,32 @@
-use std::{collections::VecDeque, i32, path::Path};
+use std::{i32, path::Path};
 
-use gl_types::{vec2, vec3, vectors::Vec2};
+use gl_types::vectors::Vec2;
 
-use crate::engine::{Engine, errors::Result, game_object::{ObjectID, component::Component}, graphics::{image::Image, sprite_renderer::SpriteSheetID}};
+use crate::engine::{Engine, errors::Result, game_object::{ObjectID, component::Component}, graphics::{sprite_renderer::{SpriteDefinition, SpriteSheetID}}};
 
 use super::SpriteData;
 
 pub struct SpriteSheet {
     id: Option<SpriteSheetID>,
     filename: Option<String>,
-    sprite_definitions: VecDeque<(u32, u32, u32, u32)>,
+    sprite_definitions: Vec<SpriteDefinition>,
     count: usize
 }
 
 impl SpriteSheet {
     pub fn new(file_name: &str) -> SpriteSheet {
-        SpriteSheet { id: None, filename: Some(file_name.to_owned()), sprite_definitions: VecDeque::new(), count: 0 }
+        SpriteSheet { id: None, filename: Some(file_name.to_owned()), sprite_definitions: Vec::new(), count: 0 }
     }
 
     pub fn add_sprite(&mut self, x: u32, y: u32, width: u32, height: u32) -> u32 {
         let idx = self.sprite_definitions.len() + self.count;
 
-        self.sprite_definitions.push_back((x, y, width, height));
+        self.sprite_definitions.push(SpriteDefinition {
+            x,
+            y,
+            width,
+            height,
+        });
 
         idx as u32
     }
@@ -34,37 +39,24 @@ impl SpriteSheet {
 }
 
 impl Component for SpriteSheet {
-    // TODO: Is defferring initialization until the next frame actaully better than initializing in the constructor??
     fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
         let path = Path::new(self.filename.as_ref().unwrap());
-        let sprite_map = Image::load_from_file(path)?;
+        let sprite_sheet = image::open(path)?;
+        let sprite_map = std::mem::take(&mut self.sprite_definitions);
+        println!("init sprite sheet: {:?}", path);
         let name: Option<_> = (|| Some(path.file_name()?.to_str()?))();
 
         // If add_sprite_sheet returns None it should panic, so rewrap the unwrapped result.
-        self.id = Some(engine.sprite_renderer.add_sprite_sheet(name.ok_or("None value")?, &engine.gfx, 1024, sprite_map).ok_or("None value")?);
+        self.id = Some(engine.sprite_renderer.add_sprite_sheet(name.ok_or("None value")?, &mut engine.gfx, 1024, sprite_sheet, &sprite_map)?);
         self.filename = None;
 
         Ok(())
     }
 
-    fn fixed_update(&mut self, engine: &mut Engine, _owner: ObjectID, _delta_time: f32) -> Result<()> {
-        let mut update = false;
-        while !self.sprite_definitions.is_empty() {
-            let (x, y, width, height) = self.sprite_definitions.pop_front().unwrap();
-            engine.sprite_renderer.add_sprite(self.id.unwrap(), x, y, width, height);
-            self.count += 1;
-            update = true;
-        }
-
-        if update {
-            engine.sprite_renderer.update_sprite_map(&engine.gfx, self.id.unwrap());
-        }
-
-        Ok(())
-    }
+    fn fixed_update(&mut self, engine: &mut Engine, _owner: ObjectID, _delta_time: f32) -> Result<()> { Ok(()) }
 
     fn on_remove(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
-        engine.sprite_renderer.remove_sprite_sheet(&engine.gfx, self.id.unwrap());
+        engine.sprite_renderer.remove_sprite_sheet(&mut engine.gfx, self.id.unwrap());
 
         Ok(())
     }

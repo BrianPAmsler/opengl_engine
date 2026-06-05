@@ -1,9 +1,7 @@
-#version 460 core
+#version 460
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
-
-uniform mat4 VP;
 
 struct Sprite {
     vec3 position;
@@ -11,20 +9,29 @@ struct Sprite {
     uint spriteID;
 };
 
-layout(std430, binding=2) buffer spriteSSBO {
+layout(set = 0, binding = 0) uniform sampler2D spriteSheet;
+
+layout(set = 0, binding = 1) buffer InputData {
+    mat4 view;
+    mat4 projection;
+    vec2 texelOffset;
+};
+
+layout(set = 0, std430, binding = 2) buffer spriteSSBO {
     int spriteCount;
     Sprite sprites[];
 };
 
-layout(std430, binding=3) buffer spriteSheetSSBO {
+layout(set = 0, std430, binding=3) buffer spriteSheetSSBO {
     int spriteIDCount;
     vec4 spriteBounds[];
-};
+}; 
 
-out vec2 texCoords;
+layout(location = 0) out vec2 texCoords;
 
 void main()
 {
+    spriteCount = 69;
     sprites[0] = Sprite(
         vec3(1, 2, 3),
         vec4(4, 5, 6, 7),
@@ -37,8 +44,26 @@ void main()
         16
     );
 
-    spriteBounds[0] = ivec4(1, 2, 3, 4);
-    spriteBounds[1] = ivec4(5, 6, 7, 8);
+    view = mat4(
+         1,  2,  3,  4,
+         5,  6,  7,  8,
+         9, 10, 11, 12,
+        13, 14, 15, 16
+    );
+
+    projection = mat4(
+        17, 18, 19, 20,
+        21, 22, 23, 24,
+        25, 26, 27, 28,
+        29, 30, 31, 32
+    );
+
+    texelOffset = vec2(33, 34);
+
+    spriteBounds[0] = vec4(1, 2, 3, 4);
+    spriteBounds[1] = vec4(5, 6, 7, 8);
+
+    spriteIDCount = 420;
 
     gl_Position = vec4(position, 1.0);
     texCoords = uv;

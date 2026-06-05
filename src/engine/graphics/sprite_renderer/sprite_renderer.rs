@@ -1,41 +1,76 @@
 use std::collections::HashMap;
+use std::mem::ManuallyDrop;
+use std::sync::Arc;
 
-use gl_types::matrices::Mat4;
+use bytemuck::{Pod, Zeroable};
+use gl_types::matrices::{Mat4, MatN};
 use gl_types::{vec2, vec3, vec4};
-use gl_types::vectors::{Vec2, Vec3, Vec4};
+use gl_types::vectors::{Vec2, Vec3, Vec4, VecN};
 use embed_shader_source::embed_shader_source;
+use image::DynamicImage;
+use itertools::Itertools;
+use vulkano::buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer, view};
+use vulkano::command_buffer::DrawIndexedIndirectCommand;
+use vulkano::format;
+use vulkano::pipeline::graphics::vertex_input::Vertex;
 
 use crate::engine::data_structures::{AllocationIndex, VecAllocator};
-use crate::engine::graphics::gl_enums::{BufferTargetARB, BufferUsageARB, InternalFormat, PrimitiveType, TextureTarget, TextureUnit};
-use crate::engine::graphics::image::Image;
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, UV, VBOBufferer, Vertex, VertexShader};
+use crate::engine::graphics::builder::TextureBuilder;
+use crate::engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, UnsizedBuffer};
 
-use crate::engine::errors::Result;
+use crate::engine::errors::{Result, none_error};
 
-const SSBO_OFFSET: isize = 16;
+const SSBO_OFFSET: usize = 16;
 
-#[repr(align(16))]
-#[derive(Clone, Copy, PartialEq)]
-struct AlignedVec3(gl_types::vectors::Vec3);
+const UNIFORMS_BINDING: u32 = 1;
+const SPRITE_SHEET_BINDING: u32 = 2;
+const SPRITE_MAP_BINDING: u32 = 3;
 
-impl std::fmt::Debug for AlignedVec3 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+mod vertex_shader {
+    vulkano_shaders::shader!{
+        ty: "vertex",
+        path: "src/engine/graphics/shaders/sprite.vert",
+        root_path_env: "CARGO_MANIFEST_DIR"
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+mod fragment_shader {
+    vulkano_shaders::shader!{
+        ty: "fragment",
+        path: "src/engine/graphics/shaders/sprite.frag",
+        root_path_env: "CARGO_MANIFEST_DIR"
+    }
+}
+
+const VERTEX_DATA: &[SpriteVertex] = &[
+    SpriteVertex { position: [0.0, 0.0, 0.0], uv: [0.0, 1.0] }, // bottom left
+    SpriteVertex { position: [1.0, 0.0, 0.0], uv: [1.0, 1.0] },  // bottom right
+    SpriteVertex { position: [0.0, 1.0, 0.0], uv: [0.0, 0.0] },  // top left
+    SpriteVertex { position: [1.0, 1.0, 0.0], uv: [1.0, 0.0] },   // top right
+];
+
+const INDEX_DATA: &[u32] = &[
+    0, 1, 2,
+    2, 1, 3
+];
+
+#[repr(C, align(16))]
+#[derive(Debug, BufferContents,Clone, Copy, PartialEq)]
+struct AlignedVec3([f32; 3]);
+
+#[derive(Debug, Clone, Copy, BufferContents)]
+#[repr(C)]
 struct GLSpriteStruct {
     position: AlignedVec3,
-    dimensions: Vec4,
+    dimensions: [f32; 4],
     id: u32
 }
 
 impl Default for GLSpriteStruct {
     fn default() -> Self {
         Self {
-            position: AlignedVec3(vec3!(0)),
-            dimensions: vec4!(0),
+            position: AlignedVec3([0.0, 0.0, 0.0]),
+            dimensions: [0.0, 0.0, 0.0, 0.0],
             id: 0
         }
     }
@@ -49,179 +84,227 @@ pub struct SpriteData {
     pub sprite_id: u32
 }
 
+unsafe fn as_u8_slice<T>(slice: &[T]) -> &[u8] {
+    std::slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len() * std::mem::size_of::<T>())
+}
+
 struct SpriteSheet {
     name: String,
     render_queue: Vec<GLSpriteStruct>,
+    pipeline: PipelineHandle,
     buffersize: usize,
-    sprite_ssbo: u32,
-    spritesheet_ssbo: u32,
-    sprite_sheet: Texture,
-    sprite_map: Vec<Vec4>,
+    width: u32,
+    height: u32
 }
 
 impl SpriteSheet {
     fn buffer_sprite_data(&mut self, gfx: &Graphics) {
-        let data_size = self.render_queue.len() * std::mem::size_of::<GLSpriteStruct>() + SSBO_OFFSET as usize;
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.sprite_ssbo);
+        let data_size = self.render_queue.len() * std::mem::size_of::<GLSpriteStruct>() + SSBO_OFFSET;
 
         if data_size > self.buffersize {
             // Multiply new szie by 50% to give some wiggle room
-            self.buffersize = (data_size * 3) / 2;
-            gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, self.buffersize, BufferUsageARB::GL_DYNAMIC_DRAW);
-            gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, self.sprite_ssbo);
+            todo!("Implement uniform buffer resizing")
         }
 
-        // Buffer length data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, &[self.render_queue.len()]); 
-        // Buffer sprite data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &self.render_queue[..]); 
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0);
+        let binding = gfx.get_binding(self.pipeline, SPRITE_SHEET_BINDING);
+
+        match binding {
+            Binding::Buffer(buffer) => {
+                let buffer = Subbuffer::from(buffer).reinterpret::<SpriteSSBO>();
+                let mut buffer = buffer.write().unwrap();
+
+                // let data = SpriteSSBO {
+                //     count: self.render_queue.len() as i32,
+                //     data: self.render_queue[..].to_vec().into(),
+                // };
+                buffer.count = self.render_queue.len() as i32;
+                buffer.data[..self.render_queue.len()].copy_from_slice(&self.render_queue);
+                // let (length, array) = buffer.split_at_mut(SSBO_OFFSET);
+
+                // length[..8].copy_from_slice(bytemuck::bytes_of(&(self.render_queue.len())));
+                // let render_queue_data = unsafe { as_u8_slice(&self.render_queue[..]) };
+                // array[..render_queue_data.len()].copy_from_slice(bytemuck::cast_slice(render_queue_data));
+            },
+            _ => unreachable!("unexpected binding.")
+        }
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable, Vertex)]
+struct SpriteVertex {
+    #[format(R32G32B32_SFLOAT)]
+    position: [f32; 3],
+    #[format(R32G32_SFLOAT)]
+    uv: [f32; 2]
+}
+
+pub struct SpriteDefinition {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32
+}
+
+#[repr(C, align(16))]
+#[derive(BufferContents)]
+struct UnsizedArray<T> ([T]);
+
+#[repr(C)]
+#[derive(BufferContents)]
+struct SpriteSSBO {
+    count: i32,
+    data: [GLSpriteStruct]
+}
+
+#[repr(C, align(16))]
+#[derive(Debug, Clone, Copy, Default, BufferContents, PartialEq)]
+struct Vec4Aligned([f32; 4]);
+
+#[repr(C)]
+#[derive(BufferContents)]
+struct SpriteSheetSSBO {
+    count: i32,
+    data: [Vec4Aligned]
+}
+
+impl UnsizedBuffer for SpriteSheetSSBO {
+    fn size(count: u64) -> u64 {
+        16 + count * std::mem::size_of::<[f32; 4]>() as u64
+    }
+}
+
+#[repr(C)]
+#[derive(Default, Debug, Clone, Copy, BufferContents)]
+struct InputData {
+    view: [[f32; 4]; 4],
+    projection: [[f32; 4]; 4],
+    texel_offset: [f32; 2]
 }
 
 #[derive(Clone, Copy)]
 pub struct SpriteSheetID(AllocationIndex);
 
 pub struct SpriteRenderer {
-    program: ShaderProgram,
-    mesh: BufferedMesh,
     sprite_sheets: VecAllocator<SpriteSheet>,
     sprite_sheet_index: HashMap<String, AllocationIndex>,
-    view_location: GlUniformLocation,
-    projection_location: GlUniformLocation,
-    texel_offset_location: GlUniformLocation
 }
 
 impl SpriteRenderer {
     pub fn new(gfx: &Graphics) -> Result<SpriteRenderer> {
-        let mut program = ShaderProgramBuilder::new(gfx);
+
+        // let view_location = gfx.glGetUniformLocation(program.program(), "view");
+        // let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
+        // let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
+
+        // let mesh = Mesh::new("Sprite Mesh".to_owned(), vertex_data, None, Some(uv_data), None, None);
         
-        let vertex_shader_source = embed_shader_source!("sprite.vert");
-        let fragment_shader_source = embed_shader_source!("sprite.frag");
+        // let mut vbo = VBOBufferer::new(gfx);
+        // let mesh = vbo.add_mesh(mesh);
 
-        let vert_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
-        let frag_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?; 
+        // vbo.buffer_data(gfx);
 
-        program.attach_shader(vert_shader);
-        program.attach_shader(frag_shader);
+        // let mesh = mesh.take();
 
-        let program = program.finish();
-
-        gfx.glUseProgram(program.program());
-
-        let view_location = gfx.glGetUniformLocation(program.program(), "view");
-        let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
-        let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
-
-        let vertex_data = Box::new([
-            Vertex { x: 0.0, y: 0.0, z: 0.0 }, // bottom left
-            Vertex { x: 1.0, y: 0.0, z: 0.0 },  // bottom right
-            Vertex { x: 0.0, y: 1.0, z: 0.0 },  // top left
-        
-            Vertex { x: 0.0, y: 1.0, z: 0.0 },  // top left
-            Vertex { x: 1.0, y: 0.0, z: 0.0 },  // bottom right
-            Vertex { x: 1.0, y: 1.0, z: 0.0 },   // top right
-        ]);
-
-        let uv_data = Box::new([
-            UV { u: 0.0 , v: 0.0 },
-            UV { u: 1.0 , v: 0.0 },
-            UV { u: 0.0 , v: 1.0 },
-
-            UV { u: 0.0 , v: 1.0 },
-            UV { u: 1.0 , v: 0.0 },
-            UV { u: 1.0 , v: 1.0 },
-        ]);
-
-        let mesh = Mesh::new("Sprite Mesh".to_owned(), vertex_data, None, Some(uv_data), None, None);
-        
-        let mut vbo = VBOBufferer::new(gfx);
-        let mesh = vbo.add_mesh(mesh);
-
-        vbo.buffer_data(gfx);
-
-        let mesh = mesh.take();
-
-        Ok(SpriteRenderer { program, mesh, sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new(), view_location, projection_location, texel_offset_location })
+        Ok(SpriteRenderer { sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new() })
     }
 
-    pub fn add_sprite_sheet(&mut self, name: &str, gfx: &Graphics, initial_buffer_size: usize, sprite_sheet: Image) -> Option<SpriteSheetID> {
+    pub fn add_sprite_sheet(&mut self, name: &str, gfx: &mut Graphics, initial_buffer_size: usize, sprite_sheet: DynamicImage, sprite_map: &[SpriteDefinition]) -> Result<SpriteSheetID> {
         if self.sprite_sheet_index.contains_key(name) {
-            return None;
+            return Err(none_error());
         }
 
-        let sprite_sheet = sprite_sheet.as_texture(gfx, InternalFormat::GL_RGBA);
-        
-        let mut sprite_ssbo = 0;
-        gfx.glGenBuffer(&mut sprite_ssbo);
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sprite_ssbo);
-        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, initial_buffer_size, BufferUsageARB::GL_DYNAMIC_DRAW);
-        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, sprite_ssbo);
+        println!("add sprite sheet");
 
-        let mut spritesheet_ssbo = 0;
-        gfx.glGenBuffer(&mut spritesheet_ssbo);
+        let sprite_sheet = sprite_sheet.into_rgba8();
+        let (sheet_width, sheet_height) = sprite_sheet.dimensions();
+        
+        let sprite_sheet = TextureBuilder::from_image(sprite_sheet)
+            .finish(gfx)?;
+
+        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
+        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
+
+        let sprite_map = sprite_map.into_iter().map(|sprite| {
+            let SpriteDefinition { x, y, width, height } = *sprite;
+            // Convert pixel coordinates to uv coordinates
+            let wh = vec2!(sheet_width, sheet_height);
+            vec4!(x, y, width, height) / vec4!(wh, wh)
+        })
+        .map(|vec| Vec4Aligned(vec.as_array()))
+        // .map(|vec| bytemuck::cast::<[f32; 4], [u8; 16]>(vec))
+        // .flatten()
+        .collect_vec();
+
+        // let mut sprite_map_buffer = Vec::new();
+        // sprite_map_buffer.extend_from_slice(bytemuck::bytes_of(&(sprite_count)));
+        // sprite_map_buffer.extend(sprite_map);
+
+        // let unsized_buffer = Buffer::new_unsized::<SpriteSSBO>(
+        //     gfx.memory_allocator.clone(),
+        //     BufferCreateInfo {
+        //         usage: BufferUsage::STORAGE_BUFFER,
+        //         ..Default::default()
+        //     },
+        //     AllocationCreateInfo {
+        //         memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+        //         ..Default::default()
+        //     },
+        //     unsized_len, 
+        // ).unwrap();
+
+        let pipeline = PipelineBuilder::new(gfx)
+            .vertex_shader(vertex_shader)
+            .fragment_shader(fragment_shader)
+            .vertex_data(VERTEX_DATA.to_owned(), INDEX_DATA.to_owned())?
+            .add_texture(0, sprite_sheet)?
+            .add_uniform_buffer(UNIFORMS_BINDING, InputData::default(), BufferType::Dynamic)?
+            .add_storage_buffer_unsized::<SpriteSSBO>(SPRITE_SHEET_BINDING, initial_buffer_size as u64, BufferType::Dynamic)?
+            .add_storage_buffer_unsized::<SpriteSheetSSBO>(SPRITE_MAP_BINDING, sprite_map.len() as u64, BufferType::Static)?
+            .finish()?;
+
+        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING) {
+            Binding::Buffer(buffer) => {
+                let buffer = Subbuffer::new(buffer).reinterpret::<SpriteSheetSSBO>();
+                let mut value = buffer.write()?;
+                value.count = sprite_map.len() as i32;
+                value.data.copy_from_slice(&sprite_map);
+            },
+            _ => unreachable!()
+        }
 
         let sprite_sheet = SpriteSheet {
             name: name.to_owned(),
             render_queue: Vec::new(),
             buffersize: initial_buffer_size,
-            sprite_ssbo,
-            spritesheet_ssbo,
-            sprite_sheet,
-            sprite_map: Vec::new(),
+            pipeline,
+            width: sheet_width,
+            height: sheet_height
         };
 
         let id = self.sprite_sheets.insert(sprite_sheet);
         self.sprite_sheet_index.insert(name.to_owned(), id);
 
-        Some(SpriteSheetID(id))
+        Ok(SpriteSheetID(id))
     }
 
-    pub fn remove_sprite_sheet(&mut self, gfx: &Graphics, sprite_sheet: SpriteSheetID) {
+    pub fn remove_sprite_sheet(&mut self, gfx: &mut Graphics, sprite_sheet: SpriteSheetID) {
         let Ok(old) = self.sprite_sheets.remove(sprite_sheet.0) else { return };
 
         self.sprite_sheet_index.remove(&old.name);
-        old.sprite_sheet.delete(gfx);
-        gfx.glDeleteBuffers(&[old.sprite_ssbo, old.spritesheet_ssbo]);
+        gfx.remove_pipeline(old.pipeline).unwrap();
     }
 
     pub fn get_sprite_sheet_by_name(&self, name: &str) -> Option<SpriteSheetID> {
         self.sprite_sheet_index.get(name).map(|idx| SpriteSheetID(*idx))
     }
 
-    pub fn add_sprite(&mut self, sprite_sheet: SpriteSheetID, x: u32, y: u32, width: u32, height: u32) -> Option<usize> {
-        let Ok(sheet) = self.sprite_sheets.get_mut(sprite_sheet.0) else { return None; };
-        // Convert pixel coordinates to uv coordinates
-        let wh = vec2!(sheet.sprite_sheet.width(), sheet.sprite_sheet.height());
-        let v = vec4!(x, sheet.sprite_sheet.height() - y - height, width, height) / vec4!(wh, wh);
-
-        let idx = sheet.sprite_map.len();
-        sheet.sprite_map.push(v);
-
-        Some(idx)
-    }
-
-    pub fn update_sprite_map(&self, gfx: &Graphics, sprite_sheet: SpriteSheetID) {
-        let Ok(sheet) = self.sprite_sheets.get(sprite_sheet.0) else { return; };
-
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sheet.spritesheet_ssbo);
-        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, sheet.sprite_map.len() * size_of::<Vec4>() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW);
-        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 3, sheet.spritesheet_ssbo);
-
-        // Buffer length data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, &[sheet.sprite_map.len()]); 
-        // Buffer sprite data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, &sheet.sprite_map[..]); 
-
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0);
-    }
-
     pub fn queue_sprite_instance(&mut self, sprite: SpriteData, sprite_sheet: SpriteSheetID) {
         let Ok(sheet) = self.sprite_sheets.get_mut(sprite_sheet.0) else { return; };
 
         let SpriteData { position, dimensions, anchor, sprite_id } = sprite;
-        let dimensions = vec4!(anchor, dimensions);
-        let position = AlignedVec3(position);
+        let dimensions = vec4!(anchor, dimensions).as_array();
+        let position = AlignedVec3(position.as_array());
         let id = sprite_id;
 
         let sprite_data = GLSpriteStruct {
@@ -233,21 +316,46 @@ impl SpriteRenderer {
         sheet.render_queue.push(sprite_data);
     }
 
-    pub fn render(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) {
+    pub fn update(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) {
         for (_, sheet) in &mut self.sprite_sheets {
-            gfx.glBindVertexArray(self.mesh.vao());
-            gfx.glUseProgram(self.program.program());
+            let draw_command = DrawIndexedIndirectCommand {
+                index_count: INDEX_DATA.len() as u32,
+                instance_count: sheet.render_queue.len() as u32,
+                first_index: 0,
+                vertex_offset: 0,
+                first_instance: 0,
+            };
+            
+            gfx.set_indirect_buffer(sheet.pipeline, draw_command);
+            // gfx.glBindVertexArray(self.mesh.vao());
+            // gfx.glUseProgram(self.program.program());
             sheet.buffer_sprite_data(gfx);
-            gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
-            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, sheet.sprite_sheet.texture_id());
+            // gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
+            // gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, sheet.sprite_sheet.texture_id());
 
-            let texel_offset = vec2!(1.0) / (vec2!(sheet.sprite_sheet.width(), sheet.sprite_sheet.height()) * 2.0);
+            let texel_offset = vec2!(1.0) / (vec2!(sheet.width, sheet.height) * 2.0);
 
-            gfx.glUniformMatrix4f(self.view_location, false, &view_matrix);
-            gfx.glUniformMatrix4f(self.projection_location, false, &projection_matrix);
-            gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y());
+            // Update uniforms
+            let uniform_buffer = match gfx.get_binding(sheet.pipeline, UNIFORMS_BINDING) {
+                Binding::Buffer(buffer) => buffer,
+                _ => unreachable!("invalid binding.")
+            };
 
-            gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, sheet.render_queue.len() as u32);
+            let unifom_buffer = Subbuffer::new(uniform_buffer).reinterpret::<InputData>();
+
+            let view = view_matrix.as_array();
+            let projection = projection_matrix.as_array();
+            let texel_offset = texel_offset.as_array();
+            *unifom_buffer.write().unwrap() = InputData {
+                view,
+                projection,
+                texel_offset,
+            };
+            // gfx.glUniformMatrix4f(self.view_location, false, &view_matrix);
+            // gfx.glUniformMatrix4f(self.projection_location, false, &projection_matrix);
+            // gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y());
+
+            // gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, sheet.render_queue.len() as u32);
             sheet.render_queue.clear();
         }
     }
@@ -255,8 +363,28 @@ impl SpriteRenderer {
 
 #[cfg(test)]
 mod tests {
+    use std::{sync::Arc, time::Duration};
+
     use gl_types::{vec3, vec4};
     use embed_shader_source::embed_shader_source;
+    use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand};
+    use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::{self, EventLoop}, platform::pump_events::EventLoopExtPumpEvents as _, window::{Window, WindowAttributes}};
+
+    mod vertex_shader {
+        vulkano_shaders::shader!{
+            ty: "vertex",
+            path: "src/engine/graphics/shaders/sprite_struct_test.vert",
+            root_path_env: "CARGO_MANIFEST_DIR"
+        }
+    }
+
+    mod fragment_shader {
+        vulkano_shaders::shader!{
+            ty: "fragment",
+            path: "src/engine/graphics/shaders/sprite_struct_test.frag",
+            root_path_env: "CARGO_MANIFEST_DIR"
+        }
+    }
     
     impl PartialEq for GLSpriteStruct {
         fn eq(&self, other: &Self) -> bool {
@@ -264,72 +392,195 @@ mod tests {
         }
     }
 
-    use crate::engine::graphics::{FragmentShader, Graphics, ShaderProgramBuilder, VertexShader, gl_enums::{BufferTargetARB, BufferUsageARB, PrimitiveType}, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, SSBO_OFFSET}};
+    impl PartialEq for InputData {
+        fn eq(&self, other: &Self) -> bool {
+            self.view == other.view && self.projection == other.projection && self.texel_offset == other.texel_offset
+        }
+    }
+
+    use crate::engine::{Engine, errors::Result, graphics::{Binding, BufferType, Graphics, PipelineBuilder, Texture, UnsizedBuffer as _, builder::TextureBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SSBO_OFFSET, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}};
 
     use super::SpriteRenderer;
+    
+    #[cfg(target_os = "windows")] // The EXT traits are platform dependent
+    use winit::platform::windows::EventLoopBuilderExtWindows;
 
     #[test]
-    pub fn sprite_struct_test() {
+    pub fn sprite_struct_test() -> Result<()> {
         let lock = crate::engine::graphics::test_lock::LOCK.lock().unwrap();
 
-        let gfx = Graphics::init("test_window", 1289, 720, crate::engine::WindowMode::Windowed).unwrap();
+        let mut event_loop = EventLoop::builder()
+        .with_any_thread(true)
+        .build()?;
+    
+        event_loop.set_control_flow(event_loop::ControlFlow::Poll);
 
-        let renderer = SpriteRenderer::new(&gfx).unwrap();
+        let window_attributes = WindowAttributes::default()
+            .with_title("Test Window")
+            .with_inner_size(PhysicalSize::new(1280, 720))
+            .with_fullscreen(None);
+        // let window = event_loop.create_window(window_attributes)?;
 
-        let mut program = ShaderProgramBuilder::new(&gfx);
+        enum WindowStatus {
+            Uninitialized(WindowAttributes),
+            Initialized(Window),
+            Null
+        }
+
+        impl Default for WindowStatus {
+            fn default() -> Self {
+                WindowStatus::Null
+            }
+        }
+
+        struct WindowInitializer(WindowStatus);
+
+        impl ApplicationHandler for WindowInitializer {
+            fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
+                let WindowStatus::Uninitialized(window_attributes) = std::mem::take(&mut self.0) else { return };
+                self.0 = WindowStatus::Initialized(event_loop.create_window(window_attributes).unwrap());
+            }
         
-        let vertex_shader_source = embed_shader_source!("sprite_struct_test.vert");
-        let fragment_shader_source = embed_shader_source!("sprite_struct_test.frag"); 
+            fn window_event(&mut self, _: &event_loop::ActiveEventLoop, _: winit::window::WindowId, _: WindowEvent) {}
+        }
 
-        let vert_shader = VertexShader::compile_shader(&gfx, vertex_shader_source).unwrap();
-        let frag_shader = FragmentShader::compile_shader(&gfx, fragment_shader_source).unwrap();
-
-        program.attach_shader(vert_shader);
-        program.attach_shader(frag_shader);
-
-        let program = program.finish();
-
-        gfx.glUseProgram(program.program());
-
-        let mut ssbo = 0;
-        gfx.glGenBuffer(&mut ssbo);
-
-        let sprite_structs = [GLSpriteStruct::default(); 2];
-
-        let mut data_in = [GLSpriteStruct::default(); 2];
-
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, ssbo);
-        // Allocate space
-        gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW); 
-        // Buffer length data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
-        // Buffer sprite data
-        gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET,&sprite_structs); 
-        gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, ssbo);
-
-        gfx.glUseProgram(program.program());
-        gfx.glBindVertexArray(renderer.mesh.vao());
-        gfx.glDrawArrays(PrimitiveType::GL_TRIANGLES, 0, renderer.mesh.len() as _);
-
-        unsafe { gfx.glGetBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
-
-        gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0); // unbind
+        let mut app = WindowInitializer(WindowStatus::Uninitialized(window_attributes));
         
-        let expected = [
+        event_loop.pump_app_events(Some(Duration::ZERO), &mut app);
+
+        let WindowStatus::Initialized(window) = app.0 else { Err("d")? };
+        let window = Arc::new(window);
+
+        let mut gfx = Graphics::new(window, &event_loop).unwrap();
+
+        // let renderer = SpriteRenderer::new(&gfx).unwrap();
+
+        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
+        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
+
+        let pipeline = PipelineBuilder::new(&mut gfx)
+            .vertex_shader(vertex_shader)
+            .fragment_shader(fragment_shader)
+            .vertex_data(VERTEX_DATA.to_owned(), INDEX_DATA.to_owned())?
+            .add_storage_buffer(UNIFORMS_BINDING, InputData::default(), BufferType::Dynamic)?
+            .add_storage_buffer_unsized::<SpriteSSBO>(SPRITE_SHEET_BINDING, 2, BufferType::Dynamic)?
+            .add_storage_buffer_unsized::<SpriteSheetSSBO>(SPRITE_MAP_BINDING, 2, BufferType::Dynamic)?
+            .finish()?;
+
+        // let sprite_structs = [GLSpriteStruct::default(); 2];
+
+        let mut sprite_data = [GLSpriteStruct::default(); 2];
+        let sprite_count;
+
+        let mut sprite_sheet_data = [Vec4Aligned::default(); 2];
+        let sprite_sheet_count;
+
+        let uniform_data;
+
+        // match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING) {
+        //     Binding::Buffer(buffer) => {
+        //         let buffer = Subbuffer::new(buffer).reinterpret::<SpriteSSBO>();
+        //     },
+        //     _ => unreachable!()
+        // }
+
+        // gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, ssbo);
+        // // Allocate space
+        // gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW); 
+        // // Buffer length data
+        // gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
+        // // Buffer sprite data
+        // gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET,&sprite_structs); 
+        // gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, ssbo);
+
+        // gfx.glUseProgram(program.program());
+        // gfx.glBindVertexArray(renderer.mesh.vao());
+        // gfx.glDrawArrays(PrimitiveType::GL_TRIANGLES, 0, renderer.mesh.len() as _);
+
+        gfx.set_indirect_buffer(pipeline, DrawIndexedIndirectCommand {
+            index_count: INDEX_DATA.len() as u32,
+            instance_count: 1,
+            first_index: 0,
+            vertex_offset: 0,
+            first_instance: 0,
+        });
+        gfx.draw();
+
+        match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING) {
+            Binding::Buffer(buffer) => {
+                let buffer = Subbuffer::new(buffer);
+                let buffer = buffer.reinterpret::<SpriteSSBO>();
+                let buffer = buffer.read()?;
+                sprite_count = buffer.count;
+                sprite_data.copy_from_slice(&buffer.data);
+            },
+            _ => unreachable!()
+        }
+
+        match gfx.get_binding(pipeline, UNIFORMS_BINDING) {
+            Binding::Buffer(buffer) => {
+                let buffer = Subbuffer::new(buffer).reinterpret::<InputData>();
+                let buffer = buffer.read()?;
+                uniform_data = *buffer;
+            },
+            _ => unreachable!()
+        }
+
+        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING) {
+            Binding::Buffer(buffer) => {
+                let buffer = Subbuffer::new(buffer);
+                let buffer = buffer.reinterpret::<SpriteSheetSSBO>();
+                let buffer = buffer.read()?;
+                sprite_sheet_count = buffer.count;
+                sprite_sheet_data.copy_from_slice(&buffer.data);
+            },
+            _ => unreachable!()
+        }
+
+        // unsafe { gfx.glGetBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
+
+        // gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0); // unbind
+        
+        let sprite_expected = [
             GLSpriteStruct {
-                position: AlignedVec3(vec3!(1, 2, 3)),
-                dimensions: vec4!(4, 5, 6, 7),
+                position: AlignedVec3([1.0, 2.0, 3.0]),
+                dimensions: [4.0, 5.0, 6.0, 7.0],
                 id: 8
             },
             GLSpriteStruct {
-                position: AlignedVec3(vec3!(9, 10, 11)),
-                dimensions: vec4!(12, 13, 14, 15),
+                position: AlignedVec3([9.0, 10.0, 11.0]),
+                dimensions: [12.0, 13.0, 14.0, 15.0],
                 id: 16
             },
         ];
 
-        assert_eq!(data_in, expected);
-        drop(gfx);
-        drop(lock);
+        let uniform_expected = InputData {
+            view: [
+                [ 1.0,  2.0,  3.0,  4.0],
+                [ 5.0,  6.0,  7.0,  8.0],
+                [ 9.0, 10.0, 11.0, 12.0],
+                [13.0, 14.0, 15.0, 16.0]
+            ],
+            projection: [
+                [17.0, 18.0, 19.0, 20.0],
+                [21.0, 22.0, 23.0, 24.0],
+                [25.0, 26.0, 27.0, 28.0],
+                [29.0, 30.0, 31.0, 32.0]
+            ],
+            texel_offset: [33.0, 34.0],
+        };
+
+        let sprite_sheet_expected = [
+            Vec4Aligned([1.0, 2.0, 3.0, 4.0]),
+            Vec4Aligned([5.0, 6.0, 7.0, 8.0])
+        ];
+
+        assert_eq!(sprite_data, sprite_expected);
+        assert_eq!(sprite_count, 69);
+        assert_eq!(uniform_expected, uniform_data);
+        assert_eq!(sprite_sheet_data, sprite_sheet_expected);
+        assert_eq!(sprite_sheet_count, 420);
+
+        Ok(())
     }
 }

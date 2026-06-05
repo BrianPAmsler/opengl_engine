@@ -1,16 +1,19 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
+#![warn(clippy::unwrap_used)]
 
-mod engine;
+pub mod engine;
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Instant};
+use engine::{errors::{Error, Result}};
 
-use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, Engine};
-use gl46::GL_BACK;
 use gl_types::{geometric::normalize, vec2, vec3};
-use glfw::Key;
+// use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, Engine};
+// use gl_types::{geometric::normalize, vec2, vec3};
 use regex::Regex;
 
-use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
+use crate::engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}}};
+
+// use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
 
 #[derive(Clone, Default)]
@@ -23,12 +26,12 @@ pub struct FPSCounter {
 
 impl Component for FPSCounter {
     fn update(&mut self, engine: &mut Engine, _: ObjectID, _: f32) -> Result<()> {
-        if engine.input.get_key_state(Key::Escape).press {
-            engine.gfx.set_should_close(true);
-        }
+        // if engine.input.get_key_state(Key::Escape).press {
+        //     engine.gfx.set_should_close(true);
+        // }
         
         self.count += 1;
-        let current_tick = engine.gfx.get_glfw_time() as f32;
+        let current_tick = engine.get_time() as f32;
 
         let delta = current_tick - self.last_update;
 
@@ -46,7 +49,7 @@ impl Component for FPSCounter {
     fn fixed_update(&mut self, engine: &mut Engine, _: ObjectID, _: f32) -> Result<()> {
 
         self.fixed_count += 1;
-        let current_tick = engine.gfx.get_glfw_time() as f32;
+        let current_tick = engine.get_time() as f32;
 
         let delta = current_tick - self.last_fixed_update;
 
@@ -71,13 +74,13 @@ pub struct Renderer {
 
 impl Component for Renderer {
     fn init(&mut self, engine: &mut Engine, _: ObjectID) -> Result<()> {
-        engine.gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
-        engine.gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
-        engine.gfx.glEnable(EnableCap::GL_CULL_FACE);
-        engine.gfx.glEnable(EnableCap::GL_DEPTH_TEST);
-        engine.gfx.glDepthFunc(DepthFunction::GL_GREATER);
-        engine.gfx.glClearDepth(0.0);
-        engine.gfx.glCullFace(GL_BACK);
+        // engine.gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
+        // // engine.gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
+        // engine.gfx.glEnable(EnableCap::GL_CULL_FACE);
+        // engine.gfx.glEnable(EnableCap::GL_DEPTH_TEST);
+        // engine.gfx.glDepthFunc(DepthFunction::GL_GREATER);
+        // engine.gfx.glClearDepth(0.0);
+        // engine.gfx.glCullFace(GL_BACK);
 
         let sprite1 = engine.world.find_child(engine.world.get_root(), "Sprite 1")?.unwrap();
         let sprite2 = engine.world.find_child(engine.world.get_root(), "Sprite 2")?.unwrap();
@@ -91,54 +94,55 @@ impl Component for Renderer {
     fn update(&mut self, engine: &mut Engine, _: ObjectID, delta_time: f32) -> Result<()> {
         let mut camera = self.camera.borrow_mut();
         let speed = 10.0;
-        if engine.input.get_key_state(Key::W).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + normalize(vec3!(1, 0, 1)) * delta_time * speed);
-        }
+        // if engine.input.get_key_state(Key::W).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + normalize(vec3!(1, 0, 1)) * delta_time * speed);
+        // }
 
-        if engine.input.get_key_state(Key::A).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + normalize(vec3!(-1, 0, 1)) * delta_time * speed);
-        }
-        if engine.input.get_key_state(Key::S).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + normalize(vec3!(-1, 0, -1)) * delta_time * speed);
-        }
-        if engine.input.get_key_state(Key::D).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + normalize(vec3!(1, 0, -1)) * delta_time * speed);
-        }
-        if engine.input.get_key_state(Key::Space).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + vec3!(0, 1, 0) * delta_time * speed);
-        }
-        if engine.input.get_key_state(Key::LeftControl).is_down {
-            let pos = camera.position();
-            camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
-        }
+        // if engine.input.get_key_state(Key::A).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + normalize(vec3!(-1, 0, 1)) * delta_time * speed);
+        // }
+        // if engine.input.get_key_state(Key::S).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + normalize(vec3!(-1, 0, -1)) * delta_time * speed);
+        // }
+        // if engine.input.get_key_state(Key::D).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + normalize(vec3!(1, 0, -1)) * delta_time * speed);
+        // }
+        // if engine.input.get_key_state(Key::Space).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + vec3!(0, 1, 0) * delta_time * speed);
+        // }
+        // if engine.input.get_key_state(Key::LeftControl).is_down {
+        //     let pos = camera.position();
+        //     camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
+        // }
 
         let mut sprite = engine.world.get_transform(self.sprite2.unwrap())?;
-        if engine.input.get_key_state(Key::Up).is_down {
-            *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
-        }
+        *sprite.position_mut() += vec3!(delta_time, 0, 0);
+        // if engine.input.get_key_state(Key::Up).is_down {
+        //     *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
+        // }
 
-        if engine.input.get_key_state(Key::Left).is_down {
-            *sprite.position_mut() += vec3!(-1, 0, 0) * delta_time * speed;
-        }
-        if engine.input.get_key_state(Key::Down).is_down {
-            *sprite.position_mut() += vec3!(0, 0, -1) * delta_time * speed;
-        }
-        if engine.input.get_key_state(Key::Right).is_down {
-            *sprite.position_mut() += vec3!(1, 0, 0) * delta_time * speed;
-        }
-        if engine.input.get_key_state(Key::RightShift).is_down {
-            *sprite.position_mut() += vec3!(0, 1, 0) * delta_time * speed;
-        }
-        if engine.input.get_key_state(Key::RightControl).is_down {
-            *sprite.position_mut() += vec3!(0, -1, 0) * delta_time * speed;
-        }
+        // if engine.input.get_key_state(Key::Left).is_down {
+        //     *sprite.position_mut() += vec3!(-1, 0, 0) * delta_time * speed;
+        // }
+        // if engine.input.get_key_state(Key::Down).is_down {
+        //     *sprite.position_mut() += vec3!(0, 0, -1) * delta_time * speed;
+        // }
+        // if engine.input.get_key_state(Key::Right).is_down {
+        //     *sprite.position_mut() += vec3!(1, 0, 0) * delta_time * speed;
+        // }
+        // if engine.input.get_key_state(Key::RightShift).is_down {
+        //     *sprite.position_mut() += vec3!(0, 1, 0) * delta_time * speed;
+        // }
+        // if engine.input.get_key_state(Key::RightControl).is_down {
+        //     *sprite.position_mut() += vec3!(0, -1, 0) * delta_time * speed;
+        // }
 
-        self.camera_size -= engine.input.get_scroll_y() as f32;
+        // self.camera_size -= engine.input.get_scroll_y() as f32;
 
         match camera.projection_mut() {
             Projection::Orthographic { width, .. } => *width = self.camera_size,
@@ -150,7 +154,7 @@ impl Component for Renderer {
 }
 
 fn start_game() -> Result<()> {
-    let mut engine = Engine::create_window("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
+    let mut engine = Engine::new("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
 
     let a = engine.world.create_game_object("a", engine.world.get_root())?;
 
@@ -184,8 +188,8 @@ fn start_game() -> Result<()> {
 
     engine.world.set_main_camera(camera.clone());
 
-    let terrain = Terrain::new("height_map.png", "ground.png");
-    engine.world.add_component(a, terrain)?;
+    // let terrain = Terrain::new("height_map.png", "ground.png");
+    // engine.world.add_component(a, terrain)?;
 
     let renderer = Renderer { camera_size: 10.0, camera, sprite1: None, sprite2: None  };
 

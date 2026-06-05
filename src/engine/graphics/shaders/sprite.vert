@@ -1,11 +1,7 @@
-#version 430 core
+#version 460
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec2 uv;
-
-uniform mat4 view;
-uniform mat4 projection;
-uniform vec2 texelOffset;
 
 struct Sprite {
     vec3 position;
@@ -13,43 +9,42 @@ struct Sprite {
     uint spriteID;
 };
 
-layout(binding = 0) uniform sampler2D spriteSheet;
+layout(set = 0, binding = 0) uniform sampler2D spriteSheet;
 
-layout(std430, binding = 2) buffer spriteSSBO {
+layout(set = 0, binding = 1) uniform InputData {
+    mat4 view;
+    mat4 projection;
+    vec2 texelOffset;
+};
+
+layout(set = 0, std430, binding = 2) buffer spriteSSBO {
     int spriteCount;
     Sprite sprites[];
 };
 
-layout(std430, binding=3) buffer spriteSheetSSBO {
+layout(set = 0, std430, binding=3) buffer spriteSheetSSBO {
     int spriteIDCount;
     vec4 spriteBounds[];
 };
 
-layout(std430, binding=4) buffer debugSSBO {
-    vec2 padding;
-    vec2 tex_offset_debug;
-    vec2 tex_size;
-};
-
-out vec2 texCoords;
-flat out int spriteID;
+layout(location = 0) out vec2 texCoords;
 
 void main()
 {
-    Sprite sprite = sprites[gl_InstanceID];
+    Sprite sprite = sprites[gl_InstanceIndex];
 
     vec2 anchor = sprite.dimensions.xy;
     vec2 scale = sprite.dimensions.zw;
 
     vec3 offsetPos = position - vec3(anchor, 0);
 
-    // Map 0 to 1 and 1 to -1.
+    // Map 0 to -1 and 1 to 1.
     // Offset direction based on the position of the mesh vertex.
     // This makes sure the half-texel offset stays inside the bounds of the texture.
     // The half-texel offset prevents texture bleed at the edges of a sprtite due to floating point precision issues.
     // This is inteded for a square mesh with vertices (0, 0), (0, 1), (1, 0), (1, 1).
     // Any other mesh will have unexpected resutls
-    vec2 offsetDirection = -((position.xy - 0.5) * 2);
+    vec2 offsetDirection = (position.xy - 0.5) * 2;//-((position.xy - 0.5) * 2);
 
     vec3 translation = sprite.position;
 
@@ -75,6 +70,7 @@ void main()
     mat4 final_matrix = projection * view * model;
 
     gl_Position = final_matrix * vec4(offsetPos, 1);
+    gl_Position.z = (gl_Position.z + gl_Position.w) * 0.5;
 
     vec4 bounds = spriteBounds[sprite.spriteID];
     texCoords = bounds.xy + uv * bounds.zw + texelOffset * offsetDirection;

@@ -31,13 +31,12 @@ void main()
 
     vec2 clamped_uv = vec2(ivec2(uv / pixelSize) * pixelSize);
     float vertex_weight[4] = {
-        (1 - clamped_uv.x) * (1 - clamped_uv.y),
-        clamped_uv.x * (1 - clamped_uv.y),
         (1 - clamped_uv.x) * clamped_uv.y,
-        clamped_uv.x * clamped_uv.y
+        clamped_uv.x * clamped_uv.y,
+        (1 - clamped_uv.x) * (1 - clamped_uv.y),
+        clamped_uv.x * (1 - clamped_uv.y)
     };
     float randomNumber = texture(noiseMap, fragPos.xz / float(noiseMapSize) / pixelSize).r;
-    float t = randomNumber;
     float noise = (randomNumber - 0.5) * 0.05;
     // vec3 color = vec3(0);
     // colors[0] * vertex_weight.x + colors[1] * vertex_weight.y + colors[2] * vertex_weight.z + colors[3] * vertex_weight.w;
@@ -52,7 +51,7 @@ void main()
     vec3 normal = normalize(cross(tangentY, tangentX));
 
     // Diffuse
-    vec3 lightDir = normalize(-globalLightDir);  
+    vec3 lightDir = normalize(globalLightDir);  
 
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * color;

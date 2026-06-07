@@ -1,7 +1,7 @@
 use std::{collections::HashMap, iter, sync::Arc};
 
 use itertools::Itertools;
-use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
+use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, ColorSpace, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
 use winit::{event_loop::EventLoop, window::Window};
 use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::Result, graphics::Texture};
 
@@ -633,9 +633,14 @@ impl Graphics {
         let composite_alpha = {#[allow(clippy::unwrap_used)] caps.supported_composite_alpha.into_iter().next().unwrap()};
         let image_format =  {#[allow(clippy::unwrap_used)] physical_device
             .surface_formats(&surface, Default::default())
-            .unwrap()[0]
-            .0};
-
+            .unwrap()
+            .into_iter()
+            .find_map(|(format, _)| match format {
+                Format::R8G8B8A8_SRGB => Some(format),
+                _ => None
+            })
+            .expect("SRGB not supported.")};
+        
         let (swapchain, images) = Swapchain::new(
             device.clone(),
             surface.clone(),

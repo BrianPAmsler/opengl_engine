@@ -33,7 +33,7 @@ pub(in crate::engine::graphics::terrain) mod fragment_shader {
 
     impl Default for FragmentUniforms {
         fn default() -> Self {
-            Self { ambientIntensity: Padded(0.2), globalLightDir: Padded([-1.0, -1.0, -1.0]), viewPos: Default::default(), pixelSize: 0.02, noiseMapSize: 1 }
+            Self { ambientIntensity: Padded(0.2), globalLightDir: Padded([-1.0, -1.0, -1.0]), viewPos: Default::default(), pixelSize: 0.05, noiseMapSize: 1 }
         }
     }
 }

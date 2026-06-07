@@ -1,9 +1,10 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 #![warn(clippy::unwrap_used)]
+#![allow(clippy::too_many_arguments)]
 
 pub mod engine;
 
-use std::{cell::RefCell, rc::Rc, time::Instant};
+use std::{cell::RefCell, rc::Rc};
 use engine::{errors::{Error, Result}};
 
 use gl_types::{geometric::normalize, vec2, vec3};
@@ -11,7 +12,7 @@ use gl_types::{geometric::normalize, vec2, vec3};
 // use gl_types::{geometric::normalize, vec2, vec3};
 use regex::Regex;
 
-use crate::engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}}};
+use crate::engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
 // use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
@@ -144,10 +145,7 @@ impl Component for Renderer {
 
         // self.camera_size -= engine.input.get_scroll_y() as f32;
 
-        match camera.projection_mut() {
-            Projection::Orthographic { width, .. } => *width = self.camera_size,
-            _ => ()
-        }
+        if let Projection::Orthographic { width, .. } = camera.projection_mut() { *width = self.camera_size }
 
         Ok(())   
     }
@@ -188,8 +186,8 @@ fn start_game() -> Result<()> {
 
     engine.world.set_main_camera(camera.clone());
 
-    // let terrain = Terrain::new("height_map.png", "ground.png");
-    // engine.world.add_component(a, terrain)?;
+    let terrain = Terrain::new("height_map.png", "ground.png");
+    engine.world.add_component(a, terrain)?;
 
     let renderer = Renderer { camera_size: 10.0, camera, sprite1: None, sprite2: None  };
 
@@ -233,19 +231,16 @@ pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {
             }
         }
         if !adding {
-            match result {
-                Some(line_number) => {
-                    if in_crate.find(line).is_some() {
-                        adding = true;
-                        
-                        let new_line = format!("   {}: ", count) + &line[line_number.end()..];
-                        clean_str += &new_line;
-                        clean_str += "\n";
-        
-                        count += 1;
-                    }
-                },
-                None => {}
+            if let Some(line_number) = result {
+                if in_crate.find(line).is_some() {
+                    adding = true;
+                    
+                    let new_line = format!("   {}: ", count) + &line[line_number.end()..];
+                    clean_str += &new_line;
+                    clean_str += "\n";
+    
+                    count += 1;
+                }
             }
         }
     }

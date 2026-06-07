@@ -2,24 +2,32 @@
 
 layout(location = 0) in vec3 position;
 
-uniform mat4 vp;
-uniform uvec2 terrainDimensions;
-uniform float heightScale;
+layout(set = 0, binding = 0) uniform VertexUniforms {
+    mat4 vp;
+    uvec2 terrainDimensions;
+    float heightScale;
+};
 
-layout(binding = 0) uniform sampler2D heightTex;
-layout(binding = 1) uniform sampler2D colorTex;
+layout(binding = 2) uniform sampler2D heightTex;
+layout(binding = 3) uniform sampler2D colorTex;
 
-smooth out vec2 uv;
-out vec3 fragPos;
-flat out vec3 colors[4];
+layout(location = 0) smooth out vec2 uv;
+layout(location = 1) out vec3 fragPos;
+layout(location = 2) flat out vec3 colors[4];
 
 vec2 colorFromIndex(uvec2 index, uvec2 corner) {
-    return vec2(index) / vec2(terrainDimensions) + 0.25 / vec2(terrainDimensions) + vec2(corner) * (0.5 / vec2(terrainDimensions));
+    vec2 uv = vec2(index) / vec2(terrainDimensions) + 0.25 / vec2(terrainDimensions) + vec2(corner) * (0.5 / vec2(terrainDimensions));
+
+    // Flip v since uv is top-left and terrain coordinates are bottom-left
+    return vec2(uv.x, 1 - uv.y);
 }
 
 vec2 heightFromIndex(uvec2 index) {
     vec2 dim = vec2(terrainDimensions + uvec2(1));
-    return vec2(index) / dim + 0.5 / dim;
+    vec2 uv =  vec2(index) / dim + 0.5 / dim;
+
+    // Flip v since uv is top-left and terrain coordinates are bottom-left
+    return vec2(uv.x, 1 - uv.y);
 }
 
 float median(float a, float b, float c, float d) {
@@ -58,17 +66,17 @@ const uvec2 offsets[4] = {
 
 // (bottom-left, bottom-right, top-left, top-right, center)
 const vec2 uvs[5] = {
-    vec2(0, 0),
-    vec2(1, 0),
     vec2(0, 1),
     vec2(1, 1),
+    vec2(0, 0),
+    vec2(1, 0),
     vec2(0.5, 0.5)
 };
 
 void main()
 {
     vec3 outPosition = position;
-    uvec2 cellIndex = uvec2(gl_InstanceID % terrainDimensions.x, gl_InstanceID / terrainDimensions.x);
+    uvec2 cellIndex = uvec2(gl_InstanceIndex % terrainDimensions.x, gl_InstanceIndex / terrainDimensions.x);
 
     // Offset vertex by its x, y coords calculated from gl_InstanceID
     outPosition += vec3(cellIndex.x, 0, cellIndex.y);
@@ -78,7 +86,7 @@ void main()
     colors[2] = texture(colorTex, colorFromIndex(cellIndex, uvec2(0, 1))).rgb; // top_left
     colors[3] = texture(colorTex, colorFromIndex(cellIndex, uvec2(1, 1))).rgb; // top_right
 
-    if (gl_VertexID == 4) {
+    if (gl_VertexIndex == 4) {
         // All corners
         float a = texture(heightTex, heightFromIndex(cellIndex)).r;
         float b = texture(heightTex, heightFromIndex(cellIndex + uvec2(1, 0))).r;
@@ -90,14 +98,16 @@ void main()
         outPosition += vec3(0, medianHeight, 0);
     } else { 
         // Offset index based on the corner
-        uvec2 offset = offsets[gl_VertexID];
+        uvec2 offset = offsets[gl_VertexIndex];
 
         float height = texture(heightTex, heightFromIndex(cellIndex + offset)).r * heightScale;
 
         outPosition += vec3(0, height, 0);
     }
 
-    gl_Position = vp * vec4(outPosition, 1); 
+    gl_Position = vp * vec4(outPosition, 1);
+    gl_Position.z = (gl_Position.z + gl_Position.w) * 0.5;
+    
     fragPos = outPosition;
-    uv = uvs[gl_VertexID];
+    uv = uvs[gl_VertexIndex];
 }

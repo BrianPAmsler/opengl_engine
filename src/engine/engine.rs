@@ -1,8 +1,8 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{default, sync::Arc, time::{Duration, Instant}};
 
 use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::engine::{game_object::World, graphics::{Graphics, sprite_renderer::{self, SpriteRenderer}}};
+use crate::engine::{game_object::World, graphics::{Graphics, sprite_renderer::{self, SpriteRenderer}, terrain::terrain_renderer::TerrainRenderer}};
 
 use super::{errors::{Error, Result}};
 
@@ -26,7 +26,7 @@ pub struct Engine {
     pub world: World,
     // pub input: Input,
     pub(in crate::engine) sprite_renderer: SpriteRenderer,
-    // pub(in crate::engine) terrain_renderer: TerrainRenderer,
+    pub(in crate::engine) terrain_renderer: TerrainRenderer,
     fixed_tick_duration: f64,
     // fixed_input: Input,
     // error_queue: Vec<Error>
@@ -51,7 +51,7 @@ impl ApplicationHandler for Engine {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             },
-            WindowEvent::Resized(_) => self.gfx.swap_buffers(),
+            WindowEvent::Resized(_) => self.gfx.window_resized(),
             WindowEvent::RedrawRequested => {
                 self.update().unwrap();
 
@@ -73,16 +73,12 @@ impl Engine {
             .with_fullscreen(window_mode.into());
         // let window = event_loop.create_window(window_attributes)?;
 
+        #[derive(Default)]
         enum WindowStatus {
-            Uninitialized(WindowAttributes),
+            Uninitialized(Box<WindowAttributes>),
             Initialized(Window),
+            #[default]
             Null
-        }
-
-        impl Default for WindowStatus {
-            fn default() -> Self {
-                WindowStatus::Null
-            }
         }
 
         struct WindowInitializer(WindowStatus);
@@ -90,13 +86,13 @@ impl Engine {
         impl ApplicationHandler for WindowInitializer {
             fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
                 let WindowStatus::Uninitialized(window_attributes) = std::mem::take(&mut self.0) else { return };
-                self.0 = WindowStatus::Initialized(event_loop.create_window(window_attributes).unwrap());
+                self.0 = WindowStatus::Initialized(#[allow(clippy::unwrap_used)] event_loop.create_window(*window_attributes).unwrap());
             }
         
             fn window_event(&mut self, _: &event_loop::ActiveEventLoop, _: winit::window::WindowId, _: WindowEvent) {}
         }
 
-        let mut app = WindowInitializer(WindowStatus::Uninitialized(window_attributes));
+        let mut app = WindowInitializer(WindowStatus::Uninitialized(Box::new(window_attributes)));
         
         event_loop.pump_app_events(Some(Duration::ZERO), &mut app);
 
@@ -105,9 +101,10 @@ impl Engine {
 
         let world = World::new();
 
-        let gfx = Graphics::new(window.clone(), &event_loop)?;
-        let sprite_renderer = SpriteRenderer::new(&gfx)?;
-        let engine = Engine { window, gfx, world, sprite_renderer, fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, _event_loop: Some(event_loop) };
+        let mut gfx = Graphics::new(window.clone(), &event_loop)?;
+        let sprite_renderer = SpriteRenderer::new();
+        let terrain_renderer = TerrainRenderer::new(&mut gfx)?;
+        let engine = Engine { window, gfx, world, sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, _event_loop: Some(event_loop) };
 
         // let gfx = Graphics::init(window_title, width, height, window_mode)?;
 
@@ -135,6 +132,7 @@ impl Engine {
 
     fn update(&mut self) -> Result<()> {
         self.log_errors();
+        self.gfx.validate_pipelines(&self.window)?;
 
         // self.gfx.poll_events();
         // for msg in self.gfx.flush_messages() {
@@ -224,13 +222,10 @@ impl Engine {
         }
 
         self.log_errors();
-        match self.world.get_main_camera() {
-            Some(camera) => {
-                let mut camera = camera.borrow_mut();
-                self.sprite_renderer.update(&self.gfx, &camera.view_matrix(), &camera.projection_matrix());
-                // self.terrain_renderer.render(&self.gfx, camera.view_matrix(), camera.projection_matrix(), camera.position());
-            },
-            _ => ()
+        if let Some(camera) = self.world.get_main_camera() {
+            let mut camera = camera.borrow_mut();
+            self.sprite_renderer.update(&self.gfx, &camera.view_matrix(), &camera.projection_matrix());
+            self.terrain_renderer.update(&self.gfx, camera.view_matrix(), camera.projection_matrix(), camera.position());
         }
 
         for (owner, mut component) in self.world.get_removed_components() {

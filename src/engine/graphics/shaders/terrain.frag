@@ -1,20 +1,22 @@
 #version 430 core
 
-layout(binding = 0) uniform sampler2D _a;
-layout(binding = 1) uniform sampler2D _b;
-layout(binding = 2) uniform sampler2D noiseMap;
+// layout(binding = 2) uniform sampler2D _a;
+// layout(binding = 3) uniform sampler2D _b;
+layout(binding = 4) uniform sampler2D noiseMap;
 
-uniform float ambientIntensity = 0.2;
-uniform vec3 globalLightDir = vec3(-1, -1, -1);
-uniform vec3 viewPos;
-uniform float pixelSize = 0.02;
-uniform int noiseMapSize = 1;
+layout(set = 0, binding = 1) uniform FragmentUniforms {
+    float ambientIntensity;// = 0.2;
+    vec3 globalLightDir;// = vec3(-1, -1, -1);
+    vec3 viewPos;
+    float pixelSize;// = 0.02;
+    int noiseMapSize;// = 1;
+};
 
-smooth in vec2 uv;
-in vec3 fragPos;
-flat in vec3 colors[4];
+layout(location = 0) smooth in vec2 uv;
+layout(location = 1) in vec3 fragPos;
+layout(location = 2) flat in vec3 colors[4];
 
-out vec4 outColor;
+layout(location = 0) out vec4 outColor;
 
 void main()
 {

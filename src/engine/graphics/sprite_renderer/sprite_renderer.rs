@@ -1,26 +1,20 @@
 use std::collections::HashMap;
-use std::mem::ManuallyDrop;
-use std::sync::Arc;
 
 use bytemuck::{Pod, Zeroable};
 use gl_types::matrices::{Mat4, MatN};
-use gl_types::{vec2, vec3, vec4};
-use gl_types::vectors::{Vec2, Vec3, Vec4, VecN};
-use embed_shader_source::embed_shader_source;
+use gl_types::{vec2, vec4};
+use gl_types::vectors::{Vec2, Vec3, VecN};
 use image::DynamicImage;
 use itertools::Itertools;
-use vulkano::buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer, view};
+use vulkano::buffer::{BufferContents, Subbuffer};
 use vulkano::command_buffer::DrawIndexedIndirectCommand;
-use vulkano::format;
 use vulkano::pipeline::graphics::vertex_input::Vertex;
 
 use crate::engine::data_structures::{AllocationIndex, VecAllocator};
 use crate::engine::graphics::builder::TextureBuilder;
-use crate::engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, UnsizedBuffer};
+use crate::engine::graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle};
 
 use crate::engine::errors::{Result, none_error};
-
-const SSBO_OFFSET: usize = 16;
 
 const UNIFORMS_BINDING: u32 = 1;
 const SPRITE_SHEET_BINDING: u32 = 2;
@@ -53,10 +47,6 @@ const INDEX_DATA: &[u32] = &[
     0, 1, 2,
     2, 1, 3
 ];
-
-#[repr(C, align(16))]
-#[derive(Debug, BufferContents,Clone, Copy, PartialEq)]
-struct AlignedVec3([f32; 3]);
 
 #[derive(Debug, Clone, Copy, BufferContents)]
 #[repr(C)]
@@ -99,9 +89,7 @@ struct SpriteSheet {
 
 impl SpriteSheet {
     fn buffer_sprite_data(&mut self, gfx: &Graphics) {
-        let data_size = self.render_queue.len() * std::mem::size_of::<GLSpriteStruct>() + SSBO_OFFSET;
-
-        if data_size > self.buffersize {
+        if self.render_queue.len() > self.buffersize {
             // Multiply new szie by 50% to give some wiggle room
             todo!("Implement uniform buffer resizing")
         }
@@ -168,12 +156,6 @@ struct SpriteSheetSSBO {
     data: [Vec4Aligned]
 }
 
-impl UnsizedBuffer for SpriteSheetSSBO {
-    fn size(count: u64) -> u64 {
-        16 + count * std::mem::size_of::<[f32; 4]>() as u64
-    }
-}
-
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy, BufferContents)]
 struct InputData {
@@ -191,30 +173,14 @@ pub struct SpriteRenderer {
 }
 
 impl SpriteRenderer {
-    pub fn new(gfx: &Graphics) -> Result<SpriteRenderer> {
-
-        // let view_location = gfx.glGetUniformLocation(program.program(), "view");
-        // let projection_location = gfx.glGetUniformLocation(program.program(), "projection");
-        // let texel_offset_location = gfx.glGetUniformLocation(program.program(), "texelOffset");
-
-        // let mesh = Mesh::new("Sprite Mesh".to_owned(), vertex_data, None, Some(uv_data), None, None);
-        
-        // let mut vbo = VBOBufferer::new(gfx);
-        // let mesh = vbo.add_mesh(mesh);
-
-        // vbo.buffer_data(gfx);
-
-        // let mesh = mesh.take();
-
-        Ok(SpriteRenderer { sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new() })
+    pub fn new() -> SpriteRenderer {
+        SpriteRenderer { sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new() }
     }
 
     pub fn add_sprite_sheet(&mut self, name: &str, gfx: &mut Graphics, initial_buffer_size: usize, sprite_sheet: DynamicImage, sprite_map: &[SpriteDefinition]) -> Result<SpriteSheetID> {
         if self.sprite_sheet_index.contains_key(name) {
             return Err(none_error());
         }
-
-        println!("add sprite sheet");
 
         let sprite_sheet = sprite_sheet.into_rgba8();
         let (sheet_width, sheet_height) = sprite_sheet.dimensions();
@@ -362,11 +328,10 @@ impl SpriteRenderer {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    use std::{sync::Arc, time::Duration};
+    use std::{default, sync::Arc, time::Duration};
 
-    use gl_types::{vec3, vec4};
-    use embed_shader_source::embed_shader_source;
     use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand};
     use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::{self, EventLoop}, platform::pump_events::EventLoopExtPumpEvents as _, window::{Window, WindowAttributes}};
 
@@ -398,16 +363,16 @@ mod tests {
         }
     }
 
-    use crate::engine::{Engine, errors::Result, graphics::{Binding, BufferType, Graphics, PipelineBuilder, Texture, UnsizedBuffer as _, builder::TextureBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SSBO_OFFSET, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}};
+    use crate::engine::{errors::Result, graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}};
 
-    use super::SpriteRenderer;
+    
     
     #[cfg(target_os = "windows")] // The EXT traits are platform dependent
     use winit::platform::windows::EventLoopBuilderExtWindows;
 
     #[test]
     pub fn sprite_struct_test() -> Result<()> {
-        let lock = crate::engine::graphics::test_lock::LOCK.lock().unwrap();
+        let _lock = crate::engine::graphics::test_lock::LOCK.lock().unwrap();
 
         let mut event_loop = EventLoop::builder()
         .with_any_thread(true)
@@ -421,16 +386,12 @@ mod tests {
             .with_fullscreen(None);
         // let window = event_loop.create_window(window_attributes)?;
 
+        #[derive(Default)]
         enum WindowStatus {
-            Uninitialized(WindowAttributes),
+            Uninitialized(Box<WindowAttributes>),
             Initialized(Window),
+            #[default]
             Null
-        }
-
-        impl Default for WindowStatus {
-            fn default() -> Self {
-                WindowStatus::Null
-            }
         }
 
         struct WindowInitializer(WindowStatus);
@@ -438,13 +399,13 @@ mod tests {
         impl ApplicationHandler for WindowInitializer {
             fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
                 let WindowStatus::Uninitialized(window_attributes) = std::mem::take(&mut self.0) else { return };
-                self.0 = WindowStatus::Initialized(event_loop.create_window(window_attributes).unwrap());
+                self.0 = WindowStatus::Initialized(event_loop.create_window(*window_attributes).unwrap());
             }
         
             fn window_event(&mut self, _: &event_loop::ActiveEventLoop, _: winit::window::WindowId, _: WindowEvent) {}
         }
 
-        let mut app = WindowInitializer(WindowStatus::Uninitialized(window_attributes));
+        let mut app = WindowInitializer(WindowStatus::Uninitialized(Box::new(window_attributes)));
         
         event_loop.pump_app_events(Some(Duration::ZERO), &mut app);
 
@@ -474,8 +435,6 @@ mod tests {
 
         let mut sprite_sheet_data = [Vec4Aligned::default(); 2];
         let sprite_sheet_count;
-
-        let uniform_data;
 
         // match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING) {
         //     Binding::Buffer(buffer) => {
@@ -517,14 +476,14 @@ mod tests {
             _ => unreachable!()
         }
 
-        match gfx.get_binding(pipeline, UNIFORMS_BINDING) {
+        let uniform_data = match gfx.get_binding(pipeline, UNIFORMS_BINDING) {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::new(buffer).reinterpret::<InputData>();
                 let buffer = buffer.read()?;
-                uniform_data = *buffer;
+                *buffer
             },
             _ => unreachable!()
-        }
+        };
 
         match gfx.get_binding(pipeline, SPRITE_MAP_BINDING) {
             Binding::Buffer(buffer) => {

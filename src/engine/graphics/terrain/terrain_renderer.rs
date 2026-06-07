@@ -1,145 +1,125 @@
-use gl_types::matrices::Mat4;
-use gl_types::vectors::Vec3;
-use embed_shader_source::embed_shader_source;
-use rand::RngExt;
+use std::sync::Arc;
 
-use crate::engine::graphics::builder::TextureBuilder;
-use crate::engine::graphics::gl_enums::{InternalFormat, PixelFormat, PrimitiveType, TextureMagFilter, TextureMinFilter, TextureTarget, TextureUnit, TextureWrapMode};
-use crate::engine::graphics::{BufferedMesh, FragmentShader, GlUniformLocation, Graphics, Mesh, ShaderProgram, ShaderProgramBuilder, Texture, VBOBufferer, Vertex, VertexShader};
-use crate::engine::errors::Result;
+use bytemuck::{Pod, Zeroable};
+use gl_types::{matrices::{Mat4, MatN}, vectors::{Vec3, VecN}};
+use rand::RngExt as _;
+use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer, view}, command_buffer::DrawIndexedIndirectCommand, format::Format, image::sampler::{Filter, SamplerAddressMode}, memory::allocator::AllocationCreateInfo, padded::Padded, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
 
+use crate::engine::{errors::Result, graphics::{AlignedVec2, AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}};
 
-// Lays flat on the ground (+Z is "up")
-const TERRAIN_CELL_VERTICES: &[Vertex] = &[
-    // [0]: Bottom-Left Corner
-    Vertex { x: 0.0, y: 0.0, z: 0.0 },
-    // [1]: Bottom-Right Corner
-    Vertex { x: 1.0, y: 0.0, z: 0.0 },
-    // [2]: Top-Left Corner
-    Vertex { x: 0.0, y: 0.0, z: 1.0 },
-    // [3]: Top-Right Corner
-    Vertex { x: 1.0, y: 0.0, z: 1.0 },
-    // [4]: Center
-    Vertex { x: 0.5, y: 0.0, z: 0.5 },
-];
+pub(in crate::engine::graphics::terrain) mod vertex_shader {
+    vulkano_shaders::shader!{
+        ty: "vertex",
+        path: "src/engine/graphics/shaders/terrain.vert",
+        root_path_env: "CARGO_MANIFEST_DIR"
+    }
+    
+    #[allow(clippy::derivable_impls)]
+    impl Default for VertexUniforms {
+        fn default() -> Self {
+            Self { vp: Default::default(), terrainDimensions: Default::default(), heightScale: Default::default() }
+        }
+    }
+}
 
-const TERRAIN_CELL_ELEMENTS: &[u32] = &[
-    // -X side
-    0,
-    4,
-    2,
+pub(in crate::engine::graphics::terrain) mod fragment_shader {
+    use vulkano::padded::Padded;
 
-    // +X side
-    1,
-    3,
-    4,
+    vulkano_shaders::shader!{
+        ty: "fragment",
+        path: "src/engine/graphics/shaders/terrain.frag",
+        root_path_env: "CARGO_MANIFEST_DIR"
+    }
 
-    // -Z side
-    0,
-    1,
-    4,
-
-    // +Z side
-    2,
-    4,
-    3,
-];
+    impl Default for FragmentUniforms {
+        fn default() -> Self {
+            Self { ambientIntensity: Padded(0.2), globalLightDir: Padded([-1.0, -1.0, -1.0]), viewPos: Default::default(), pixelSize: 0.02, noiseMapSize: 1 }
+        }
+    }
+}
 
 struct TerrainInfo {
     width: u32,
     height: u32,
-    height_texture: u32,
-    color_texture: u32,
+    pipeline: PipelineHandle
 }
 
 pub struct TerrainRenderer {
-    shader_program: ShaderProgram,
-    mesh: BufferedMesh,
     render_queue: Vec<TerrainInfo>,
-    vp_location: GlUniformLocation,
-    terrain_dimensions_location: GlUniformLocation,
-    height_scale_location: GlUniformLocation,
-    view_pos_location: GlUniformLocation,
-    pixel_size_location: GlUniformLocation,
-    noise_map_size_location: GlUniformLocation,
-    noise_texture: Texture
+    noise_texture: Texture,
+    vertex_shader: Arc<ShaderModule>,
+    fragment_shader: Arc<ShaderModule>,
 }
 
 impl TerrainRenderer {
-    pub fn new(gfx: &Graphics) -> Result<TerrainRenderer> {
-        let mut shader_program = ShaderProgramBuilder::new(gfx);
+    pub fn new(gfx: &mut Graphics) -> Result<TerrainRenderer> {
 
-        let vertex_shader_source = embed_shader_source!("terrain.vert");
-        let fragment_shader_source = embed_shader_source!("terrain.frag");
-
-        let vertex_shader = VertexShader::compile_shader(gfx, vertex_shader_source)?;
-        let fragment_shader = FragmentShader::compile_shader(gfx, fragment_shader_source)?;
-
-        shader_program.attach_shader(vertex_shader);
-        shader_program.attach_shader(fragment_shader);
-
-        let shader_program = shader_program.finish();
-
-        gfx.glUseProgram(shader_program.program());
-
-        let vp_location = gfx.glGetUniformLocation(shader_program.program(), "vp");
-        let terrain_dimensions_location = gfx.glGetUniformLocation(shader_program.program(), "terrainDimensions");
-        let height_scale_location = gfx.glGetUniformLocation(shader_program.program(), "heightScale");
-        let view_pos_location = gfx.glGetUniformLocation(shader_program.program(), "viewPos");
-        let pixel_size_location = gfx.glGetUniformLocation(shader_program.program(), "pixelSize");
-        let noise_map_size_location = gfx.glGetUniformLocation(shader_program.program(), "noiseMapSize");
-
-        let mesh = Mesh::new("Terrain Mesh".to_owned(), TERRAIN_CELL_VERTICES.to_owned().into_boxed_slice(), None, None, None, None);
-
-        let mut vbo = VBOBufferer::new(gfx);
-        let mesh = vbo.add_mesh(mesh);
-
-        vbo.buffer_data(gfx);
-
-        let mesh = mesh.take();
+        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
+        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
 
         let mut rng = rand::rng();
         let pixels: Vec<u8> = (0..1024u32.pow(2)).map(|_| rng.random()).collect();
-        let noise_texture = unsafe { TextureBuilder::from_raw_pixels_unchecked(&pixels, 1024, 1024, InternalFormat::GL_RED, PixelFormat::GL_RED) }
-            .mag_filter(TextureMagFilter::GL_NEAREST)
-            .min_filter(TextureMinFilter::GL_NEAREST)
-            .wrap_s(TextureWrapMode::GL_REPEAT)
-            .wrap_t(TextureWrapMode::GL_REPEAT)
-            .finish(gfx);
+        let noise_texture = TextureBuilder::from_raw_pixels(pixels, 1024, 1024, Format::R8_UNORM)
+            .mag_filter(Filter::Nearest)
+            .min_filter(Filter::Nearest)
+            .wrap_s(SamplerAddressMode::Repeat)
+            .wrap_t(SamplerAddressMode::Repeat)
+            .finish(gfx)?;
 
-        Ok(TerrainRenderer { shader_program, mesh, render_queue: Vec::new(), vp_location, terrain_dimensions_location, height_scale_location, view_pos_location, pixel_size_location, noise_map_size_location, noise_texture })
+        Ok(TerrainRenderer { render_queue: Vec::new(), noise_texture, vertex_shader, fragment_shader })
     }
 
-    pub fn queue_terrain(&mut self, width: u32, height: u32, height_texture: u32, color_texture: u32) {
-        self.render_queue.push(TerrainInfo { width, height, height_texture, color_texture });
+    pub fn queue_terrain(&mut self, width: u32, height: u32, pipeline: PipelineHandle) {
+        self.render_queue.push(TerrainInfo { width, height, pipeline });
     }
 
-    pub fn render(&mut self, gfx: &Graphics, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
+    pub fn update(&mut self, gfx: &Graphics, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
         for terrain in self.render_queue.drain(..) {
-            gfx.glBindVertexArray(self.mesh.vao());
-            gfx.glUseProgram(self.shader_program.program());
-            
-            gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
-            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, terrain.height_texture);
+            match gfx.get_binding(terrain.pipeline, 0) {
+                Binding::Buffer(vertex_uniforms) => {
+                    let vertex_uniforms = Subbuffer::new(vertex_uniforms).reinterpret::<VertexUniforms>();
+                    *{#[allow(clippy::unwrap_used)] vertex_uniforms.write().unwrap()} = VertexUniforms {
+                        vp: (projection_matrix * view_matrix).as_array(),
+                        terrainDimensions: [terrain.width, terrain.height],
+                        heightScale: 15.0,
+                    };
+                },
+                _ => unreachable!()
+            }
 
-            gfx.glActiveTexture(TextureUnit::GL_TEXTURE1);
-            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, terrain.color_texture);
+            match gfx.get_binding(terrain.pipeline, 1) {
+                Binding::Buffer(fragment) => {
+                    let fragment_uniforms = Subbuffer::new(fragment).reinterpret::<FragmentUniforms>();
+                    
+                    *{#[allow(clippy::unwrap_used)] fragment_uniforms.write().unwrap()} = FragmentUniforms {
+                        viewPos: camera_pos.as_array(),
+                        noiseMapSize: self.noise_texture.width() as i32,
+                        ..Default::default()
+                    };
+                },
+                _ => unreachable!()
+            }
 
-            gfx.glActiveTexture(TextureUnit::GL_TEXTURE2);
-            gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, self.noise_texture.texture_id());
-
-            // uniform mat4 vp;
-            let vp = projection_matrix * view_matrix;
-            gfx.glUniformMatrix4f(self.vp_location, false, &vp);
-            // uniform uvec2 terrainDimensions;
-            gfx.glUniform2ui(self.terrain_dimensions_location, terrain.width, terrain.height);
-            // uniform float heightScale;
-            gfx.glUniform1f(self.height_scale_location, 15.0);
-            // uniform vec3 viewPos;
-            gfx.glUniform3f(self.view_pos_location, camera_pos.x(), camera_pos.y(), camera_pos.z());
-            gfx.glUniform1i(self.noise_map_size_location, self.noise_texture.width() as i32);
-
-            gfx.glDrawElementsInstanced(PrimitiveType::GL_TRIANGLES, TERRAIN_CELL_ELEMENTS, terrain.width * terrain.height);
+            let instance_count = terrain.width * terrain.height;
+            gfx.set_indirect_buffer(terrain.pipeline, DrawIndexedIndirectCommand {
+                index_count: INDEX_DATA.len() as u32,
+                instance_count,
+                first_index: 0,
+                vertex_offset: 0,
+                first_instance: 0,
+            });
         }
+    }
+
+    pub(in crate::engine::graphics::terrain) fn vertex_shader(&self) -> &Arc<ShaderModule> {
+        &self.vertex_shader
+    }
+
+    pub(in crate::engine::graphics::terrain) fn fragment_shader(&self) -> &Arc<ShaderModule> {
+        &self.fragment_shader
+    }
+
+    pub(in crate::engine::graphics::terrain) fn noise_texture(&self) -> &Texture {
+        &self.noise_texture
     }
 }

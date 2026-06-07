@@ -16,7 +16,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub unsafe fn update_texture(&self, gfx: &Graphics, image_data: Vec<u8>) -> Result<()> {
+    pub fn update_texture(&self, gfx: &Graphics, image_data: Vec<u8>) -> Result<()> {
         buffer_to_image(gfx, image_data, &self.image)?;
 
         Ok(())
@@ -85,7 +85,10 @@ pub mod builder {
     use crate::engine::{errors::Result, graphics::{Graphics, Texture, texture::buffer_to_image}};
 
     pub struct TextureBuilder {
-        image: RgbaImage,
+        data: Vec<u8>,
+        width: u32,
+        height: u32,
+        format: Format,
         wrap_s: SamplerAddressMode,
         wrap_t: SamplerAddressMode,
         min_filter: Filter,
@@ -94,8 +97,27 @@ pub mod builder {
 
     impl TextureBuilder {
         pub fn from_image(image: RgbaImage) -> TextureBuilder {
+            let (width, height) = image.dimensions();
+            let data = image.into_raw();
             TextureBuilder {
-                image,
+                data,
+                width,
+                height,
+                format: Format::R8G8B8A8_SRGB,
+                wrap_s: SamplerAddressMode::Repeat,
+                wrap_t: SamplerAddressMode::Repeat,
+                min_filter: Filter::Linear,
+                mag_filter: Filter::Linear,
+            }
+        }
+
+        pub fn from_raw_pixels(data: Vec<u8>, width: u32, height: u32, format: Format) -> TextureBuilder {
+
+            TextureBuilder {
+                data,
+                width,
+                height,
+                format,
                 wrap_s: SamplerAddressMode::Repeat,
                 wrap_t: SamplerAddressMode::Repeat,
                 min_filter: Filter::Linear,
@@ -124,15 +146,13 @@ pub mod builder {
         }
 
         pub fn finish(self, gfx: &Graphics) -> Result<Texture> {
-            let Self { image, wrap_s, wrap_t, min_filter, mag_filter } = self;
+            let Self { data, width, height, format, wrap_s, wrap_t, min_filter, mag_filter } = self;
 
-            let (width, height) = image.dimensions();
-            let data = image.into_raw();
             let image = Image::new(
                 gfx.memory_allocator.clone(),
                 ImageCreateInfo {
                     image_type: ImageType::Dim2d,
-                    format: Format::R8G8B8A8_SRGB,
+                    format,
                     extent: [width, height, 1],
                     usage: ImageUsage::TRANSFER_DST | ImageUsage::SAMPLED,
                     ..Default::default()

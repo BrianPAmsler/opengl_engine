@@ -380,7 +380,6 @@ impl SpriteSheet {
 mod tests {
     use std::{ffi::OsStr, fs::OpenOptions};
 
-    use image::ImageReader;
     use pathbuf::pathbuf;
 
     use super::SpriteSheetBuilder;

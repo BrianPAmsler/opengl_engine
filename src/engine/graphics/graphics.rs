@@ -1,18 +1,21 @@
-use std::{any::TypeId, collections::HashMap, iter, marker::PhantomData, sync::Arc};
+use std::{collections::HashMap, iter, sync::Arc};
 
-use bytemuck::Pod;
 use itertools::Itertools;
-use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBuffer, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{self, DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, PolygonMode, RasterizationState}, vertex_input::{Vertex, VertexBufferDescription, VertexDefinition as _, VertexInputState}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateFlags, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
+use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
 use winit::{event_loop::EventLoop, window::Window};
-use crate::engine::{WindowMode, data_structures::{AllocationIndex, VecAllocator}, errors::Result, graphics::Texture};
+use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::Result, graphics::Texture};
 
 unsafe fn exit<T> (status: i32) -> T {
     std::process::exit(status)
 }
 
-pub trait UnsizedBuffer: BufferContents {
-    fn size(count: u64) -> u64;
-}
+#[repr(C, align(16))]
+#[derive(Debug, Default, BufferContents, Clone, Copy, PartialEq)]
+pub struct AlignedVec2(pub [u32; 2]);
+
+#[repr(C, align(16))]
+#[derive(Debug, Default, BufferContents, Clone, Copy, PartialEq)]
+pub struct AlignedVec3(pub [f32; 3]);
 
 #[derive(Clone, Copy)]
 pub struct PipelineHandle {
@@ -27,7 +30,6 @@ struct PipelineCell {
     index_buffer: Arc<Buffer>,
     indirect_buffer: Subbuffer<[DrawIndexedIndirectCommand]>,
     descriptor_set: Arc<DescriptorSet>,
-    command_buffers: Vec<Arc<PrimaryAutoCommandBuffer>>,
     vertex_shader: Arc<ShaderModule>,
     intermediate_shaders: Vec<Arc<ShaderModule>>,
     fragment_shader: Arc<ShaderModule>
@@ -100,9 +102,9 @@ pub mod pipeline_builder {
     mod stage_3 {
         use std::{collections::HashMap, sync::Arc};
 
-        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::{PipelineShaderStageCreateInfo, graphics::vertex_input::{Vertex, VertexDefinition as _}}, shader::ShaderModule};
+        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
 
-        use crate::engine::{errors::Result, graphics::{Graphics, graphics::get_pipeline}};
+        use crate::engine::{errors::Result, graphics::Graphics};
 
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics::graphics) gfx: &'a mut Graphics,
@@ -166,9 +168,9 @@ pub mod pipeline_builder {
     mod stage_4 {
         use std::{collections::HashMap, sync::Arc};
 
-        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer}, command_buffer::{DrawIndexedIndirectCommand, DrawIndirectCommand}, descriptor_set, format::{self, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::{GraphicsPipeline, PipelineShaderStageCreateInfo, graphics::vertex_input::{VertexBufferDescription, VertexInputState}}, shader::{ShaderModule, spirv::ImageFormat}};
+        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage}, command_buffer::DrawIndexedIndirectCommand, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::VertexBufferDescription, shader::ShaderModule};
 
-        use crate::engine::{errors::Result, graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, UnsizedBuffer, graphics::{PipelineCell, get_command_buffers, get_descriptor_set, get_pipeline}}};
+        use crate::engine::{errors::Result, graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, graphics::{PipelineCell, get_command_buffers, get_descriptor_set, get_pipeline}}};
 
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics) gfx: &'a mut Graphics,
@@ -201,6 +203,18 @@ pub mod pipeline_builder {
                 self.bindings.insert(binding, Binding::Buffer(buffer));
 
                 Ok(self)
+            }
+
+            pub fn add_existing_buffer(mut self, binding: u32, buffer: Arc<Buffer>) -> Self {
+                self.bindings.insert(binding, Binding::Buffer(buffer));
+
+                self
+            }
+
+            pub fn add_existing_texture(mut self, binding: u32, texture: Texture) -> Self {
+                self.bindings.insert(binding, Binding::Texture(texture));
+                
+                self
             }
 
             pub fn add_storage_buffer<T: BufferContents>(mut self, binding: u32, buffer: T, buffer_type: BufferType) -> Result<Self> {
@@ -290,17 +304,6 @@ pub mod pipeline_builder {
                     }]
                 )?;
 
-                let command_buffers = get_command_buffers(
-                    &gfx.command_buffer_allocator,
-                    &gfx.queue,
-                    &pipeline,
-                    &descriptor_set,
-                    &gfx.framebuffers,
-                    &vertex_buffer,
-                    &index_buffer,
-                    &indirect_buffer
-                );
-
                 let cell = PipelineCell {
                     pipeline,
                     bindings,
@@ -309,12 +312,12 @@ pub mod pipeline_builder {
                     index_buffer,
                     indirect_buffer,
                     descriptor_set,
-                    command_buffers,
                     vertex_shader,
                     intermediate_shaders,
                     fragment_shader,
                 };
 
+                gfx.recreate_command_buffers = true;
                 let handle = gfx.pipelines.insert(cell);
                 Ok(PipelineHandle { handle })
             }
@@ -356,12 +359,14 @@ pub struct Graphics {
     pub(in crate::engine::graphics) render_pass: Arc<RenderPass>,
     pub(in crate::engine::graphics) framebuffers: Vec<Arc<Framebuffer>>,
     pub(in crate::engine::graphics) pipelines: VecAllocator<PipelineCell>,
+    pub(in crate::engine::graphics) command_buffers: Vec<Arc<PrimaryAutoCommandBuffer>>,
     pub(in crate::engine::graphics) memory_allocator: Arc<StandardMemoryAllocator>,
     pub(in crate::engine::graphics) command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
     pub(in crate::engine::graphics) descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
     pub(in crate::engine::graphics) viewport: Viewport,
     pub(in crate::engine::graphics) window_resized: bool,
-    pub(in crate::engine::graphics) recreate_swapchain: bool
+    pub(in crate::engine::graphics) recreate_swapchain: bool,
+    pub(in crate::engine::graphics) recreate_command_buffers: bool
 }
 
 fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Arc<RenderPass> {
@@ -508,7 +513,7 @@ fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAlloca
     )?)
 }
 
-fn get_command_buffers(command_buffer_allocator: &Arc<StandardCommandBufferAllocator>, queue: &Arc<Queue>, pipeline: &Arc<GraphicsPipeline>, descriptor_set: &Arc<DescriptorSet>, framebuffers: &Vec<Arc<Framebuffer>>, vertex_buffer: &Arc<Buffer>, index_buffer: &Arc<Buffer>, indirect_buffer: &Subbuffer<[DrawIndexedIndirectCommand]>, ) -> Vec<Arc<PrimaryAutoCommandBuffer>> {
+fn get_command_buffers<'a>(command_buffer_allocator: &Arc<StandardCommandBufferAllocator>, queue: &Arc<Queue>, pipelines: &VecAllocator<PipelineCell>, framebuffers: &Vec<Arc<Framebuffer>>) -> Vec<Arc<PrimaryAutoCommandBuffer>> {
     framebuffers
         .iter()
         .map(|framebuffer| {
@@ -521,31 +526,38 @@ fn get_command_buffers(command_buffer_allocator: &Arc<StandardCommandBufferAlloc
             )
             .unwrap();
 
-            unsafe { builder
-                .begin_render_pass(
-                    RenderPassBeginInfo {
-                        clear_values: vec![Some([0.75, 0.75, 0.75, 1.0].into()), Some(ClearValue::Depth(0.0))],
-                        ..RenderPassBeginInfo::framebuffer(framebuffer.clone())
-                    },
-                    SubpassBeginInfo {
-                        contents: SubpassContents::Inline,
-                        ..Default::default()
-                    },
-                )
-                .unwrap()
-                .bind_pipeline_graphics(pipeline.clone())
-                .unwrap()
-                .bind_vertex_buffers(0, Subbuffer::new(vertex_buffer.clone()))
-                .unwrap()
-                .bind_index_buffer(Subbuffer::new(index_buffer.clone()).cast_aligned::<u32>())
-                .unwrap()
-                .bind_descriptor_sets(PipelineBindPoint::Graphics, pipeline.layout().clone(), 0, vec![descriptor_set.clone()])
-                .unwrap()
-                .draw_indexed_indirect(indirect_buffer.clone())
-                .unwrap()
+            unsafe { 
+                builder
+                    .begin_render_pass(
+                        RenderPassBeginInfo {
+                            clear_values: vec![Some([0.75, 0.75, 0.75, 1.0].into()), Some(ClearValue::Depth(0.0))],
+                            ..RenderPassBeginInfo::framebuffer(framebuffer.clone())
+                        },
+                        SubpassBeginInfo {
+                            contents: SubpassContents::Inline,
+                            ..Default::default()
+                        },
+                    )
+                    .unwrap();
+
+                pipelines.iter().fold(&mut builder, |builder, (_, pipeline)| {
+                    let PipelineCell { pipeline, vertex_buffer, index_buffer, indirect_buffer, descriptor_set, .. } = pipeline;
+                    builder
+                        .bind_pipeline_graphics((*pipeline).clone())
+                        .unwrap()
+                        .bind_vertex_buffers(0, Subbuffer::new(vertex_buffer.clone()))
+                        .unwrap()
+                        .bind_index_buffer(Subbuffer::new(index_buffer.clone()).cast_aligned::<u32>())
+                        .unwrap()
+                        .bind_descriptor_sets(PipelineBindPoint::Graphics, pipeline.layout().clone(), 0, vec![descriptor_set.clone()])
+                        .unwrap()
+                        .draw_indexed_indirect(indirect_buffer.clone())
+                        .unwrap()
+                });
+            }
+            builder
                 .end_render_pass(SubpassEndInfo::default())
                 .unwrap();
-            }
 
             builder.build().unwrap()
         })
@@ -618,11 +630,11 @@ impl Graphics {
         let caps = physical_device
             .surface_capabilities(&surface, Default::default())?;
         
-        let composite_alpha = caps.supported_composite_alpha.into_iter().next().unwrap();
-        let image_format =  physical_device
+        let composite_alpha = {#[allow(clippy::unwrap_used)] caps.supported_composite_alpha.into_iter().next().unwrap()};
+        let image_format =  {#[allow(clippy::unwrap_used)] physical_device
             .surface_formats(&surface, Default::default())
             .unwrap()[0]
-            .0;
+            .0};
 
         let (swapchain, images) = Swapchain::new(
             device.clone(),
@@ -648,7 +660,7 @@ impl Graphics {
         };
 
         let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
-        let frame_buffers = get_framebuffers(&&memory_allocator, render_pass.clone(), &images);
+        let frame_buffers = get_framebuffers(&memory_allocator, render_pass.clone(), &images);
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(device.clone(), Default::default()));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(device.clone(), Default::default()));
 
@@ -662,14 +674,16 @@ impl Graphics {
             swapchain,
             images,
             render_pass,
+            memory_allocator,
             framebuffers: frame_buffers,
             pipelines: VecAllocator::new(),
-            memory_allocator,
+            command_buffers: Vec::new(),
             command_buffer_allocator,
             descriptor_set_allocator,
             viewport,
             window_resized: false,
             recreate_swapchain: false,
+            recreate_command_buffers: false
         })
     }
 
@@ -685,13 +699,14 @@ impl Graphics {
                     ..self.swapchain.create_info()
                 })?;
             self.swapchain = new_swapchain;
-            let new_framebuffers = get_framebuffers(&self.memory_allocator, self.render_pass.clone(), &new_images);
+            self.framebuffers = get_framebuffers(&self.memory_allocator, self.render_pass.clone(), &new_images);
 
             if self.window_resized {
                 self.window_resized = false;
+                self.recreate_command_buffers = true;
 
                 for (_, pipeline) in &mut self.pipelines {
-                    let new_pipeline = get_pipeline(
+                    pipeline.pipeline = get_pipeline(
                         &self.device,
                         pipeline.vertex_buffer_description.clone(),
                         &pipeline.vertex_shader,
@@ -700,34 +715,37 @@ impl Graphics {
                         &self.render_pass,
                         self.viewport.clone(),
                     );
-
-                    let new_command_buffers = get_command_buffers(
-                        &self.command_buffer_allocator,
-                        &self.queue,
-                        &new_pipeline,
-                        &pipeline.descriptor_set,
-                        &new_framebuffers,
-                        &pipeline.vertex_buffer,
-                        &pipeline.index_buffer,
-                        &pipeline.indirect_buffer
-                    );
-
-                    pipeline.pipeline = new_pipeline;
-                    pipeline.command_buffers = new_command_buffers;
                 }
             }
+        }
+
+        if self.recreate_command_buffers && self.pipelines.count() > 0 {
+            println!("command buffers");
+            self.recreate_command_buffers = false;
+            self.command_buffers = get_command_buffers(
+                &self.command_buffer_allocator,
+                &self.queue,
+                &self.pipelines,
+                &self.framebuffers
+            );
         }
 
         Ok(())
     }
 
     pub fn remove_pipeline(&mut self, pipeline: PipelineHandle) -> Result<()> {
+        self.recreate_command_buffers = true;
         self.pipelines.remove(pipeline.handle).map_err(|_| "Pipeline doesn't exist.")?;
 
         Ok(())
     }
 
+    #[allow(clippy::unwrap_used)]
     pub fn draw(&mut self) {
+        if self.command_buffers.is_empty() {
+            return;
+        }
+
         let (image_i, suboptimal, acquire_future) =
         match swapchain::acquire_next_image(self.swapchain.clone(), None)
             .map_err(Validated::unwrap)
@@ -744,19 +762,10 @@ impl Graphics {
             self.recreate_swapchain = true;
         }
 
-        // This is cursed as fuck, but idk what else to do.
-        let execution: Box<dyn GpuFuture> = Box::new(
-            sync::now(self.device.clone())
-                .join(acquire_future)
-        );
-
-        let pipelines = self.pipelines.iter();
-
-        let execution = pipelines.fold(execution, |execution, (_, pipeline)| {
-            Box::new(execution.then_execute(self.queue.clone(), pipeline.command_buffers[image_i as usize].clone()).unwrap())
-        });
-        
-        let execution = execution
+        let execution = sync::now(self.device.clone())
+            .join(acquire_future)
+            .then_execute(self.queue.clone(), self.command_buffers[image_i as usize].clone())
+            .unwrap()
             .then_swapchain_present(
                 self.queue.clone(),
                 SwapchainPresentInfo::swapchain_image_index(self.swapchain.clone(), image_i),

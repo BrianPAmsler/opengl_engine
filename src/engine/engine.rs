@@ -103,52 +103,13 @@ impl ApplicationHandler for Engine {
 
                 self.input.add_scroll_delta(x, y);
             },
-            // match msg {
-            //     (_, WindowEvent::Key(key, _, Action::Press, _)) => {
-            //         let key_state = self.input.modify_key_state(key);
-            //         key_state.press = true;
-            //         key_state.is_down = true;
-
-            //         let fixed_key_state = self.fixed_input.modify_key_state(key);
-            //         fixed_key_state.press = true;
-            //         fixed_key_state.is_down = true;
-            //     },
-            //     (_, WindowEvent::Key(key, _, Action::Release, _)) => {
-            //         let key_state = self.input.modify_key_state(key);
-            //         key_state.release = true;
-            //         key_state.is_down = false;
-
-            //         let fixed_key_state = self.fixed_input.modify_key_state(key);
-            //         fixed_key_state.release = true;
-            //         fixed_key_state.is_down = false;
-            //     },
-            //     (_, WindowEvent::MouseButton(button, Action::Press, _)) => {
-            //         let key_state = self.input.modify_mouse_button_state(button as u32);
-            //         key_state.press = true;
-            //         key_state.is_down = true;
-
-            //         let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
-            //         fixed_key_state.press = true;
-            //         fixed_key_state.is_down = true;
-            //     },
-            //     (_, WindowEvent::MouseButton(button, Action::Release, _)) => {
-            //         let key_state = self.input.modify_mouse_button_state(button as u32);
-            //         key_state.release = true;
-            //         key_state.is_down = false;
-
-            //         let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
-            //         fixed_key_state.release = true;
-            //         fixed_key_state.is_down = false;
-            //     },
-            //     (_, WindowEvent::Scroll(x, y)) => {
-            //         self.input.add_scroll_delta(x, y);
-            //         self.fixed_input.add_scroll_delta(x, y);
-            //     }
-            //     // (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-            //     // (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
-            //     _ => ()
-            // }
-            WindowEvent::Resized(_) => self.gfx.window_resized(),
+            WindowEvent::Resized(size) => {
+                self.gfx.window_resized();
+                let new_aspect = size.width as f32 / size.height as f32;
+                if let Some(main_camera) = self.world.get_main_camera() {
+                    main_camera.borrow_mut().update_aspect(new_aspect);
+                }
+            },
             WindowEvent::RedrawRequested => {
                 if self.should_close {
                     event_loop.exit();
@@ -172,7 +133,8 @@ impl Engine {
         let window_attributes = WindowAttributes::default()
             .with_title(window_title)
             .with_inner_size(PhysicalSize::new(width, height))
-            .with_fullscreen(window_mode.into());
+            .with_fullscreen(window_mode.into())
+            .with_resizable(true);
         // let window = event_loop.create_window(window_attributes)?;
 
         #[derive(Default)]

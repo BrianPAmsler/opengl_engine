@@ -705,6 +705,11 @@ impl Graphics {
                 })?;
             self.swapchain = new_swapchain;
             self.framebuffers = get_framebuffers(&self.memory_allocator, self.render_pass.clone(), &new_images);
+            self.viewport = Viewport {
+                offset: [0.0, new_dimensions.height as f32],
+                extent: [new_dimensions.width as f32, -(new_dimensions.height as f32)],
+                depth_range: 0.0..=1.0,
+            };
 
             if self.window_resized {
                 self.window_resized = false;
@@ -725,7 +730,6 @@ impl Graphics {
         }
 
         if self.recreate_command_buffers && self.pipelines.count() > 0 {
-            println!("command buffers");
             self.recreate_command_buffers = false;
             self.command_buffers = get_command_buffers(
                 &self.command_buffer_allocator,

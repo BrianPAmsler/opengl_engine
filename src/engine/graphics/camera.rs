@@ -30,11 +30,11 @@ impl Camera {
         Camera { projection, projection_matrix: None, view_matrix: None, position, direction, up }
     }
 
-    pub fn projection<'a>(&'a self) -> &'a Projection {
+    pub fn projection(&self) -> &Projection {
         &self.projection
     }
 
-    pub fn projection_mut<'a>(&'a mut self) -> &'a mut Projection {
+    pub fn projection_mut(&mut self) -> &mut Projection {
         self.projection_matrix = None;
         &mut self.projection
     }
@@ -66,6 +66,7 @@ impl Camera {
         self.direction = direction;
     }
 
+    #[allow(clippy::unwrap_used)]
     pub fn view_matrix(&mut self) -> Mat4 {
         if self.view_matrix.is_none() {
             self.view_matrix = Some(lookAt(self.position, self.position + self.direction, self.up));
@@ -74,6 +75,7 @@ impl Camera {
         self.view_matrix.unwrap()
     }
 
+    #[allow(clippy::unwrap_used)]
     pub fn projection_matrix(&mut self) -> Mat4 {
         if self.projection_matrix.is_none() {
             self.projection_matrix = match self.projection {
@@ -83,5 +85,15 @@ impl Camera {
         }
 
         self.projection_matrix.unwrap()
+    }
+
+    pub fn update_aspect(&mut self, aspect: f32) {
+        let projection_aspect = match &mut self.projection {
+            Projection::Orthographic { aspect, .. } => aspect,
+            Projection::Perspective {  aspect, .. } => aspect,
+        };
+
+        *projection_aspect = aspect;
+        self.projection_matrix = None;
     }
 }

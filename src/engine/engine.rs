@@ -1,8 +1,8 @@
 use std::{default, sync::Arc, time::{Duration, Instant}};
 
-use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
+use winit::{application::ApplicationHandler, dpi::{PhysicalPosition, PhysicalSize}, event::{ElementState, KeyEvent, WindowEvent}, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::engine::{game_object::World, graphics::{Graphics, sprite_renderer::{self, SpriteRenderer}, terrain::terrain_renderer::TerrainRenderer}};
+use crate::engine::{game_object::World, graphics::{Graphics, sprite_renderer::{self, SpriteRenderer}, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}};
 
 use super::{errors::{Error, Result}};
 
@@ -24,22 +24,26 @@ impl Into<Option<Fullscreen>> for WindowMode {
 pub struct Engine {
     pub gfx: Graphics,
     pub world: World,
-    // pub input: Input,
+    pub input: Input,
     pub(in crate::engine) sprite_renderer: SpriteRenderer,
     pub(in crate::engine) terrain_renderer: TerrainRenderer,
     fixed_tick_duration: f64,
-    // fixed_input: Input,
     // error_queue: Vec<Error>
     pub(in crate::engine) window: Arc<Window>,
     initialization_time: Instant,
     last_tick: f64,
     last_fixed_tick: f64,
     fixed_tick_overflow: f64,
+    should_close: bool,
     _event_loop: Option<EventLoop<()>>
 }
 
 impl ApplicationHandler for Engine {
     fn resumed(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {}
+
+    fn new_events(&mut self, event_loop: &event_loop::ActiveEventLoop, cause: winit::event::StartCause) {
+        self.input.reset();
+    }
 
     fn window_event(
         &mut self,
@@ -51,8 +55,106 @@ impl ApplicationHandler for Engine {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
             },
+            WindowEvent::KeyboardInput { event, .. } => {
+                match event {
+                    KeyEvent { physical_key, state: ElementState::Pressed, .. } => {
+                        let key_state = self.input.modify_key_state(Key(physical_key));
+                        key_state.press = true;
+                        key_state.is_down = true;
+
+                    },
+                    KeyEvent { physical_key, state: ElementState::Released, .. } => {
+                        let key_state = self.input.modify_key_state(Key(physical_key));
+                        key_state.release = true;
+                        key_state.is_down = false;
+                    }
+                }
+            },
+            WindowEvent::MouseInput { button, state, .. } => {
+                let button = match button {
+                    winit::event::MouseButton::Left => 1,
+                    winit::event::MouseButton::Right => 2,
+                    winit::event::MouseButton::Middle => 3,
+                    winit::event::MouseButton::Back => 4,
+                    winit::event::MouseButton::Forward => 5,
+                    winit::event::MouseButton::Other(button) => button as u32 + 1, // Winit starts at 0 (I like starting at 1)
+                };
+
+                let key_state = self.input.modify_mouse_button_state(button);
+                match state {
+                    ElementState::Pressed => {
+                        key_state.press = true;
+                        key_state.is_down = true;
+                    },
+                    ElementState::Released => {
+                        key_state.release = true;
+                        key_state.is_down = false;
+                    },
+                }
+            },
+            WindowEvent::MouseWheel { delta, .. } => {
+                let (x, y) = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(x, y) => (x as f64, y as f64),
+                    winit::event::MouseScrollDelta::PixelDelta(physical_position) => {
+                        let PhysicalPosition { x, y } = physical_position;
+                        (x / input::LINE_HEIGHT, y / input::LINE_HEIGHT)
+                    },
+                };
+
+                self.input.add_scroll_delta(x, y);
+            },
+            // match msg {
+            //     (_, WindowEvent::Key(key, _, Action::Press, _)) => {
+            //         let key_state = self.input.modify_key_state(key);
+            //         key_state.press = true;
+            //         key_state.is_down = true;
+
+            //         let fixed_key_state = self.fixed_input.modify_key_state(key);
+            //         fixed_key_state.press = true;
+            //         fixed_key_state.is_down = true;
+            //     },
+            //     (_, WindowEvent::Key(key, _, Action::Release, _)) => {
+            //         let key_state = self.input.modify_key_state(key);
+            //         key_state.release = true;
+            //         key_state.is_down = false;
+
+            //         let fixed_key_state = self.fixed_input.modify_key_state(key);
+            //         fixed_key_state.release = true;
+            //         fixed_key_state.is_down = false;
+            //     },
+            //     (_, WindowEvent::MouseButton(button, Action::Press, _)) => {
+            //         let key_state = self.input.modify_mouse_button_state(button as u32);
+            //         key_state.press = true;
+            //         key_state.is_down = true;
+
+            //         let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
+            //         fixed_key_state.press = true;
+            //         fixed_key_state.is_down = true;
+            //     },
+            //     (_, WindowEvent::MouseButton(button, Action::Release, _)) => {
+            //         let key_state = self.input.modify_mouse_button_state(button as u32);
+            //         key_state.release = true;
+            //         key_state.is_down = false;
+
+            //         let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
+            //         fixed_key_state.release = true;
+            //         fixed_key_state.is_down = false;
+            //     },
+            //     (_, WindowEvent::Scroll(x, y)) => {
+            //         self.input.add_scroll_delta(x, y);
+            //         self.fixed_input.add_scroll_delta(x, y);
+            //     }
+            //     // (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
+            //     // (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
+            //     _ => ()
+            // }
             WindowEvent::Resized(_) => self.gfx.window_resized(),
             WindowEvent::RedrawRequested => {
+                if self.should_close {
+                    event_loop.exit();
+                    return;
+                }
+
                 self.update().unwrap();
 
                 self.window.request_redraw();
@@ -104,7 +206,7 @@ impl Engine {
         let mut gfx = Graphics::new(window.clone(), &event_loop)?;
         let sprite_renderer = SpriteRenderer::new();
         let terrain_renderer = TerrainRenderer::new(&mut gfx)?;
-        let engine = Engine { window, gfx, world, sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, _event_loop: Some(event_loop) };
+        let engine = Engine { window, gfx, world, input: Input::new(), sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, should_close: false, _event_loop: Some(event_loop) };
 
         // let gfx = Graphics::init(window_title, width, height, window_mode)?;
 
@@ -251,27 +353,7 @@ impl Engine {
         // errors.iter().for_each(|error| eprintln!("{}", error))
     }
 
-    // fn init(&mut self) {
-    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
-
-    //     for obj in all_objs.to_vec().into_iter() {
-    //         obj.init(&self).unwrap_or_else(|err| self.error_queue.push(err));
-    //     }
-    // }
-
-    // fn game_tick(&mut self, delta_time: f32) {
-    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
-
-    //     for obj in all_objs.to_vec().into_iter() {
-    //         obj.update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
-    //     }
-    // }
-
-    // fn fixed_game_tick(&mut self, delta_time: f32) {
-    //     let all_objs = self.world.get_root().get_all_children().unwrap_or_else(|err| {self.error_queue.push(err); Box::new([])});
-
-    //     for obj in all_objs.to_vec().into_iter() {
-    //         obj.fixed_update(&self, delta_time).unwrap_or_else(|err| self.error_queue.push(err));
-    //     }
-    // }
+    pub fn set_should_close(&mut self, should_close: bool) {
+        self.should_close = should_close;
+    }
 }

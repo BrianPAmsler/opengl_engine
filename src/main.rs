@@ -12,7 +12,7 @@ use gl_types::{geometric::normalize, vec2, vec3};
 // use gl_types::{geometric::normalize, vec2, vec3};
 use regex::Regex;
 
-use crate::engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
+use crate::engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key};
 
 // use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
@@ -27,9 +27,9 @@ pub struct FPSCounter {
 
 impl Component for FPSCounter {
     fn update(&mut self, engine: &mut Engine, _: ObjectID, _: f32) -> Result<()> {
-        // if engine.input.get_key_state(Key::Escape).press {
-        //     engine.gfx.set_should_close(true);
-        // }
+        if engine.input.get_key_state(Key::Escape).press {
+            engine.set_should_close(true);
+        }
         
         self.count += 1;
         let current_tick = engine.get_time() as f32;
@@ -95,55 +95,55 @@ impl Component for Renderer {
     fn update(&mut self, engine: &mut Engine, _: ObjectID, delta_time: f32) -> Result<()> {
         let mut camera = self.camera.borrow_mut();
         let speed = 10.0;
-        // if engine.input.get_key_state(Key::W).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + normalize(vec3!(1, 0, 1)) * delta_time * speed);
-        // }
 
-        // if engine.input.get_key_state(Key::A).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + normalize(vec3!(-1, 0, 1)) * delta_time * speed);
-        // }
-        // if engine.input.get_key_state(Key::S).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + normalize(vec3!(-1, 0, -1)) * delta_time * speed);
-        // }
-        // if engine.input.get_key_state(Key::D).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + normalize(vec3!(1, 0, -1)) * delta_time * speed);
-        // }
-        // if engine.input.get_key_state(Key::Space).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + vec3!(0, 1, 0) * delta_time * speed);
-        // }
-        // if engine.input.get_key_state(Key::LeftControl).is_down {
-        //     let pos = camera.position();
-        //     camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
-        // }
+        if engine.input.get_key_state(Key::KeyW).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(1, 0, 1)) * delta_time * speed);
+        }
+
+        if engine.input.get_key_state(Key::KeyA).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(-1, 0, 1)) * delta_time * speed);
+        }
+        if engine.input.get_key_state(Key::KeyS).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(-1, 0, -1)) * delta_time * speed);
+        }
+        if engine.input.get_key_state(Key::KeyD).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + normalize(vec3!(1, 0, -1)) * delta_time * speed);
+        }
+        if engine.input.get_key_state(Key::Space).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + vec3!(0, 1, 0) * delta_time * speed);
+        }
+        if engine.input.get_key_state(Key::ControlLeft).is_down {
+            let pos = camera.position();
+            camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
+        }
 
         let mut sprite = engine.world.get_transform(self.sprite2.unwrap())?;
-        *sprite.position_mut() += vec3!(delta_time, 0, 0);
-        // if engine.input.get_key_state(Key::Up).is_down {
-        //     *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
-        // }
+        if engine.input.get_key_state(Key::ArrowUp).is_down {
+            *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
+        }
 
-        // if engine.input.get_key_state(Key::Left).is_down {
-        //     *sprite.position_mut() += vec3!(-1, 0, 0) * delta_time * speed;
-        // }
-        // if engine.input.get_key_state(Key::Down).is_down {
-        //     *sprite.position_mut() += vec3!(0, 0, -1) * delta_time * speed;
-        // }
-        // if engine.input.get_key_state(Key::Right).is_down {
-        //     *sprite.position_mut() += vec3!(1, 0, 0) * delta_time * speed;
-        // }
-        // if engine.input.get_key_state(Key::RightShift).is_down {
-        //     *sprite.position_mut() += vec3!(0, 1, 0) * delta_time * speed;
-        // }
-        // if engine.input.get_key_state(Key::RightControl).is_down {
-        //     *sprite.position_mut() += vec3!(0, -1, 0) * delta_time * speed;
-        // }
+        if engine.input.get_key_state(Key::ArrowLeft).is_down {
+            *sprite.position_mut() += vec3!(-1, 0, 0) * delta_time * speed;
+        }
+        if engine.input.get_key_state(Key::ArrowDown).is_down {
+            *sprite.position_mut() += vec3!(0, 0, -1) * delta_time * speed;
+        }
+        if engine.input.get_key_state(Key::ArrowRight).is_down {
+            *sprite.position_mut() += vec3!(1, 0, 0) * delta_time * speed;
+        }
+        if engine.input.get_key_state(Key::ShiftRight).is_down {
+            *sprite.position_mut() += vec3!(0, 1, 0) * delta_time * speed;
+        }
+        if engine.input.get_key_state(Key::ControlRight).is_down {
+            *sprite.position_mut() += vec3!(0, -1, 0) * delta_time * speed;
+        }
 
-        // self.camera_size -= engine.input.get_scroll_y() as f32;
+        self.camera_size -= engine.input.get_scroll_y() as f32;
 
         if let Projection::Orthographic { width, .. } = camera.projection_mut() { *width = self.camera_size }
 

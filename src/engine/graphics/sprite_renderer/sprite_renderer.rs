@@ -1,20 +1,14 @@
 use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
-use gl_types::matrices::{Mat4, MatN};
-use gl_types::{vec2, vec4};
-use gl_types::vectors::{Vec2, Vec3, VecN};
+use gl_types::{matrices::{Mat4, MatN}, vec2, vec4, vectors::{Vec2, Vec3, VecN}};
 use image::DynamicImage;
 use itertools::Itertools;
 use vulkano::buffer::{BufferContents, Subbuffer};
 use vulkano::command_buffer::DrawIndexedIndirectCommand;
 use vulkano::pipeline::graphics::vertex_input::Vertex;
 
-use crate::engine::data_structures::{AllocationIndex, VecAllocator};
-use crate::engine::graphics::builder::TextureBuilder;
-use crate::engine::graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle};
-
-use crate::engine::errors::{Result, none_error};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, builder::TextureBuilder, sprite_renderer::error::{AddSpritesheetError, SpriteRendererBufferError, SpriteRendererUpdateError, UnknownSpriteSheet}}}, error::Result};
 
 const UNIFORMS_BINDING: u32 = 1;
 const SPRITE_SHEET_BINDING: u32 = 2;
@@ -75,7 +69,7 @@ pub struct SpriteData {
 }
 
 unsafe fn as_u8_slice<T>(slice: &[T]) -> &[u8] {
-    std::slice::from_raw_parts(slice.as_ptr() as *const u8, slice.len() * std::mem::size_of::<T>())
+    std::slice::from_raw_parts(slice.as_ptr() as *const u8, std::mem::size_of_val(slice))
 }
 
 struct SpriteSheet {
@@ -88,18 +82,18 @@ struct SpriteSheet {
 }
 
 impl SpriteSheet {
-    fn buffer_sprite_data(&mut self, gfx: &Graphics) {
+    fn buffer_sprite_data(&mut self, gfx: &Graphics)  -> Result<(), SpriteRendererBufferError>{
         if self.render_queue.len() > self.buffersize {
             // Multiply new szie by 50% to give some wiggle room
             todo!("Implement uniform buffer resizing")
         }
 
-        let binding = gfx.get_binding(self.pipeline, SPRITE_SHEET_BINDING);
+        let binding = gfx.get_binding(self.pipeline, SPRITE_SHEET_BINDING)?;
 
         match binding {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::from(buffer).reinterpret::<SpriteSSBO>();
-                let mut buffer = buffer.write().unwrap();
+                let mut buffer = buffer.write()?;
 
                 // let data = SpriteSSBO {
                 //     count: self.render_queue.len() as i32,
@@ -115,6 +109,8 @@ impl SpriteSheet {
             },
             _ => unreachable!("unexpected binding.")
         }
+
+        Ok(())
     }
 }
 
@@ -177,9 +173,9 @@ impl SpriteRenderer {
         SpriteRenderer { sprite_sheets: VecAllocator::new(), sprite_sheet_index: HashMap::new() }
     }
 
-    pub fn add_sprite_sheet(&mut self, name: &str, gfx: &mut Graphics, initial_buffer_size: usize, sprite_sheet: DynamicImage, sprite_map: &[SpriteDefinition]) -> Result<SpriteSheetID> {
+    pub fn add_sprite_sheet(&mut self, name: &str, gfx: &mut Graphics, initial_buffer_size: usize, sprite_sheet: DynamicImage, sprite_map: &[SpriteDefinition]) -> Result<SpriteSheetID, AddSpritesheetError> {
         if self.sprite_sheet_index.contains_key(name) {
-            return Err(none_error());
+            Err(UnknownSpriteSheet { sheet: name.to_owned() })?; 
         }
 
         let sprite_sheet = sprite_sheet.into_rgba8();
@@ -191,7 +187,7 @@ impl SpriteRenderer {
         let vertex_shader = vertex_shader::load(gfx.device.clone())?;
         let fragment_shader = fragment_shader::load(gfx.device.clone())?;
 
-        let sprite_map = sprite_map.into_iter().map(|sprite| {
+        let sprite_map = sprite_map.iter().map(|sprite| {
             let SpriteDefinition { x, y, width, height } = *sprite;
             // Convert pixel coordinates to uv coordinates
             let wh = vec2!(sheet_width, sheet_height);
@@ -223,13 +219,13 @@ impl SpriteRenderer {
             .vertex_shader(vertex_shader)
             .fragment_shader(fragment_shader)
             .vertex_data(VERTEX_DATA.to_owned(), INDEX_DATA.to_owned())?
-            .add_texture(0, sprite_sheet)?
+            .add_texture(0, sprite_sheet)
             .add_uniform_buffer(UNIFORMS_BINDING, InputData::default(), BufferType::Dynamic)?
             .add_storage_buffer_unsized::<SpriteSSBO>(SPRITE_SHEET_BINDING, initial_buffer_size as u64, BufferType::Dynamic)?
             .add_storage_buffer_unsized::<SpriteSheetSSBO>(SPRITE_MAP_BINDING, sprite_map.len() as u64, BufferType::Static)?
             .finish()?;
 
-        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING) {
+        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING)? {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::new(buffer).reinterpret::<SpriteSheetSSBO>();
                 let mut value = buffer.write()?;
@@ -258,7 +254,7 @@ impl SpriteRenderer {
         let Ok(old) = self.sprite_sheets.remove(sprite_sheet.0) else { return };
 
         self.sprite_sheet_index.remove(&old.name);
-        gfx.remove_pipeline(old.pipeline).unwrap();
+        gfx.remove_pipeline(old.pipeline);
     }
 
     pub fn get_sprite_sheet_by_name(&self, name: &str) -> Option<SpriteSheetID> {
@@ -282,7 +278,7 @@ impl SpriteRenderer {
         sheet.render_queue.push(sprite_data);
     }
 
-    pub fn update(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) {
+    pub fn update(&mut self, gfx: &Graphics, view_matrix: &Mat4, projection_matrix: &Mat4) -> Result<(), SpriteRendererUpdateError> {
         for (_, sheet) in &mut self.sprite_sheets {
             let draw_command = DrawIndexedIndirectCommand {
                 index_count: INDEX_DATA.len() as u32,
@@ -292,17 +288,17 @@ impl SpriteRenderer {
                 first_instance: 0,
             };
             
-            gfx.set_indirect_buffer(sheet.pipeline, draw_command);
+            gfx.set_indirect_buffer(sheet.pipeline, draw_command)?;
             // gfx.glBindVertexArray(self.mesh.vao());
             // gfx.glUseProgram(self.program.program());
-            sheet.buffer_sprite_data(gfx);
+            sheet.buffer_sprite_data(gfx)?;
             // gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
             // gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, sheet.sprite_sheet.texture_id());
 
             let texel_offset = vec2!(1.0) / (vec2!(sheet.width, sheet.height) * 2.0);
 
             // Update uniforms
-            let uniform_buffer = match gfx.get_binding(sheet.pipeline, UNIFORMS_BINDING) {
+            let uniform_buffer = match gfx.get_binding(sheet.pipeline, UNIFORMS_BINDING)? {
                 Binding::Buffer(buffer) => buffer,
                 _ => unreachable!("invalid binding.")
             };
@@ -312,7 +308,7 @@ impl SpriteRenderer {
             let view = view_matrix.as_array();
             let projection = projection_matrix.as_array();
             let texel_offset = texel_offset.as_array();
-            *unifom_buffer.write().unwrap() = InputData {
+            *unifom_buffer.write()? = InputData {
                 view,
                 projection,
                 texel_offset,
@@ -324,13 +320,21 @@ impl SpriteRenderer {
             // gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, sheet.render_queue.len() as u32);
             sheet.render_queue.clear();
         }
+
+        Ok(())
+    }
+}
+
+impl Default for SpriteRenderer {
+    fn default() -> Self {
+        SpriteRenderer::new()
     }
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use std::{default, sync::Arc, time::Duration};
+    use std::{sync::Arc, time::Duration};
 
     use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand};
     use winit::{application::ApplicationHandler, dpi::PhysicalSize, event::WindowEvent, event_loop::{self, EventLoop}, platform::pump_events::EventLoopExtPumpEvents as _, window::{Window, WindowAttributes}};
@@ -363,8 +367,8 @@ mod tests {
         }
     }
 
-    use crate::engine::{errors::Result, graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}};
-
+    use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}, error::dyn_error::Result};
+    
     
     
     #[cfg(target_os = "windows")] // The EXT traits are platform dependent
@@ -462,10 +466,10 @@ mod tests {
             first_index: 0,
             vertex_offset: 0,
             first_instance: 0,
-        });
-        gfx.draw();
+        })?;
+        gfx.draw()?;
 
-        match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING) {
+        match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING)? {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::new(buffer);
                 let buffer = buffer.reinterpret::<SpriteSSBO>();
@@ -476,7 +480,7 @@ mod tests {
             _ => unreachable!()
         }
 
-        let uniform_data = match gfx.get_binding(pipeline, UNIFORMS_BINDING) {
+        let uniform_data = match gfx.get_binding(pipeline, UNIFORMS_BINDING)? {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::new(buffer).reinterpret::<InputData>();
                 let buffer = buffer.read()?;
@@ -485,7 +489,7 @@ mod tests {
             _ => unreachable!()
         };
 
-        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING) {
+        match gfx.get_binding(pipeline, SPRITE_MAP_BINDING)? {
             Binding::Buffer(buffer) => {
                 let buffer = Subbuffer::new(buffer);
                 let buffer = buffer.reinterpret::<SpriteSheetSSBO>();

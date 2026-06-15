@@ -1,8 +1,8 @@
-use std::{i32, path::Path};
+use std::path::Path;
 
 use gl_types::vectors::Vec2;
 
-use crate::engine::{Engine, errors::Result, game_object::{ObjectID, component::Component}, graphics::{sprite_renderer::{SpriteDefinition, SpriteSheetID}}};
+use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::sprite_renderer::{SpriteDefinition, SpriteSheetID}}, error::{Result, universal_errors::Uninitialized}};
 
 use super::SpriteData;
 
@@ -33,18 +33,18 @@ impl SpriteSheet {
 }
 
 impl SpriteSheet {
-    pub fn id(&self) -> SpriteSheetID {
-        self.id.expect("Sprite sheet not initialized.")
+    pub fn id(&self) -> Result<SpriteSheetID, Uninitialized> {
+        Ok(self.id.ok_or(Uninitialized)?)
     }
 }
 
 impl Component for SpriteSheet {
-    fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
-        let path = Path::new(self.filename.as_ref().unwrap());
+    fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> crate::error::dyn_error::Result<()> {
+        let path = Path::new(self.filename.as_ref().ok_or(Uninitialized)?);
         let sprite_sheet = image::open(path)?;
         let sprite_map = std::mem::take(&mut self.sprite_definitions);
         println!("init sprite sheet: {:?}", path);
-        let name: Option<_> = (|| Some(path.file_name()?.to_str()?))();
+        let name = path.file_name().and_then(|path| path.to_str());
 
         // If add_sprite_sheet returns None it should panic, so rewrap the unwrapped result.
         self.id = Some(engine.sprite_renderer.add_sprite_sheet(name.ok_or("None value")?, &mut engine.gfx, 1024, sprite_sheet, &sprite_map)?);
@@ -53,10 +53,10 @@ impl Component for SpriteSheet {
         Ok(())
     }
 
-    fn fixed_update(&mut self, engine: &mut Engine, _owner: ObjectID, _delta_time: f32) -> Result<()> { Ok(()) }
+    fn fixed_update(&mut self, _engine: &mut Engine, _owner: ObjectID, _delta_time: f32) -> crate::error::dyn_error::Result<()> { Ok(()) }
 
-    fn on_remove(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
-        engine.sprite_renderer.remove_sprite_sheet(&mut engine.gfx, self.id.unwrap());
+    fn on_remove(&mut self, engine: &mut Engine, _owner: ObjectID) -> crate::error::dyn_error::Result<()> {
+        engine.sprite_renderer.remove_sprite_sheet(&mut engine.gfx, self.id.ok_or(Uninitialized)?);
 
         Ok(())
     }
@@ -88,7 +88,7 @@ impl Sprite {
 }
 
 impl Component for Sprite {
-    fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> Result<()> {
+    fn init(&mut self, engine: &mut Engine, _owner: ObjectID) -> crate::error::dyn_error::Result<()> {
         self.sprite_sheet_id = SpriteSheetEnum::ID(match &self.sprite_sheet_id {
             SpriteSheetEnum::ID(_) => panic!("no"),
             SpriteSheetEnum::Name(name) => engine.sprite_renderer.get_sprite_sheet_by_name(name).ok_or(format!("Sprite sheet \"{}\" not found.", name))?,
@@ -97,7 +97,7 @@ impl Component for Sprite {
         Ok(())
     }
 
-    fn update(&mut self, engine: &mut Engine, owner: ObjectID, _delta_time: f32) -> Result<()> {
+    fn update(&mut self, engine: &mut Engine, owner: ObjectID, _delta_time: f32) -> crate::error::dyn_error::Result<()> {
         let SpriteSheetEnum::ID(sprite_sheet) = self.sprite_sheet_id else { return Ok(()); };
         let transform = engine.world.get_transform(owner)?;
 

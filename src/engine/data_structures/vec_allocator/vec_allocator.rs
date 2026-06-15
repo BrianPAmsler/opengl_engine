@@ -2,6 +2,8 @@ use std::{collections::VecDeque, fmt::Debug};
 
 use rand::RngExt as _;
 
+use crate::error::ExplicitUnwrap;
+
 use super::error::Result;
 
 #[derive(Debug, Clone)]
@@ -28,8 +30,8 @@ impl<T: Clone> Clone for VecAllocator<T> {
         Self {
             id: generate_id(),
             vec: self.vec.clone(),
-            first_hole: self.first_hole.clone(),
-            count: self.count.clone()
+            first_hole: self.first_hole,
+            count: self.count
         }
     }
 }
@@ -84,8 +86,7 @@ impl<T: Clone> VecAllocator<T> {
 
 impl<T> VecAllocator<T> {
     pub fn new() -> VecAllocator<T> {
-        let mut vec = Vec::new();
-        vec.push(Slot::Hole { id: 0, next: 0 });
+        let vec = vec![Slot::Hole { id: 0, next: 0 }];
         VecAllocator { id: generate_id(), vec, first_hole: 0, count: 0 }
     }
 
@@ -155,16 +156,13 @@ impl<T> VecAllocator<T> {
             }
         }
 
-        match prev {
-            Some(prev) => {
-                match &mut self.vec[prev] {
-                    Slot::Element { .. } => panic!("something is fucked with VecAllocator!"),
-                    Slot::Hole { id: _, next } => {
-                        *next = element.index;
-                    }
+        if let Some(prev) = prev {
+            match &mut self.vec[prev] {
+                Slot::Element { .. } => panic!("something is fucked with VecAllocator!"),
+                Slot::Hole { id: _, next } => {
+                    *next = element.index;
                 }
-            },
-            None => ()
+            }
         }
 
         let new_hole = Slot::Hole { id: id + 1, next };
@@ -227,6 +225,12 @@ impl<T> VecAllocator<T> {
     }
 }
 
+impl<T> Default for VecAllocator<T> {
+    fn default() -> Self {
+        VecAllocator::new()
+    }
+}
+
 pub struct Iter<'a, T> {
     allocator: &'a VecAllocator<T>,
     index: usize
@@ -241,7 +245,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
                 Slot::Element { id, value, .. } => {
                     let index = AllocationIndex { allocator_id: self.allocator.id, index: self.index, id: *id };
                     self.index += 1;
-                    return Some((index, &value));
+                    return Some((index, value));
                 },
                 Slot::Hole { .. } => self.index += 1,
             }
@@ -313,7 +317,7 @@ impl<T> Iterator for IntoIter<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         while !self.vec.is_empty() {
-            match self.vec.pop_front().unwrap() {
+            match self.vec.pop_front().explicit_unwrap() {
                 Slot::Element { value, .. } => {
                     return Some(value);
                 },
@@ -342,6 +346,8 @@ mod tests {
 
     use rand::{RngExt};
 
+    use crate::error::ExplicitUnwrap;
+
     use super::{Slot, VecAllocator};
 
     fn insert<T: std::fmt::Debug>(vec: &mut Vec<Slot<T>>, value: T) {
@@ -350,10 +356,7 @@ mod tests {
         while slot.is_none() && i < vec.len() {
             let next_slot = &vec[i];
 
-            match next_slot {
-                Slot::Hole { id, next } => slot = Some((i, *id, *next)),
-                _ => ()
-            }
+            if let Slot::Hole { id, next } = next_slot { slot = Some((i, *id, *next)) }
 
             i += 1;
         }
@@ -371,7 +374,7 @@ mod tests {
         }
     }
 
-    fn remove<T: std::fmt::Debug>(vec: &mut Vec<Slot<T>>, index: usize) {
+    fn remove<T: std::fmt::Debug>(vec: &mut [Slot<T>], index: usize) {
         let id = match &vec[index] {
             Slot::Element { id, .. } => *id + 1,
             _ => panic!("already hole!")
@@ -397,10 +400,7 @@ mod tests {
     fn test_iter<T: std::fmt::Debug + Clone + Copy + Eq>(mut allocator: VecAllocator<T>, list: &[Slot<T>]) -> Result<(), String> {
         let mut expected = Vec::new();
         for slot in list {
-            match slot {
-                Slot::Element { value, .. } => expected.push(*value),
-                _ => ()
-            }
+            if let Slot::Element { value, .. } = slot { expected.push(*value) }
         }
 
         let mut test = Vec::new();
@@ -476,7 +476,7 @@ mod tests {
         ];
 
         let expected = VecAllocator::from_raw(&ten_elements);
-        test_vec.extend(ten_elements.into_iter());
+        test_vec.extend(ten_elements);
 
         (0..10).for_each(|n| {
             let entry = allocator.insert(n);
@@ -489,7 +489,7 @@ mod tests {
             let mut rng = rand::rng();
             let choice: f32 = rng.random();
 
-            if entries.len() == 0 || choice > 0.45 {
+            if entries.is_empty() || choice > 0.45 {
                 let value: u128 = rng.random();
 
                 println!("Inserting value {}...", value);
@@ -505,7 +505,7 @@ mod tests {
 
                 println!("Removing at index {}...", entry.index);
                 remove(&mut test_vec, entry.index);
-                allocator.remove(entry).unwrap();
+                allocator.remove(entry).explicit_unwrap();
 
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;
@@ -517,7 +517,7 @@ mod tests {
             let mut rng = rand::rng();
             let choice: f32 = rng.random();
 
-            if entries.len() == 0 || choice > 0.9 {
+            if entries.is_empty() || choice > 0.9 {
                 let value: u128 = rng.random();
 
                 println!("Inserting value {}...", value);
@@ -533,7 +533,7 @@ mod tests {
 
                 println!("Removing at index {}...", entry.index);
                 remove(&mut test_vec, entry.index);
-                allocator.remove(entry).unwrap();
+                allocator.remove(entry).explicit_unwrap();
 
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;
@@ -545,7 +545,7 @@ mod tests {
             let mut rng = rand::rng();
             let choice: f32 = rng.random();
 
-            if entries.len() == 0 || choice > 0.1 {
+            if entries.is_empty() || choice > 0.1 {
                 let value: u128 = rng.random();
 
                 println!("Inserting value: {}...", value);
@@ -561,7 +561,7 @@ mod tests {
 
                 println!("Removing at index: {}...", entry.index);
                 remove(&mut test_vec, entry.index);
-                allocator.remove(entry).unwrap();
+                allocator.remove(entry).explicit_unwrap();
 
                 let expected = VecAllocator::from_raw(&test_vec);
                 compare_vecs(&expected, &allocator)?;

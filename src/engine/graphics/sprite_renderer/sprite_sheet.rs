@@ -3,7 +3,7 @@ use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, op
 use image::{RgbaImage, imageops};
 use lazy_static::lazy_static;
 
-use crate::engine::graphics::{Graphics, Texture, builder::TextureBuilder};
+use crate::{engine::graphics::{Graphics, Texture, builder::TextureBuilder, texture::error::TextureBuilderError}, error::{ExplicitUnwrap, Result}};
 
 struct SpriteCell {
     x: u32,
@@ -44,6 +44,7 @@ impl Ord for ImageCell {
     }
 }
 
+#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for ImageCell {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.size().partial_cmp(&other.size()).map(|c| c.reverse())
@@ -93,7 +94,7 @@ impl SpriteSheetBuilder {
         self.sprites.insert(ImageCell { img, name });
     }
 
-    pub fn try_build(self) -> Result<SpriteSheet, SpriteSheetBuilder> {
+    pub fn try_build(self) -> std::result::Result<SpriteSheet, SpriteSheetBuilder> {
         struct Node<'a> {
             x: u32,
             y: u32,
@@ -146,7 +147,7 @@ impl SpriteSheetBuilder {
             }
         }
 
-        fn insert_img<'a, 'b>(node: &'a mut Node<'b>, img: &'b ImageCell) {
+        fn insert_img<'a>(node: &mut Node<'a>, img: &'a ImageCell) {
             let w = img.img.width();
             let h = img.img.height();
 
@@ -306,35 +307,26 @@ impl SpriteSheetBuilder {
         let mut q = VecDeque::new();
         q.push_back(root);
         while !q.is_empty() {
-            let mut node = q.pop_front().unwrap();
+            let mut node = q.pop_front().explicit_unwrap();
 
-            match node.img.take() {
-                Some(ImageCell { img, name }) => {
-                    if img.width() > 0 && img.height() > 0 {
-                        let sprite = SpriteCell {
-                            x: node.x,
-                            y: node.y,
-                            width: img.width(),
-                            height: img.height(),
-                            name: name.clone(),
-                        };
+            if let Some(ImageCell { img, name }) = node.img.take() {
+                if img.width() > 0 && img.height() > 0 {
+                    let sprite = SpriteCell {
+                        x: node.x,
+                        y: node.y,
+                        width: img.width(),
+                        height: img.height(),
+                        name: name.clone(),
+                    };
 
-                        imageops::replace(&mut final_sheet, img, sprite.x as i64, sprite.y as i64);
-                        sprite_list.push(sprite);
-                    }
-
-                    match node.right.take() {
-                        Some(node) => q.push_back(*node),
-                        None => (),
-                    }
-
-                    match node.down.take() {
-                        Some(node) => q.push_back(*node),
-                        None => (),
-                    }
-                },
-                    None => (),
+                    imageops::replace(&mut final_sheet, img, sprite.x as i64, sprite.y as i64);
+                    sprite_list.push(sprite);
                 }
+
+                if let Some(node) = node.right.take() { q.push_back(*node) }
+
+                if let Some(node) = node.down.take() { q.push_back(*node) }
+            }
         }
         
         Ok(SpriteSheet { sheet: final_sheet, sprites: sprite_list })
@@ -363,8 +355,8 @@ pub struct SpriteSheet {
 }
 
 impl SpriteSheet {
-    pub fn as_texture(self, gfx: &Graphics) -> Texture {
-        TextureBuilder::from_image(self.sheet).finish(gfx).unwrap()
+    pub fn as_texture(self, gfx: &Graphics) -> Result<Texture, TextureBuilderError> {
+        TextureBuilder::from_image(self.sheet).finish(gfx)
     }
 
     pub fn image(&self) -> &RgbaImage {
@@ -382,36 +374,30 @@ mod tests {
 
     use pathbuf::pathbuf;
 
+    use crate::error::ExplicitUnwrap;
+
     use super::SpriteSheetBuilder;
 
     #[test]
     #[ignore="output must be manually verified"]
     fn spritesheet_build() {
-        let dir = std::fs::read_dir(pathbuf!("test_files", "input", "test_sprites")).unwrap();
+        let dir = std::fs::read_dir(pathbuf!("test_files", "input", "test_sprites")).explicit_unwrap();
         let mut files = Vec::new();
-        for file in dir {
-            match file {
-                Ok(file) => match file.path().extension() {
-                    Some(ext)=> if ext == OsStr::new("png") {
-                        files.push(file.path());
-                    },
-                    None => (),
-                },
-                Err(_) => (),
-            }
-        }
+        for file in dir.flatten() { if let Some(ext) = file.path().extension() { if ext == OsStr::new("png") {
+            files.push(file.path());
+        } } }
 
         let mut builder = SpriteSheetBuilder::new(100000000);
-        files.into_iter().map(|file| (image::open(&file).unwrap().to_rgba8(), file.file_name().unwrap().to_str().unwrap().to_owned()))
+        files.into_iter().map(|file| (image::open(&file).explicit_unwrap().to_rgba8(), file.file_name().explicit_unwrap().to_str().explicit_unwrap().to_owned()))
         .for_each(|(img, name)| {
             builder.add_image(img, name);
         });
 
-        let sprite_sheet = builder.try_build().unwrap();
+        let sprite_sheet = builder.try_build().explicit_unwrap();
         
-        let mut sheet_file = OpenOptions::new().create(true).write(true).open(pathbuf!("test_files", "output", "sprite_sheet.png")).unwrap();
+        let mut sheet_file = OpenOptions::new().create(true).write(true).open(pathbuf!("test_files", "output", "sprite_sheet.png")).explicit_unwrap();
         
-        sprite_sheet.sheet.write_to(&mut sheet_file, image::ImageFormat::Png).unwrap();
+        sprite_sheet.sheet.write_to(&mut sheet_file, image::ImageFormat::Png).explicit_unwrap();
 
         panic!("This test is not automated. Manually verify the result at: test_files/output/sprite_sheet.png");
     }

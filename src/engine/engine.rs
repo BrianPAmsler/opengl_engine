@@ -1,10 +1,8 @@
-use std::{default, sync::Arc, time::{Duration, Instant}};
+use std::{sync::Arc, time::{Duration, Instant}};
 
 use winit::{application::ApplicationHandler, dpi::{PhysicalPosition, PhysicalSize}, event::{ElementState, KeyEvent, WindowEvent}, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::engine::{game_object::World, graphics::{Graphics, sprite_renderer::{self, SpriteRenderer}, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}};
-
-use super::{errors::{Error, Result}};
+use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error::{ExplicitUnwrap, Result}};
 
 #[derive(Debug)]
 pub enum WindowMode {
@@ -41,14 +39,14 @@ pub struct Engine {
 impl ApplicationHandler for Engine {
     fn resumed(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {}
 
-    fn new_events(&mut self, event_loop: &event_loop::ActiveEventLoop, cause: winit::event::StartCause) {
+    fn new_events(&mut self, _event_loop: &event_loop::ActiveEventLoop, _cause: winit::event::StartCause) {
         self.input.reset();
     }
 
     fn window_event(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
-        window_id: winit::window::WindowId,
+        _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
         match event {
@@ -116,7 +114,7 @@ impl ApplicationHandler for Engine {
                     return;
                 }
 
-                self.update().unwrap();
+                self.update().explicit_unwrap();
 
                 self.window.request_redraw();
             }
@@ -126,7 +124,7 @@ impl ApplicationHandler for Engine {
 }
 
 impl Engine {
-    pub fn new(window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<Engine> {
+    pub fn new(window_title: &str, width: u32, height: u32, window_mode: WindowMode) -> Result<Engine, NewEngineErorr> {
         let mut event_loop = EventLoop::new()?;
         event_loop.set_control_flow(event_loop::ControlFlow::Poll);
 
@@ -160,7 +158,7 @@ impl Engine {
         
         event_loop.pump_app_events(Some(Duration::ZERO), &mut app);
 
-        let WindowStatus::Initialized(window) = app.0 else { Err("Invalid window state.")? };
+        let WindowStatus::Initialized(window) = app.0 else { Err(InvalidWindowState)? };
         let window = Arc::new(window);
 
         let world = World::new();
@@ -180,7 +178,7 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> crate::error::dyn_error::Result<()> {
         let event_loop = self._event_loop.take().ok_or("No event loop")?;
         // event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
@@ -194,77 +192,16 @@ impl Engine {
         (Instant::now() - self.initialization_time).as_secs_f64()
     }
 
-    fn update(&mut self) -> Result<()> {
+    fn update(&mut self) -> crate::error::dyn_error::Result<()> {
         self.log_errors();
-        self.gfx.validate_pipelines(&self.window)?;
-
-        // self.gfx.poll_events();
-        // for msg in self.gfx.flush_messages() {
-        //     match msg {
-        //         (_, WindowEvent::Key(key, _, Action::Press, _)) => {
-        //             let key_state = self.input.modify_key_state(key);
-        //             key_state.press = true;
-        //             key_state.is_down = true;
-
-        //             let fixed_key_state = self.fixed_input.modify_key_state(key);
-        //             fixed_key_state.press = true;
-        //             fixed_key_state.is_down = true;
-        //         },
-        //         (_, WindowEvent::Key(key, _, Action::Release, _)) => {
-        //             let key_state = self.input.modify_key_state(key);
-        //             key_state.release = true;
-        //             key_state.is_down = false;
-
-        //             let fixed_key_state = self.fixed_input.modify_key_state(key);
-        //             fixed_key_state.release = true;
-        //             fixed_key_state.is_down = false;
-        //         },
-        //         (_, WindowEvent::MouseButton(button, Action::Press, _)) => {
-        //             let key_state = self.input.modify_mouse_button_state(button as u32);
-        //             key_state.press = true;
-        //             key_state.is_down = true;
-
-        //             let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
-        //             fixed_key_state.press = true;
-        //             fixed_key_state.is_down = true;
-        //         },
-        //         (_, WindowEvent::MouseButton(button, Action::Release, _)) => {
-        //             let key_state = self.input.modify_mouse_button_state(button as u32);
-        //             key_state.release = true;
-        //             key_state.is_down = false;
-
-        //             let fixed_key_state = self.fixed_input.modify_mouse_button_state(button as u32);
-        //             fixed_key_state.release = true;
-        //             fixed_key_state.is_down = false;
-        //         },
-        //         (_, WindowEvent::Scroll(x, y)) => {
-        //             self.input.add_scroll_delta(x, y);
-        //             self.fixed_input.add_scroll_delta(x, y);
-        //         }
-        //         // (_, WindowEvent::Key(Key::Escape, _, Action::Press, _)) => gfx.set_should_close(true),
-        //         // (_, WindowEvent::Key(Key::Space, _, Action::Press, _)) => gfx.set_fullscreen(Monitor::from_primary()),
-        //         _ => ()
-        //     }
-        // }
+        self.gfx.update_pipelines(&self.window)?;
 
         // TODO: move clear call to after game tick
-
-        // self.gfx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         // Game tick
         let current_time = self.get_time();
         World::update(self, (current_time - self.last_tick) as f32)?; // TODO: This is not supposed to crash, catch and log errors
         self.last_tick = current_time;
-
-        // self.input.modify_all_key_states(|key| {
-        //     key.press = false;
-        //     key.release = false;
-        // });
-        // self.input.modify_all_mouse_button_states(|button| {
-        //     button.press = false;
-        //     button.release = false;
-        // });
-        // self.input.set_scroll_delta(0.0, 0.0);
 
         let fixed_diff = current_time - self.last_fixed_tick - self.fixed_tick_duration;
 
@@ -273,16 +210,6 @@ impl Engine {
             self.fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
             World::fixed_update(self, (current_time - self.last_fixed_tick) as f32)?; // TODO: This is not supposed to crash, catch and log errors
             self.last_fixed_tick = current_time;
-
-            // self.fixed_input.modify_all_key_states(|key| {
-            //     key.press = false;
-            //     key.release = false;
-            // });
-            // self.fixed_input.modify_all_mouse_button_states(|button| {
-            //     button.press = false;
-            //     button.release = false;
-            // });
-            // self.fixed_input.set_scroll_delta(0.0, 0.0);
         }
 
         self.log_errors();
@@ -293,15 +220,10 @@ impl Engine {
         }
 
         for (owner, mut component) in self.world.get_removed_components() {
-            component.on_remove(self, owner)?; // TODO: This is not supposed to crash, catch and log errors
+            component.on_remove(self, owner);
         }
 
-        // Render
-        // self.gfx.render();
-
-        // Swap front and back buffers
-        // self.gfx.swap_buffers();
-        self.gfx.draw();
+        self.gfx.draw()?;
 
         Ok(())
     }
@@ -318,4 +240,40 @@ impl Engine {
     pub fn set_should_close(&mut self, should_close: bool) {
         self.should_close = should_close;
     }
+}
+
+pub mod error {
+    use error_union::error_union;
+    use thiserror::Error;
+    use vulkano::command_buffer::CommandBufferExecError;
+    use winit::error::EventLoopError;
+
+    use crate::{engine::graphics::error::{NoPhysicalDevices, SRGBUnsupported}, error::EngineError};
+
+    type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
+    type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
+    type BoxedValidationError = Box<vulkano::ValidationError>;
+    type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
+
+    #[derive(Error, Debug)]
+    #[error("Invalid window state.")]
+    pub struct InvalidWindowState;
+    impl EngineError for InvalidWindowState {}
+
+    error_union!(
+        EventLoopError,
+        InvalidWindowState,
+        vulkano::LoadingError,
+        winit::raw_window_handle::HandleError,
+        ValidatedVulkanError,
+        vulkano::VulkanError,
+        vulkano::swapchain::FromWindowError,
+        NoPhysicalDevices,
+        BoxedValidationError,
+        ValidatedAllocateBufferError,
+        CommandBufferExecError,
+        ValidatedAllocateImageError,
+        SRGBUnsupported
+        as NewEngineErorr
+    );
 }

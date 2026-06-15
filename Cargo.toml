@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["gl_types", "gl_types/multi-impl", "gl_types/swizz", "embed-shader-source"]
+members = ["gl_types", "gl_types/multi-impl", "gl_types/swizz", "error_union"]
 resolver = "3"
 
 [dependencies]
 gl_types = { path = "./gl_types" }
-embed-shader-source = { path = "./embed-shader-source" }
+error_union = { path = "./error_union" }
 backtrace = "0.3.73"
 const_format = "0.2.32"
 downcast-rs = "1.2.0"

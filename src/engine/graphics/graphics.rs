@@ -1,9 +1,9 @@
 use std::{collections::HashMap, iter, sync::Arc};
 
 use itertools::Itertools;
-use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, ColorSpace, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
+use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
 use winit::{event_loop::EventLoop, window::Window};
-use crate::engine::{data_structures::{AllocationIndex, VecAllocator}, errors::Result, graphics::Texture};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{Texture, error::{DescriptorSetError, DrawError, GetBindingError, GetCommandBuffersError, GetFramebuffersError, GetPipelineError, InvalidBinding, InvalidEntryPoint, InvalidPipelineHandle, NewGraphicsError, NoLayout, NoPhysicalDevices, SRGBUnsupported, SetIndirectBufferError, UpdatePipelinesError}}}, error::{ExplicitUnwrap, Result}};
 
 unsafe fn exit<T> (status: i32) -> T {
     std::process::exit(status)
@@ -102,10 +102,10 @@ pub mod pipeline_builder {
     mod stage_3 {
         use std::{collections::HashMap, sync::Arc};
 
-        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
+        use vulkano::{Validated, buffer::{AllocateBufferError, Buffer, BufferContents, BufferCreateInfo, BufferUsage}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
 
-        use crate::engine::{errors::Result, graphics::Graphics};
-
+        use crate::{engine::graphics::Graphics, error::Result};
+        
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics::graphics) gfx: &'a mut Graphics,
             pub(in crate::engine::graphics::graphics) vertex_shader: Arc<ShaderModule>,
@@ -114,7 +114,7 @@ pub mod pipeline_builder {
         }
 
         impl<'a> PipelineBuilder<'a> {
-            pub fn vertex_data<T: Vertex + BufferContents>(self, vertices: Vec<T>, indices: Vec<u32>) -> Result<super::stage_4::PipelineBuilder<'a>> {
+            pub fn vertex_data<T: Vertex + BufferContents>(self, vertices: Vec<T>, indices: Vec<u32>) -> Result<super::stage_4::PipelineBuilder<'a>, Validated<AllocateBufferError>> {
                 let Self { gfx, vertex_shader, intermediate_shaders, fragment_shader } = self;
 
                 let vertex_buffer = Buffer::from_iter(
@@ -168,9 +168,9 @@ pub mod pipeline_builder {
     mod stage_4 {
         use std::{collections::HashMap, sync::Arc};
 
-        use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage}, command_buffer::DrawIndexedIndirectCommand, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::VertexBufferDescription, shader::ShaderModule};
+        use vulkano::{Validated, buffer::{AllocateBufferError, Buffer, BufferContents, BufferCreateInfo, BufferUsage}, command_buffer::DrawIndexedIndirectCommand, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::VertexBufferDescription, shader::ShaderModule};
 
-        use crate::engine::{errors::Result, graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, graphics::{PipelineCell, get_command_buffers, get_descriptor_set, get_pipeline}}};
+        use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, error::PipelineBuilderError, graphics::{PipelineCell, get_descriptor_set, get_pipeline}}, error::Result};
 
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics) gfx: &'a mut Graphics,
@@ -184,7 +184,7 @@ pub mod pipeline_builder {
         }
 
         impl<'a> PipelineBuilder<'a> {
-            pub fn add_uniform_buffer<T: BufferContents>(mut self, binding: u32, buffer: T, buffer_type: BufferType) -> Result<Self> {
+            pub fn add_uniform_buffer<T: BufferContents>(mut self, binding: u32, buffer: T, buffer_type: BufferType) -> Result<Self, Validated<AllocateBufferError>> {
                 let buffer = Buffer::from_data(
                     self.gfx.memory_allocator.clone(),
                     BufferCreateInfo {
@@ -217,7 +217,7 @@ pub mod pipeline_builder {
                 self
             }
 
-            pub fn add_storage_buffer<T: BufferContents>(mut self, binding: u32, buffer: T, buffer_type: BufferType) -> Result<Self> {
+            pub fn add_storage_buffer<T: BufferContents>(mut self, binding: u32, buffer: T, buffer_type: BufferType) -> Result<Self, Validated<AllocateBufferError>> {
                 let buffer = Buffer::from_data(
                     self.gfx.memory_allocator.clone(),
                     BufferCreateInfo {
@@ -238,7 +238,7 @@ pub mod pipeline_builder {
                 Ok(self)
             }
 
-            pub fn add_storage_buffer_unsized<T: BufferContents + ?Sized>(mut self, binding: u32, count: u64, buffer_type: BufferType) -> Result<Self> {
+            pub fn add_storage_buffer_unsized<T: BufferContents + ?Sized>(mut self, binding: u32, count: u64, buffer_type: BufferType) -> Result<Self, Validated<AllocateBufferError>> {
                 let buffer = Buffer::new_unsized::<T>(
                     self.gfx.memory_allocator.clone(),
                     BufferCreateInfo {
@@ -259,13 +259,13 @@ pub mod pipeline_builder {
                 Ok(self)
             }
 
-            pub fn add_texture(mut self, binding: u32, texture: Texture) -> Result<Self> {
+            pub fn add_texture(mut self, binding: u32, texture: Texture) -> Self {
                 self.bindings.insert(binding, Binding::Texture(texture));
 
-                Ok(self)
+                self
             }
 
-            pub fn finish(self) -> Result<PipelineHandle> {
+            pub fn finish(self) -> Result<PipelineHandle, PipelineBuilderError> {
                 let Self { gfx, vertex_buffer, index_buffer, vertex_shader, intermediate_shaders, fragment_shader, vertex_buffer_description, bindings } = self;
 
                 let pipeline = get_pipeline(
@@ -276,7 +276,7 @@ pub mod pipeline_builder {
                     &fragment_shader,
                     &gfx.render_pass,
                     gfx.viewport.clone()
-                );
+                )?;
 
                 let descriptor_set = get_descriptor_set(
                     &gfx.descriptor_set_allocator,
@@ -339,9 +339,9 @@ pub enum BufferType {
     DynamicRandomAccess
 }
 
-impl Into<MemoryTypeFilter> for BufferType {
-    fn into(self) -> MemoryTypeFilter {
-        match self {
+impl From<BufferType> for MemoryTypeFilter {
+    fn from(val: BufferType) -> Self {
+        match val {
             BufferType::Static => MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
             BufferType::Dynamic => MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
             BufferType::DynamicRandomAccess => MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_RANDOM_ACCESS,
@@ -369,8 +369,8 @@ pub struct Graphics {
     pub(in crate::engine::graphics) recreate_command_buffers: bool
 }
 
-fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Arc<RenderPass> {
-    vulkano::single_pass_renderpass!(
+fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Result<Arc<RenderPass>, vulkano::Validated<vulkano::VulkanError>> {
+    Ok(vulkano::single_pass_renderpass!(
         device,
         attachments: {
             color: {
@@ -391,11 +391,10 @@ fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Arc<Render
             color: [color],
             depth_stencil: {depth},
         },
-    )
-    .unwrap()
+    )?)
 }
 
-fn get_framebuffers(memory_allocator: &Arc<StandardMemoryAllocator>, render_pass: Arc<RenderPass>, images: &[Arc<Image>]) -> Vec<Arc<Framebuffer>> {
+fn get_framebuffers(memory_allocator: &Arc<StandardMemoryAllocator>, render_pass: Arc<RenderPass>, images: &[Arc<Image>]) -> Result<Vec<Arc<Framebuffer>>, GetFramebuffersError> {
     let [width, height, _] = images[0].extent();
     let depth_buffer = ImageView::new_default(
         Image::new(memory_allocator.clone(),
@@ -410,53 +409,50 @@ fn get_framebuffers(memory_allocator: &Arc<StandardMemoryAllocator>, render_pass
                 memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
                 ..Default::default()
             },
-        ).unwrap()
-    )
-    .unwrap();
+        )?
+    )?;
     images
         .iter()
         .map(|image| {
-            let view = ImageView::new_default(image.clone()).unwrap();
-            Framebuffer::new(
+            let view = ImageView::new_default(image.clone())?;
+            Ok(Framebuffer::new(
                 render_pass.clone(),
                 FramebufferCreateInfo {
                     attachments: vec![view, depth_buffer.clone()],
                     ..Default::default()
                 },
-            )
-            .unwrap()
+            )?)
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
-fn get_pipeline(device: &Arc<Device>, vertex_buffer_description: VertexBufferDescription, vertex_shader: &Arc<ShaderModule>, intermediate_shaders: &Vec<Arc<ShaderModule>>, fragment_shader: &Arc<ShaderModule>, render_pass: &Arc<RenderPass>, viewport: Viewport) -> Arc<GraphicsPipeline> {
-    let vertex_shader = vertex_shader.entry_point("main").unwrap();
-    let fragment_shader = fragment_shader.entry_point("main").unwrap();
+fn get_pipeline(device: &Arc<Device>, vertex_buffer_description: VertexBufferDescription, vertex_shader: &Arc<ShaderModule>, intermediate_shaders: &[Arc<ShaderModule>], fragment_shader: &Arc<ShaderModule>, render_pass: &Arc<RenderPass>, viewport: Viewport) -> Result<Arc<GraphicsPipeline>, GetPipelineError> {
+    let vertex_shader = vertex_shader.entry_point("main").ok_or(InvalidEntryPoint)?;
+    let fragment_shader = fragment_shader.entry_point("main").ok_or(InvalidEntryPoint)?;
     
     let vertex_input_state = vertex_buffer_description
-        .definition(&vertex_shader)
-        .unwrap();
+        .definition(&vertex_shader)?;
 
-    let stages: Vec<_> = iter::once(vertex_shader)
+    let stages = iter::once(Ok(vertex_shader))
         .chain(
             intermediate_shaders.iter()
-                .map(|shader| shader.entry_point("main").unwrap())
+                .map(|shader| shader.entry_point("main").ok_or(InvalidEntryPoint))
         )
-        .chain(iter::once(fragment_shader))
-        .map(|entry_point| PipelineShaderStageCreateInfo::new(entry_point))
-        .collect();
+        .chain(iter::once(Ok(fragment_shader)))
+        .collect::<std::result::Result<Vec<_>, InvalidEntryPoint>>()?
+        .into_iter()
+        .map(PipelineShaderStageCreateInfo::new)
+        .collect_vec();
 
     let layout = PipelineLayout::new(
         device.clone(),
         PipelineDescriptorSetLayoutCreateInfo::from_stages(&stages)
-            .into_pipeline_layout_create_info(device.clone())
-            .unwrap(),
-    )
-    .unwrap();
+            .into_pipeline_layout_create_info(device.clone())?,
+    )?;
 
-    let subpass = Subpass::from(render_pass.clone(), 0).unwrap();
+    let subpass = Subpass::from(render_pass.clone(), 0).explicit_unwrap();
 
-    GraphicsPipeline::new(
+    Ok(GraphicsPipeline::new(
         device.clone(),
         None,
         GraphicsPipelineCreateInfo {
@@ -484,11 +480,10 @@ fn get_pipeline(device: &Arc<Device>, vertex_buffer_description: VertexBufferDes
             }),
             ..GraphicsPipelineCreateInfo::layout(layout)
         },
-    )
-    .unwrap()
+    )?)
 }
 
-fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAllocator>, pipeline: &Arc<GraphicsPipeline>, bindings: &HashMap<u32, Binding>) -> Result<Arc<DescriptorSet>> {
+fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAllocator>, pipeline: &Arc<GraphicsPipeline>, bindings: &HashMap<u32, Binding>) -> Result<Arc<DescriptorSet>, DescriptorSetError> {
     let descriptor_set_allocator = descriptor_set_allocator.clone();
     let pipeline_layout = pipeline.layout();
     let descriptor_set_layouts = pipeline_layout.set_layouts();
@@ -496,7 +491,7 @@ fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAlloca
     let descriptor_set_layout_index = 0;
     let descriptor_set_layout = descriptor_set_layouts
         .get(descriptor_set_layout_index)
-        .unwrap();
+        .ok_or(NoLayout{})?;
     let descriptor_writes = bindings.iter()
         .map(|(binding, buffer)| {
             match buffer {
@@ -513,7 +508,7 @@ fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAlloca
     )?)
 }
 
-fn get_command_buffers<'a>(command_buffer_allocator: &Arc<StandardCommandBufferAllocator>, queue: &Arc<Queue>, pipelines: &VecAllocator<PipelineCell>, framebuffers: &Vec<Arc<Framebuffer>>) -> Vec<Arc<PrimaryAutoCommandBuffer>> {
+fn get_command_buffers(command_buffer_allocator: &Arc<StandardCommandBufferAllocator>, queue: &Arc<Queue>, pipelines: &VecAllocator<PipelineCell>, framebuffers: &[Arc<Framebuffer>]) -> Result<Vec<Arc<PrimaryAutoCommandBuffer>>, GetCommandBuffersError> {
     framebuffers
         .iter()
         .map(|framebuffer| {
@@ -523,8 +518,7 @@ fn get_command_buffers<'a>(command_buffer_allocator: &Arc<StandardCommandBufferA
                 queue.queue_family_index(),
                 // Don't forget to write the correct buffer usage.
                 CommandBufferUsage::MultipleSubmit,
-            )
-            .unwrap();
+            )?;
 
             unsafe { 
                 builder
@@ -537,35 +531,28 @@ fn get_command_buffers<'a>(command_buffer_allocator: &Arc<StandardCommandBufferA
                             contents: SubpassContents::Inline,
                             ..Default::default()
                         },
-                    )
-                    .unwrap();
+                    )?;
 
-                pipelines.iter().fold(&mut builder, |builder, (_, pipeline)| {
+                pipelines.iter().try_fold(&mut builder, |builder, (_, pipeline)| {
                     let PipelineCell { pipeline, vertex_buffer, index_buffer, indirect_buffer, descriptor_set, .. } = pipeline;
                     builder
-                        .bind_pipeline_graphics((*pipeline).clone())
-                        .unwrap()
-                        .bind_vertex_buffers(0, Subbuffer::new(vertex_buffer.clone()))
-                        .unwrap()
-                        .bind_index_buffer(Subbuffer::new(index_buffer.clone()).cast_aligned::<u32>())
-                        .unwrap()
-                        .bind_descriptor_sets(PipelineBindPoint::Graphics, pipeline.layout().clone(), 0, vec![descriptor_set.clone()])
-                        .unwrap()
+                        .bind_pipeline_graphics((*pipeline).clone())?
+                        .bind_vertex_buffers(0, Subbuffer::new(vertex_buffer.clone()))?
+                        .bind_index_buffer(Subbuffer::new(index_buffer.clone()).cast_aligned::<u32>())?
+                        .bind_descriptor_sets(PipelineBindPoint::Graphics, pipeline.layout().clone(), 0, vec![descriptor_set.clone()])?
                         .draw_indexed_indirect(indirect_buffer.clone())
-                        .unwrap()
-                });
+                })?;
             }
             builder
-                .end_render_pass(SubpassEndInfo::default())
-                .unwrap();
+                .end_render_pass(SubpassEndInfo::default())?;
 
-            builder.build().unwrap()
+            Ok(builder.build()?)
         })
         .collect()
 }
 
 impl Graphics {
-    pub fn new(window: Arc<Window>, event_loop: &EventLoop<()>) -> Result<Graphics> {
+    pub fn new(window: Arc<Window>, event_loop: &EventLoop<()>) -> Result<Graphics, NewGraphicsError> {
         let library = VulkanLibrary::new()?;
         let required_extensions = Surface::required_extensions(&event_loop)?;
         let vulkan_instance = Instance::new(
@@ -611,7 +598,7 @@ impl Graphics {
                 // match wildcard `_` to catch all unknown device types.
                 _ => 4,
             })
-            .ok_or("No physical devices.")?;
+            .ok_or(NoPhysicalDevices {})?;
 
         let (device, mut queues) = Device::new(
             physical_device.clone(),
@@ -625,21 +612,20 @@ impl Graphics {
             },
         )?;
 
-        let queue = queues.next().ok_or("No device queue.")?;
+        let queue = queues.next().explicit_unwrap();
 
         let caps = physical_device
             .surface_capabilities(&surface, Default::default())?;
         
-        let composite_alpha = {#[allow(clippy::unwrap_used)] caps.supported_composite_alpha.into_iter().next().unwrap()};
-        let image_format =  {#[allow(clippy::unwrap_used)] physical_device
-            .surface_formats(&surface, Default::default())
-            .unwrap()
+        let composite_alpha = caps.supported_composite_alpha.into_iter().next().explicit_unwrap();
+        let image_format =  physical_device
+            .surface_formats(&surface, Default::default())?
             .into_iter()
             .find_map(|(format, _)| match format {
                 Format::R8G8B8A8_SRGB => Some(format),
                 _ => None
             })
-            .expect("SRGB not supported.")};
+            .ok_or(SRGBUnsupported)?;
         
         let (swapchain, images) = Swapchain::new(
             device.clone(),
@@ -655,7 +641,7 @@ impl Graphics {
             },
         )?;
 
-        let render_pass = get_render_pass(device.clone(), swapchain.clone());
+        let render_pass = get_render_pass(device.clone(), swapchain.clone())?;
 
         // Flip viewport so +y is up (vulkan defaults to +y down)
         let viewport = Viewport {
@@ -665,7 +651,7 @@ impl Graphics {
         };
 
         let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
-        let frame_buffers = get_framebuffers(&memory_allocator, render_pass.clone(), &images);
+        let frame_buffers = get_framebuffers(&memory_allocator, render_pass.clone(), &images)?;
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(device.clone(), Default::default()));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(device.clone(), Default::default()));
 
@@ -692,7 +678,7 @@ impl Graphics {
         })
     }
 
-    pub fn validate_pipelines(&mut self, window: &Window) -> Result<()> {
+    pub fn update_pipelines(&mut self, window: &Window) -> Result<(), UpdatePipelinesError> {
         if self.window_resized || self.recreate_swapchain {
             self.recreate_swapchain = false;
 
@@ -704,7 +690,7 @@ impl Graphics {
                     ..self.swapchain.create_info()
                 })?;
             self.swapchain = new_swapchain;
-            self.framebuffers = get_framebuffers(&self.memory_allocator, self.render_pass.clone(), &new_images);
+            self.framebuffers = get_framebuffers(&self.memory_allocator, self.render_pass.clone(), &new_images)?;
             self.viewport = Viewport {
                 offset: [0.0, new_dimensions.height as f32],
                 extent: [new_dimensions.width as f32, -(new_dimensions.height as f32)],
@@ -724,7 +710,7 @@ impl Graphics {
                         &pipeline.fragment_shader,
                         &self.render_pass,
                         self.viewport.clone(),
-                    );
+                    )?;
                 }
             }
         }
@@ -736,23 +722,20 @@ impl Graphics {
                 &self.queue,
                 &self.pipelines,
                 &self.framebuffers
-            );
+            )?;
         }
 
         Ok(())
     }
 
-    pub fn remove_pipeline(&mut self, pipeline: PipelineHandle) -> Result<()> {
+    pub fn remove_pipeline(&mut self, pipeline: PipelineHandle) {
         self.recreate_command_buffers = true;
-        self.pipelines.remove(pipeline.handle).map_err(|_| "Pipeline doesn't exist.")?;
-
-        Ok(())
+        self.pipelines.remove(pipeline.handle).ok();
     }
 
-    #[allow(clippy::unwrap_used)]
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self) -> Result<(), DrawError> {
         if self.command_buffers.is_empty() {
-            return;
+            return Ok(());
         }
 
         let (image_i, suboptimal, acquire_future) =
@@ -762,7 +745,7 @@ impl Graphics {
             Ok(r) => r,
             Err(VulkanError::OutOfDate) => {
                 self.recreate_swapchain = true;
-                return;
+                return Ok(());
             }
             Err(e) => panic!("failed to acquire next image: {e}"),
         };
@@ -773,8 +756,7 @@ impl Graphics {
 
         let execution = sync::now(self.device.clone())
             .join(acquire_future)
-            .then_execute(self.queue.clone(), self.command_buffers[image_i as usize].clone())
-            .unwrap()
+            .then_execute(self.queue.clone(), self.command_buffers[image_i as usize].clone())?
             .then_swapchain_present(
                 self.queue.clone(),
                 SwapchainPresentInfo::swapchain_image_index(self.swapchain.clone(), image_i),
@@ -784,7 +766,7 @@ impl Graphics {
         match execution.map_err(Validated::unwrap) {
             Ok(future) => {
                 // Wait for the GPU to finish.
-                future.wait(None).unwrap();
+                future.wait(None)?;
             }
             Err(VulkanError::OutOfDate) => {
                 self.recreate_swapchain = true;
@@ -793,14 +775,17 @@ impl Graphics {
                 println!("failed to flush future: {e}");
             }
         }
+
+        Ok(())
     }
 
-    pub fn set_indirect_buffer(&self, pipeline: PipelineHandle, draw_command: DrawIndexedIndirectCommand) {
-        let todo: (); // TODO: Remove unwraps
-        let pipeline = self.pipelines.get(pipeline.handle).unwrap();
-        let mut buffer = pipeline.indirect_buffer.write().unwrap();
+    pub fn set_indirect_buffer(&self, pipeline: PipelineHandle, draw_command: DrawIndexedIndirectCommand) -> Result<(), SetIndirectBufferError> {
+        let pipeline = self.pipelines.get(pipeline.handle).map_err(|_| InvalidPipelineHandle)?;
+        let mut buffer = pipeline.indirect_buffer.write()?;
 
         buffer[0] = draw_command;
+
+        Ok(())
     }
 
     // pub fn set_uniforms<T: BufferContents>(&self, pipeline: &PipelineHandle, uniforms: T) {
@@ -811,11 +796,10 @@ impl Graphics {
     //     buffer[0] = draw_command;
     // }
 
-    pub fn get_binding(&self, pipeline: PipelineHandle, binding: u32) -> Binding {
-        let todo: (); // TODO: Remove unwraps
-        let pipeline = self.pipelines.get(pipeline.handle).unwrap();
+    pub fn get_binding(&self, pipeline: PipelineHandle, binding: u32) -> Result<Binding, GetBindingError> {
+        let pipeline = self.pipelines.get(pipeline.handle).map_err(|_| InvalidPipelineHandle)?;
 
-        pipeline.bindings.get(&binding).unwrap().clone()
+        Ok(pipeline.bindings.get(&binding).ok_or(InvalidBinding)?.clone())
     }
 
     pub fn window_resized(&mut self) {

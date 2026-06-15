@@ -6,6 +6,7 @@ mod texture;
 mod camera;
 
 pub mod sprite_renderer;
+pub mod error;
 // pub mod image;
 pub mod terrain;
 // pub mod gl_enums;

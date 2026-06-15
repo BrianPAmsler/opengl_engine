@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use bytemuck::{Pod, Zeroable};
 use gl_types::{matrices::{Mat4, MatN}, vectors::{Vec3, VecN}};
 use rand::RngExt as _;
-use vulkano::{buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer, view}, command_buffer::DrawIndexedIndirectCommand, format::Format, image::sampler::{Filter, SamplerAddressMode}, memory::allocator::AllocationCreateInfo, padded::Padded, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
+use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand, format::Format, image::sampler::{Filter, SamplerAddressMode}, shader::ShaderModule};
 
-use crate::engine::{errors::Result, graphics::{AlignedVec2, AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}};
+use crate::{engine::graphics::{Binding, Graphics, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{error::{NewTerrainRendererError, TerrainRendererUpdateError}, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}, error::Result};
 
 pub(in crate::engine::graphics::terrain) mod vertex_shader {
     vulkano_shaders::shader!{
@@ -52,7 +51,7 @@ pub struct TerrainRenderer {
 }
 
 impl TerrainRenderer {
-    pub fn new(gfx: &mut Graphics) -> Result<TerrainRenderer> {
+    pub fn new(gfx: &mut Graphics) -> Result<TerrainRenderer, NewTerrainRendererError> {
 
         let vertex_shader = vertex_shader::load(gfx.device.clone())?;
         let fragment_shader = fragment_shader::load(gfx.device.clone())?;
@@ -73,12 +72,12 @@ impl TerrainRenderer {
         self.render_queue.push(TerrainInfo { width, height, pipeline });
     }
 
-    pub fn update(&mut self, gfx: &Graphics, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) {
+    pub fn update(&mut self, gfx: &Graphics, view_matrix: Mat4, projection_matrix: Mat4, camera_pos: Vec3) -> Result<(), TerrainRendererUpdateError>{
         for terrain in self.render_queue.drain(..) {
-            match gfx.get_binding(terrain.pipeline, 0) {
+            match gfx.get_binding(terrain.pipeline, 0)? {
                 Binding::Buffer(vertex_uniforms) => {
                     let vertex_uniforms = Subbuffer::new(vertex_uniforms).reinterpret::<VertexUniforms>();
-                    *{#[allow(clippy::unwrap_used)] vertex_uniforms.write().unwrap()} = VertexUniforms {
+                    *vertex_uniforms.write()? = VertexUniforms {
                         vp: (projection_matrix * view_matrix).as_array(),
                         terrainDimensions: [terrain.width, terrain.height],
                         heightScale: 15.0,
@@ -87,11 +86,11 @@ impl TerrainRenderer {
                 _ => unreachable!()
             }
 
-            match gfx.get_binding(terrain.pipeline, 1) {
+            match gfx.get_binding(terrain.pipeline, 1)? {
                 Binding::Buffer(fragment) => {
                     let fragment_uniforms = Subbuffer::new(fragment).reinterpret::<FragmentUniforms>();
                     
-                    *{#[allow(clippy::unwrap_used)] fragment_uniforms.write().unwrap()} = FragmentUniforms {
+                    *fragment_uniforms.write()? = FragmentUniforms {
                         viewPos: camera_pos.as_array(),
                         noiseMapSize: self.noise_texture.width() as i32,
                         ..Default::default()
@@ -107,8 +106,10 @@ impl TerrainRenderer {
                 first_index: 0,
                 vertex_offset: 0,
                 first_instance: 0,
-            });
+            })?;
         }
+
+        Ok(())
     }
 
     pub(in crate::engine::graphics::terrain) fn vertex_shader(&self) -> &Arc<ShaderModule> {
@@ -122,4 +123,19 @@ impl TerrainRenderer {
     pub(in crate::engine::graphics::terrain) fn noise_texture(&self) -> &Texture {
         &self.noise_texture
     }
+}
+
+pub mod error {
+    use error_union::error_union;
+    use vulkano::{command_buffer::CommandBufferExecError, sync::HostAccessError};
+
+    use crate::{engine::{error::NewEngineErorr, graphics::error::{InvalidBinding, InvalidPipelineHandle}}, error::EngineError};
+
+    type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
+    type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
+    type BoxedValidationError = Box<vulkano::ValidationError>;
+    type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
+
+    error_union!(ValidatedVulkanError, ValidatedAllocateImageError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError as NewTerrainRendererError into NewEngineErorr);
+    error_union!(InvalidPipelineHandle, HostAccessError, InvalidBinding as TerrainRendererUpdateError);
 }

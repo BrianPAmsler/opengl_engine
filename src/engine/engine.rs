@@ -10,9 +10,9 @@ pub enum WindowMode {
     Windowed
 }
 
-impl Into<Option<Fullscreen>> for WindowMode {
-    fn into(self) -> Option<Fullscreen> {
-        match self {
+impl From<WindowMode> for Option<Fullscreen> {
+    fn from(val: WindowMode) -> Self {
+        match val {
             WindowMode::FullScreen(monitor_handle) => Some(Fullscreen::Borderless(monitor_handle)),
             WindowMode::Windowed => None,
         }

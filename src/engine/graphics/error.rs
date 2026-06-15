@@ -2,7 +2,7 @@ use error_union::error_union;
 use thiserror::Error;
 use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError, sync::HostAccessError};
 
-use crate::{engine::{error::NewEngineErorr, graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::TerrainRendererUpdateError}}}, error::EngineError};
+use crate::{engine::{error::NewEngineErorr, graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::TerrainRendererUpdateError}, texture::error::TextureBuilderError}}, error::EngineError};
 
 type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
 type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
@@ -57,3 +57,4 @@ error_union!(ValidatedVulkanError, BoxedValidationError as GetCommandBuffersErro
 error_union!(ValidatedVulkanError, CommandBufferExecError as DrawError);
 error_union!(InvalidPipelineHandle, HostAccessError as SetIndirectBufferError into TerrainRendererUpdateError);
 error_union!(InvalidPipelineHandle, InvalidBinding as GetBindingError into TerrainRendererUpdateError);
+error_union!(ValidatedVulkanError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError as BufferImageError into TextureBuilderError);

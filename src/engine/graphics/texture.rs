@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use vulkano::{buffer::{Buffer, BufferCreateInfo, BufferUsage}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo}, image::{Image, sampler::Sampler, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, sync::GpuFuture as _};
+use vulkano::image::{Image, sampler::Sampler, view::ImageView};
 
-use crate::{engine::graphics::texture::error::BufferImageError, error::Result};
+use crate::{engine::graphics::error::BufferImageError, error::Result};
 
 use super::Graphics;
 
@@ -17,9 +17,7 @@ pub struct Texture {
 
 impl Texture {
     pub fn update_texture(&self, gfx: &Graphics, image_data: Vec<u8>) -> Result<(), BufferImageError> {
-        buffer_to_image(gfx, image_data, &self.image)?;
-
-        Ok(())
+        gfx.buffer_to_image(image_data, &self.image)
     }
 
     pub(in crate::engine::graphics) fn image(&self) -> &Arc<Image> {
@@ -43,46 +41,11 @@ impl Texture {
     }
 }
 
-fn buffer_to_image(gfx: &Graphics, image_data: Vec<u8>, image: &Arc<Image>) -> Result<(), BufferImageError> {
-    let staging_buffer = Buffer::from_iter(
-        gfx.memory_allocator.clone(),
-        BufferCreateInfo {
-            usage: BufferUsage::TRANSFER_SRC,
-            ..Default::default()
-        },
-        AllocationCreateInfo {
-            memory_type_filter: MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-            ..Default::default()
-        },
-        image_data,
-    )?;
-    
-    let mut builder = AutoCommandBufferBuilder::primary(
-        gfx.command_buffer_allocator.clone(),
-        gfx.queue.queue_family_index(),
-        CommandBufferUsage::OneTimeSubmit,
-    )?;
-
-    builder.copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
-        staging_buffer.clone(),
-        image.clone(),
-    ))?;
-
-    let command_buffer = builder.build()?;
-    let future = vulkano::sync::now(gfx.device.clone())
-        .then_execute(gfx.queue.clone(), command_buffer)?
-        .then_signal_fence_and_flush()?;
-
-    future.wait(None)?;
-
-    Ok(())
-}
-
 pub mod builder {
     use image::RgbaImage;
     use vulkano::{format::Format, image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode}, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}};
 
-    use crate::{engine::graphics::{Graphics, Texture, texture::{buffer_to_image, error::TextureBuilderError}}, error::Result};
+    use crate::{engine::graphics::{Graphics, Texture, texture::{error::TextureBuilderError}}, error::Result};
 
     pub struct TextureBuilder {
         data: Vec<u8>,
@@ -149,7 +112,7 @@ pub mod builder {
             let Self { data, width, height, format, wrap_s, wrap_t, min_filter, mag_filter } = self;
 
             let image = Image::new(
-                gfx.memory_allocator.clone(),
+                gfx.memory_allocator(),
                 ImageCreateInfo {
                     image_type: ImageType::Dim2d,
                     format,
@@ -163,10 +126,10 @@ pub mod builder {
                 },
             )?;
 
-            buffer_to_image(gfx, data, &image)?;
+            gfx.buffer_to_image(data, &image)?;
 
             let sampler = Sampler::new(
-                gfx.device.clone(),
+                gfx.device(),
                 SamplerCreateInfo {
                     mag_filter,
                     min_filter,
@@ -198,6 +161,5 @@ pub mod error {
     impl EngineError for Box<vulkano::ValidationError> {}
     impl EngineError for CommandBufferExecError {}
     impl EngineError for ValidatedAllocateImageError {}
-    error_union!(ValidatedVulkanError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError as BufferImageError into TextureBuilderError);
     error_union!(ValidatedAllocateImageError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError, ValidatedVulkanError as TextureBuilderError into AddSpritesheetError, NewTerrainRendererError, TerrainFromRawError);
 }

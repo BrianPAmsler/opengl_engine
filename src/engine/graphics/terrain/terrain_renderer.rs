@@ -53,8 +53,8 @@ pub struct TerrainRenderer {
 impl TerrainRenderer {
     pub fn new(gfx: &mut Graphics) -> Result<TerrainRenderer, NewTerrainRendererError> {
 
-        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
-        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
+        let vertex_shader = vertex_shader::load(gfx.device())?;
+        let fragment_shader = fragment_shader::load(gfx.device())?;
 
         let mut rng = rand::rng();
         let pixels: Vec<u8> = (0..1024u32.pow(2)).map(|_| rng.random()).collect();

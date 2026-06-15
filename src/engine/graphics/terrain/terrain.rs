@@ -328,7 +328,7 @@ pub mod error {
     use error_union::error_union;
     use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError};
 
-    use crate::{engine::graphics::{error::{InvalidEntryPoint, NoLayout}, texture::error::BufferImageError}, error::{EngineError, universal_errors::Uninitialized}};
+    use crate::{engine::graphics::error::{BufferImageError, InvalidEntryPoint, NoLayout}, error::{EngineError, universal_errors::Uninitialized}};
 
     type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
     type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;

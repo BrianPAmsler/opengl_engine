@@ -1,9 +1,9 @@
 use std::{collections::HashMap, iter, sync::Arc};
 
 use itertools::Itertools;
-use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
+use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
 use winit::{event_loop::EventLoop, window::Window};
-use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{Texture, error::{DescriptorSetError, DrawError, GetBindingError, GetCommandBuffersError, GetFramebuffersError, GetPipelineError, InvalidBinding, InvalidEntryPoint, InvalidPipelineHandle, NewGraphicsError, NoLayout, NoPhysicalDevices, SRGBUnsupported, SetIndirectBufferError, UpdatePipelinesError}}}, error::{ExplicitUnwrap, Result}};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{Texture, error::{BufferImageError, DescriptorSetError, DrawError, GetBindingError, GetCommandBuffersError, GetFramebuffersError, GetPipelineError, InvalidBinding, InvalidEntryPoint, InvalidPipelineHandle, NewGraphicsError, NoLayout, NoPhysicalDevices, SRGBUnsupported, SetIndirectBufferError, UpdatePipelinesError}}}, error::{ExplicitUnwrap, Result}};
 
 unsafe fn exit<T> (status: i32) -> T {
     std::process::exit(status)
@@ -350,23 +350,22 @@ impl From<BufferType> for MemoryTypeFilter {
 }
 
 pub struct Graphics {
-    todo: (), // TODO: make getter methods instead of exposing these to the whole crate
-    pub(in crate::engine::graphics) vulkan_instance: Arc<Instance>,
-    pub(in crate::engine::graphics) device: Arc<Device>,
-    pub(in crate::engine::graphics) queue: Arc<Queue>,
-    pub(in crate::engine::graphics) swapchain: Arc<Swapchain>,
-    pub(in crate::engine::graphics) images: Vec<Arc<Image>>,
-    pub(in crate::engine::graphics) render_pass: Arc<RenderPass>,
-    pub(in crate::engine::graphics) framebuffers: Vec<Arc<Framebuffer>>,
-    pub(in crate::engine::graphics) pipelines: VecAllocator<PipelineCell>,
-    pub(in crate::engine::graphics) command_buffers: Vec<Arc<PrimaryAutoCommandBuffer>>,
-    pub(in crate::engine::graphics) memory_allocator: Arc<StandardMemoryAllocator>,
-    pub(in crate::engine::graphics) command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
-    pub(in crate::engine::graphics) descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
-    pub(in crate::engine::graphics) viewport: Viewport,
-    pub(in crate::engine::graphics) window_resized: bool,
-    pub(in crate::engine::graphics) recreate_swapchain: bool,
-    pub(in crate::engine::graphics) recreate_command_buffers: bool
+    vulkan_instance: Arc<Instance>,
+    device: Arc<Device>,
+    queue: Arc<Queue>,
+    swapchain: Arc<Swapchain>,
+    images: Vec<Arc<Image>>,
+    render_pass: Arc<RenderPass>,
+    framebuffers: Vec<Arc<Framebuffer>>,
+    pipelines: VecAllocator<PipelineCell>,
+    command_buffers: Vec<Arc<PrimaryAutoCommandBuffer>>,
+    memory_allocator: Arc<StandardMemoryAllocator>,
+    command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
+    descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
+    viewport: Viewport,
+    window_resized: bool,
+    recreate_swapchain: bool,
+    recreate_command_buffers: bool
 }
 
 fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Result<Arc<RenderPass>, vulkano::Validated<vulkano::VulkanError>> {
@@ -658,7 +657,6 @@ impl Graphics {
         // unsafe { gl.glPixelStorei(PixelStoreParameter::GL_UNPACK_ALIGNMENT, 1) };
 
         Ok(Graphics {
-            todo: (),
             vulkan_instance,
             device,
             queue,
@@ -788,6 +786,41 @@ impl Graphics {
         Ok(())
     }
 
+    pub fn buffer_to_image(&self, image_data: Vec<u8>, image: &Arc<Image>) -> Result<(), BufferImageError> {
+        let staging_buffer = Buffer::from_iter(
+            self.memory_allocator.clone(),
+            BufferCreateInfo {
+                usage: vulkano::buffer::BufferUsage::TRANSFER_SRC,
+                ..Default::default()
+            },
+            AllocationCreateInfo {
+                memory_type_filter: MemoryTypeFilter::PREFER_HOST | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+                ..Default::default()
+            },
+            image_data,
+        )?;
+        
+        let mut builder = AutoCommandBufferBuilder::primary(
+            self.command_buffer_allocator.clone(),
+            self.queue.queue_family_index(),
+            CommandBufferUsage::OneTimeSubmit,
+        )?;
+
+        builder.copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+            staging_buffer.clone(),
+            image.clone(),
+        ))?;
+
+        let command_buffer = builder.build()?;
+        let future = vulkano::sync::now(self.device.clone())
+            .then_execute(self.queue.clone(), command_buffer)?
+            .then_signal_fence_and_flush()?;
+
+        future.wait(None)?;
+
+        Ok(())
+    }
+
     // pub fn set_uniforms<T: BufferContents>(&self, pipeline: &PipelineHandle, uniforms: T) {
     //     let todo: (); // TODO: Remove unwraps
     //     let pipeline = self.pipelines.get(pipeline.handle).unwrap();
@@ -810,6 +843,35 @@ impl Graphics {
         // self.window.swap_buffers();
         todo!()
     }
+
+    pub fn vulkan_instance(&self) -> Arc<Instance> {
+        self.vulkan_instance.clone()
+    }
+
+    pub fn device(&self) -> Arc<Device> {
+        self.device.clone()
+    }
+
+    pub fn queue(&self) -> Arc<Queue> {
+        self.queue.clone()
+    }
+
+    pub fn memory_allocator(&self) -> Arc<StandardMemoryAllocator> {
+        self.memory_allocator.clone()
+    }
+
+    pub fn command_buffer_allocator(&self) -> Arc<StandardCommandBufferAllocator> {
+        self.command_buffer_allocator.clone()
+    }
+
+    pub fn descriptor_set_allocator(&self) -> Arc<StandardDescriptorSetAllocator> {
+        self.descriptor_set_allocator.clone()
+    }
+
+    pub fn viewport(&self) -> Viewport {
+        self.viewport.clone()
+    }
+
 
     // pub fn flush_messages(&self) -> std::vec::IntoIter<(f64, WindowEvent)> {
     //     glfw::flush_messages(&self.events).collect::<Vec<(f64, WindowEvent)>>().into_iter()

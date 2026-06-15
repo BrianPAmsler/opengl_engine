@@ -184,8 +184,8 @@ impl SpriteRenderer {
         let sprite_sheet = TextureBuilder::from_image(sprite_sheet)
             .finish(gfx)?;
 
-        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
-        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
+        let vertex_shader = vertex_shader::load(gfx.device())?;
+        let fragment_shader = fragment_shader::load(gfx.device())?;
 
         let sprite_map = sprite_map.iter().map(|sprite| {
             let SpriteDefinition { x, y, width, height } = *sprite;
@@ -420,8 +420,8 @@ mod tests {
 
         // let renderer = SpriteRenderer::new(&gfx).unwrap();
 
-        let vertex_shader = vertex_shader::load(gfx.device.clone())?;
-        let fragment_shader = fragment_shader::load(gfx.device.clone())?;
+        let vertex_shader = vertex_shader::load(gfx.device())?;
+        let fragment_shader = fragment_shader::load(gfx.device())?;
 
         let pipeline = PipelineBuilder::new(&mut gfx)
             .vertex_shader(vertex_shader)

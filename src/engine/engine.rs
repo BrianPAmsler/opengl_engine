@@ -133,7 +133,6 @@ impl Engine {
             .with_inner_size(PhysicalSize::new(width, height))
             .with_fullscreen(window_mode.into())
             .with_resizable(true);
-        // let window = event_loop.create_window(window_attributes)?;
 
         #[derive(Default)]
         enum WindowStatus {
@@ -168,19 +167,11 @@ impl Engine {
         let terrain_renderer = TerrainRenderer::new(&mut gfx)?;
         let engine = Engine { window, gfx, world, input: Input::new(), sprite_renderer, terrain_renderer, error_queue: Vec::new(),fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, should_close: false, _event_loop: Some(event_loop) };
 
-        // let gfx = Graphics::init(window_title, width, height, window_mode)?;
-
-        // let sprite_renderer = SpriteRenderer::new(&gfx)?;
-        // let terrain_renderer = TerrainRenderer::new(&gfx)?;
-        
-        // Ok(Engine { gfx, world, sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, error_queue: Vec::new(), input: Input::new(), fixed_input: Input::new() })
-
         Ok(engine)
     }
 
     pub fn run(&mut self) -> crate::error::dyn_error::Result<()> {
         let event_loop = self._event_loop.take().ok_or("No event loop")?;
-        // event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
         self.window.request_redraw();
         event_loop.run_app(self)?;

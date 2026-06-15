@@ -44,7 +44,7 @@ void main()
     // The half-texel offset prevents texture bleed at the edges of a sprtite due to floating point precision issues.
     // This is inteded for a square mesh with vertices (0, 0), (0, 1), (1, 0), (1, 1).
     // Any other mesh will have unexpected resutls
-    vec2 offsetDirection = (position.xy - 0.5) * 2;//-((position.xy - 0.5) * 2);
+    vec2 offsetDirection = (position.xy - 0.5) * 2;
 
     vec3 translation = sprite.position;
 

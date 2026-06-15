@@ -43,14 +43,6 @@ pub enum Corner {
     All
 }
 
-// pub struct TerrainCell<'a> {
-//     pub top_left: &'a u8,
-//     pub top_right: &'a u8,
-//     pub bottom_left: &'a u8,
-//     pub bottom_right: &'a u8,
-//     pub color: &'a [u8; 3]
-// }
-
 pub struct CellCorner<'a> {
     height: &'a mut u8,
     color: &'a mut [u8; 3],
@@ -188,30 +180,6 @@ impl Terrain {
 
         Ok(color_data)
     }
-
-    // pub fn get_cell<'a>(&'a self, x: u32, z: u32) -> Option<TerrainCell<'a>> {
-    //     if x >= self.width || z >= self.height {
-    //         return None;
-    //     }
-    //     let height_data_width = self.width + 1;
-
-    //     let i = (x + z * self.width) as usize * 3;
-    //     let color = (&self.color_data[i..i + 3]).try_into().unwrap();
-
-    //     let i = x + z * height_data_width;
-    //     let bottom_left = &self.height_data[i as usize];
-
-    //     let i = (x + 1) + z * height_data_width;
-    //     let bottom_right = &self.height_data[i as usize];
-
-    //     let i = x + (z + 1) * height_data_width;
-    //     let top_left = &self.height_data[i as usize];
-
-    //     let i = (x + 1) + (z + 1) * height_data_width;
-    //     let top_right = &self.height_data[i as usize];
-
-    //     Some(TerrainCell { top_left, top_right, bottom_left, bottom_right, color })
-    // }
 
     pub fn get_cell_mut<'a>(&'a mut self, x: u32, z: u32) -> Result<TerrainCellMut<'a>, CellAccessError> {
         let Self(TerrainInner::Initialized { height_data , color_data, width, height, height_dirty, color_dirty, .. }) = self else { return Err(Uninitialized)? };

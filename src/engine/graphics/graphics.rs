@@ -654,8 +654,6 @@ impl Graphics {
         let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(device.clone(), Default::default()));
         let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(device.clone(), Default::default()));
 
-        // unsafe { gl.glPixelStorei(PixelStoreParameter::GL_UNPACK_ALIGNMENT, 1) };
-
         Ok(Graphics {
             vulkan_instance,
             device,
@@ -821,14 +819,6 @@ impl Graphics {
         Ok(())
     }
 
-    // pub fn set_uniforms<T: BufferContents>(&self, pipeline: &PipelineHandle, uniforms: T) {
-    //     let todo: (); // TODO: Remove unwraps
-    //     let pipeline = self.pipelines.get(pipeline.handle).unwrap();
-    //     let mut buffer = pipeline.bindings.write().unwrap();
-
-    //     buffer[0] = draw_command;
-    // }
-
     pub fn get_binding(&self, pipeline: PipelineHandle, binding: u32) -> Result<Binding, GetBindingError> {
         let pipeline = self.pipelines.get(pipeline.handle).map_err(|_| InvalidPipelineHandle)?;
 
@@ -837,11 +827,6 @@ impl Graphics {
 
     pub fn window_resized(&mut self) {
         self.window_resized = true;
-    }
-
-    pub fn swap_buffers(&mut self) {
-        // self.window.swap_buffers();
-        todo!()
     }
 
     pub fn vulkan_instance(&self) -> Arc<Instance> {
@@ -871,43 +856,4 @@ impl Graphics {
     pub fn viewport(&self) -> Viewport {
         self.viewport.clone()
     }
-
-
-    // pub fn flush_messages(&self) -> std::vec::IntoIter<(f64, WindowEvent)> {
-    //     glfw::flush_messages(&self.events).collect::<Vec<(f64, WindowEvent)>>().into_iter()
-    // }
-
-    // pub fn set_fullscreen(&mut self, monitor: Monitor) {
-    //     todo!()
-    // }
-
-    // pub fn is_supported(&mut self, gl_fn_name: &'static str) -> bool {
-    //     self.window.get_proc_address(&gl_fn_name).is_null().not()
-    // }
-
-    // // This will be deleted once window is properly wrapped
-    // pub fn __get_window(&self) -> &PWindow {
-    //     &self.window
-    // }
-
-    // // This will be deleted once window is properly wrapped
-    // pub fn __get_window_mut(&mut self) -> &mut PWindow {
-    //     &mut self.window
-    // }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::engine::graphics::{Graphics, gl_enums::TextureUnit};
-
-//     #[test]
-//     #[ignore="requires user interaction"]
-//     fn gl_unsupported() {
-//         let lock = super::super::test_lock::LOCK.lock().unwrap();
-//         let gfx = Graphics::init_unsupported().unwrap();
-
-//         gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
-//         drop(gfx);
-//         drop(lock);
-//     }
-// }

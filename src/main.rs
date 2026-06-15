@@ -9,14 +9,9 @@ use std::{cell::RefCell, rc::Rc};
 
 
 use gl_types::{geometric::normalize, vec2, vec3};
-// use engine::{errors::{Error, Result}, game_object::{component::Component, ObjectID}, Engine};
-// use gl_types::{geometric::normalize, vec2, vec3};
 use regex::Regex;
 
 use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error::{ExplicitUnwrap, TryUnwrap, dyn_error::{Error, Result}}};
-
-// use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
-
 
 #[derive(Clone, Default)]
 pub struct FPSCounter {
@@ -76,14 +71,6 @@ pub struct Renderer {
 
 impl Component for Renderer {
     fn init(&mut self, engine: &mut Engine, _: ObjectID) -> Result<()> {
-        // engine.gfx.glClearColor(0.75, 0.75, 0.75, 1.0);
-        // // engine.gfx.__get_glfw_mut().set_swap_interval(glfw::SwapInterval::None);
-        // engine.gfx.glEnable(EnableCap::GL_CULL_FACE);
-        // engine.gfx.glEnable(EnableCap::GL_DEPTH_TEST);
-        // engine.gfx.glDepthFunc(DepthFunction::GL_GREATER);
-        // engine.gfx.glClearDepth(0.0);
-        // engine.gfx.glCullFace(GL_BACK);
-
         let sprite1 = engine.world.find_child(engine.world.get_root(), "Sprite 1")?.try_unwrap()?;
         let sprite2 = engine.world.find_child(engine.world.get_root(), "Sprite 2")?.try_unwrap()?;
 

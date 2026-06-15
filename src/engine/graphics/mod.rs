@@ -1,15 +1,10 @@
 mod graphics;
-// mod mesh;
-// mod shader_program;
-// mod vertex_buffer;
 mod texture;
 mod camera;
 
 pub mod sprite_renderer;
 pub mod error;
-// pub mod image;
 pub mod terrain;
-// pub mod gl_enums;
 
 pub use graphics::*;
 pub use texture::*;

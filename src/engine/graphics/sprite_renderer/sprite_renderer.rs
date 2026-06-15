@@ -95,17 +95,8 @@ impl SpriteSheet {
                 let buffer = Subbuffer::from(buffer).reinterpret::<SpriteSSBO>();
                 let mut buffer = buffer.write()?;
 
-                // let data = SpriteSSBO {
-                //     count: self.render_queue.len() as i32,
-                //     data: self.render_queue[..].to_vec().into(),
-                // };
                 buffer.count = self.render_queue.len() as i32;
                 buffer.data[..self.render_queue.len()].copy_from_slice(&self.render_queue);
-                // let (length, array) = buffer.split_at_mut(SSBO_OFFSET);
-
-                // length[..8].copy_from_slice(bytemuck::bytes_of(&(self.render_queue.len())));
-                // let render_queue_data = unsafe { as_u8_slice(&self.render_queue[..]) };
-                // array[..render_queue_data.len()].copy_from_slice(bytemuck::cast_slice(render_queue_data));
             },
             _ => unreachable!("unexpected binding.")
         }
@@ -194,26 +185,7 @@ impl SpriteRenderer {
             vec4!(x, y, width, height) / vec4!(wh, wh)
         })
         .map(|vec| Vec4Aligned(vec.as_array()))
-        // .map(|vec| bytemuck::cast::<[f32; 4], [u8; 16]>(vec))
-        // .flatten()
         .collect_vec();
-
-        // let mut sprite_map_buffer = Vec::new();
-        // sprite_map_buffer.extend_from_slice(bytemuck::bytes_of(&(sprite_count)));
-        // sprite_map_buffer.extend(sprite_map);
-
-        // let unsized_buffer = Buffer::new_unsized::<SpriteSSBO>(
-        //     gfx.memory_allocator.clone(),
-        //     BufferCreateInfo {
-        //         usage: BufferUsage::STORAGE_BUFFER,
-        //         ..Default::default()
-        //     },
-        //     AllocationCreateInfo {
-        //         memory_type_filter: MemoryTypeFilter::PREFER_DEVICE | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
-        //         ..Default::default()
-        //     },
-        //     unsized_len, 
-        // ).unwrap();
 
         let pipeline = PipelineBuilder::new(gfx)
             .vertex_shader(vertex_shader)
@@ -289,11 +261,7 @@ impl SpriteRenderer {
             };
             
             gfx.set_indirect_buffer(sheet.pipeline, draw_command)?;
-            // gfx.glBindVertexArray(self.mesh.vao());
-            // gfx.glUseProgram(self.program.program());
             sheet.buffer_sprite_data(gfx)?;
-            // gfx.glActiveTexture(TextureUnit::GL_TEXTURE0);
-            // gfx.glBindTexture(TextureTarget::GL_TEXTURE_2D, sheet.sprite_sheet.texture_id());
 
             let texel_offset = vec2!(1.0) / (vec2!(sheet.width, sheet.height) * 2.0);
 
@@ -313,11 +281,6 @@ impl SpriteRenderer {
                 projection,
                 texel_offset,
             };
-            // gfx.glUniformMatrix4f(self.view_location, false, &view_matrix);
-            // gfx.glUniformMatrix4f(self.projection_location, false, &projection_matrix);
-            // gfx.glUniform2f(self.texel_offset_location, texel_offset.x(), texel_offset.y());
-
-            // gfx.glDrawArraysInstanced(PrimitiveType::GL_TRIANGLES, 0, self.mesh.len() as _, sheet.render_queue.len() as u32);
             sheet.render_queue.clear();
         }
 
@@ -388,7 +351,6 @@ mod tests {
             .with_title("Test Window")
             .with_inner_size(PhysicalSize::new(1280, 720))
             .with_fullscreen(None);
-        // let window = event_loop.create_window(window_attributes)?;
 
         #[derive(Default)]
         enum WindowStatus {
@@ -418,8 +380,6 @@ mod tests {
 
         let mut gfx = Graphics::new(window, &event_loop).unwrap();
 
-        // let renderer = SpriteRenderer::new(&gfx).unwrap();
-
         let vertex_shader = vertex_shader::load(gfx.device())?;
         let fragment_shader = fragment_shader::load(gfx.device())?;
 
@@ -432,33 +392,11 @@ mod tests {
             .add_storage_buffer_unsized::<SpriteSheetSSBO>(SPRITE_MAP_BINDING, 2, BufferType::Dynamic)?
             .finish()?;
 
-        // let sprite_structs = [GLSpriteStruct::default(); 2];
-
         let mut sprite_data = [GLSpriteStruct::default(); 2];
         let sprite_count;
 
         let mut sprite_sheet_data = [Vec4Aligned::default(); 2];
         let sprite_sheet_count;
-
-        // match gfx.get_binding(pipeline, SPRITE_SHEET_BINDING) {
-        //     Binding::Buffer(buffer) => {
-        //         let buffer = Subbuffer::new(buffer).reinterpret::<SpriteSSBO>();
-        //     },
-        //     _ => unreachable!()
-        // }
-
-        // gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, ssbo);
-        // // Allocate space
-        // gfx.glBufferNull(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, std::mem::size_of::<GLSpriteStruct>() * sprite_structs.len() + SSBO_OFFSET as usize, BufferUsageARB::GL_DYNAMIC_DRAW); 
-        // // Buffer length data
-        // gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0, std::slice::from_ref(&sprite_structs.len())); 
-        // // Buffer sprite data
-        // gfx.glBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET,&sprite_structs); 
-        // gfx.glBindBufferBase(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 2, ssbo);
-
-        // gfx.glUseProgram(program.program());
-        // gfx.glBindVertexArray(renderer.mesh.vao());
-        // gfx.glDrawArrays(PrimitiveType::GL_TRIANGLES, 0, renderer.mesh.len() as _);
 
         gfx.set_indirect_buffer(pipeline, DrawIndexedIndirectCommand {
             index_count: INDEX_DATA.len() as u32,
@@ -499,10 +437,6 @@ mod tests {
             },
             _ => unreachable!()
         }
-
-        // unsafe { gfx.glGetBufferSubData(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, SSBO_OFFSET, std::mem::size_of::<GLSpriteStruct>() as isize * sprite_structs.len() as isize, data_in.as_mut_ptr() as *mut _) };
-
-        // gfx.glBindBuffer(BufferTargetARB::GL_SHADER_STORAGE_BUFFER, 0); // unbind
         
         let sprite_expected = [
             GLSpriteStruct {

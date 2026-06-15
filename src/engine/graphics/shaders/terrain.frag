@@ -1,15 +1,13 @@
 #version 430 core
 
-// layout(binding = 2) uniform sampler2D _a;
-// layout(binding = 3) uniform sampler2D _b;
 layout(binding = 4) uniform sampler2D noiseMap;
 
 layout(set = 0, binding = 1) uniform FragmentUniforms {
-    float ambientIntensity;// = 0.2;
-    vec3 globalLightDir;// = vec3(-1, -1, -1);
+    float ambientIntensity;
+    vec3 globalLightDir;
     vec3 viewPos;
-    float pixelSize;// = 0.02;
-    int noiseMapSize;// = 1;
+    float pixelSize;
+    int noiseMapSize;
 };
 
 layout(location = 0) smooth in vec2 uv;
@@ -38,8 +36,6 @@ void main()
     };
     float randomNumber = texture(noiseMap, fragPos.xz / float(noiseMapSize) / pixelSize).r;
     float noise = (randomNumber - 0.5) * 0.05;
-    // vec3 color = vec3(0);
-    // colors[0] * vertex_weight.x + colors[1] * vertex_weight.y + colors[2] * vertex_weight.z + colors[3] * vertex_weight.w;
     int i = 0;
     while (i < 3 && randomNumber > vertex_weight[i]) {
         randomNumber -= vertex_weight[i];

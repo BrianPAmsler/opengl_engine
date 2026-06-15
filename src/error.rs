@@ -66,6 +66,24 @@ impl From<String> for Error<DynamicErrorMessage> {
 
 pub type Result<T, E> = std::result::Result<T, Error<E>>;
 
+#[derive(Error, Debug)]
+#[error("Unwrapped a None value.")]
+pub struct NoneValue;
+impl EngineError for NoneValue {}
+
+pub trait TryUnwrap<T>
+where
+    Self: Sized
+{
+    fn try_unwrap(self) -> Result<T, NoneValue>;
+}
+
+impl<T> TryUnwrap<T> for Option<T> {
+    fn try_unwrap(self) -> Result<T, NoneValue> {
+        Ok(self.ok_or(NoneValue)?)
+    }
+}
+
 pub mod dyn_error {
     use thiserror::Error;
 
@@ -87,6 +105,10 @@ pub mod dyn_error {
 
         pub fn source(&self) -> &dyn std::error::Error {
             & *self.source
+        }
+
+        pub fn resolve_backtrace(&mut self) {
+            self.backtrace.resolve();
         }
 
         pub fn backtrace(&self) -> &BT {

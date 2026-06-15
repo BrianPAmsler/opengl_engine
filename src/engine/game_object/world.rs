@@ -2,8 +2,9 @@
 use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::{BTreeMap, HashSet}, rc::Rc};
 
 use gl_types::vectors::Vec3;
+use itertools::{Either::{Left, Right}, Itertools};
 
-use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, DeadComponent, DeadObject, WorldMismatch, unions::{ComponentBorrowError, ComponentError, ObjectError, RemoveError}}, game_object::Transform}, graphics::Camera}, error::{EngineError, ExplicitUnwrap, Result, dyn_error::Result as DynResult}};
+use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, DeadComponent, DeadObject, WorldMismatch, unions::{ComponentBorrowError, ComponentError, ObjectError, RemoveError}}, game_object::Transform}, graphics::Camera}, error::{EngineError, ExplicitUnwrap, Result, dyn_error::Error as DynError}};
 
 use super::{component::Component, game_object::GameObject};
 
@@ -119,68 +120,89 @@ impl World {
         }
     }
 
-    fn init(engine: &mut Engine) -> DynResult<()> {
+    fn init(engine: &mut Engine) -> Vec<DynError> {
         // I really hope the compiler can optimize this nonsense
         let components: Vec<ComponentID> = engine.world.uninitialized_components.iter().flat_map(|(_, set)| {
             set.iter().cloned()
         }).collect();
         engine.world.uninitialized_components.clear();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+        let (components, mut errors): (Vec<_>, Vec<_>) = components.into_iter().map(|component| {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ComponentError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ComponentError>>()?;
-
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().init(engine, owner)?; 
-
-            Ok(())
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
         })
+        .partition_map(|result| match result {
+            Ok(component) => Left(component),
+            Err(err) => Right(err),
+        });
+
+        errors.extend(
+            components.into_iter().filter_map(|(owner, rc)| {
+                rc.borrow_mut().init(engine, owner).err()
+            })
+        );
+
+        errors
     }
 
-    pub(in crate::engine) fn update(engine: &mut Engine, delta_time: f32) -> DynResult<()> {
+    pub(in crate::engine) fn update(engine: &mut Engine, delta_time: f32) -> Vec<DynError> {
         // I really hope the compiler can optimize this nonsense
-        Self::init(engine)?;
+        let mut init_errors = Self::init(engine);
 
         // I really hope the compiler can optimize this nonsense
         let components: Vec<ComponentID> = engine.world.ordered_components.iter().flat_map(|(_, set)| {
             set.iter().cloned()
         }).collect();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+        let (components, errors): (Vec<_>, Vec<_>) = components.into_iter().map(|component| {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ComponentError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ComponentError>>()?;
-
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().update(engine, owner, delta_time)?; 
-
-            Ok(())
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
         })
+        .partition_map(|result| match result {
+            Ok(component) => Left(component),
+            Err(err) => Right(err),
+        });
+
+        init_errors.extend(errors);
+        let mut errors = init_errors;
+
+        errors.extend(
+            components.into_iter().filter_map(|(owner, rc)| {
+                rc.borrow_mut().update(engine, owner, delta_time).err()
+            })
+        );
+
+        errors
     }
 
-    pub(in crate::engine) fn fixed_update(engine: &mut Engine, delta_time: f32) -> DynResult<()> {
+    pub(in crate::engine) fn fixed_update(engine: &mut Engine, delta_time: f32) -> Vec<DynError> {
         // I really hope the compiler can optimize this nonsense
         let components: Vec<ComponentID> = engine.world.ordered_components.iter().flat_map(|(_, set)| {
             set.iter().cloned()
         }).collect();
 
-        let components: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> = components.into_iter().map(|component| {
+        let (components, mut errors): (Vec<_>, Vec<_>) = components.into_iter().map(|component| {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), ComponentError>((owner, rc.clone()))
-        }).collect::<std::result::Result<Vec<_>, ComponentError>>()?;
-
-        components.into_iter().try_for_each(|(owner, rc)| {
-            rc.borrow_mut().fixed_update(engine, owner, delta_time)?; 
-
-            Ok(())
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
         })
+        .partition_map(|result| match result {
+            Ok(component) => Left(component),
+            Err(err) => Right(err),
+        });
+
+        errors.extend(
+            components.into_iter().filter_map(|(owner, rc)| {
+                rc.borrow_mut().fixed_update(engine, owner, delta_time).err()
+            })
+        );
+
+        errors
     }
 
     pub fn get_main_camera(&self) -> Option<Rc<RefCell<Camera>>> {

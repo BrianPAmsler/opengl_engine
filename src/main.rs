@@ -13,7 +13,7 @@ use gl_types::{geometric::normalize, vec2, vec3};
 // use gl_types::{geometric::normalize, vec2, vec3};
 use regex::Regex;
 
-use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error::dyn_error::{Error, Result}};
+use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error::{ExplicitUnwrap, TryUnwrap, dyn_error::{Error, Result}}};
 
 // use crate::engine::{game_object::ComponentID, graphics::{Camera, Projection, gl_enums::{DepthFunction, EnableCap}, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}};
 
@@ -84,8 +84,8 @@ impl Component for Renderer {
         // engine.gfx.glClearDepth(0.0);
         // engine.gfx.glCullFace(GL_BACK);
 
-        let sprite1 = engine.world.find_child(engine.world.get_root(), "Sprite 1")?.unwrap();
-        let sprite2 = engine.world.find_child(engine.world.get_root(), "Sprite 2")?.unwrap();
+        let sprite1 = engine.world.find_child(engine.world.get_root(), "Sprite 1")?.try_unwrap()?;
+        let sprite2 = engine.world.find_child(engine.world.get_root(), "Sprite 2")?.try_unwrap()?;
 
         self.sprite1 = Some(sprite1);
         self.sprite2 = Some(sprite2);
@@ -123,7 +123,7 @@ impl Component for Renderer {
             camera.set_position(pos + vec3!(0, -1, 0) * delta_time * speed);
         }
 
-        let mut sprite = engine.world.get_transform(self.sprite2.unwrap())?;
+        let mut sprite = engine.world.get_transform(self.sprite2.try_unwrap()?)?;
         if engine.input.get_key_state(Key::ArrowUp).is_down {
             *sprite.position_mut() += vec3!(0, 0, 1) * delta_time * speed;
         }
@@ -213,10 +213,10 @@ pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {
     let mut clean_str = String::new();
     clean_str.reserve(str.len());
 
-    clean_str += &format!("Error: {}\n\nStack Backtrace\n", error.to_string());
+    clean_str += &format!("Error: {}\n\nStack Backtrace\n", error);
     
-    let is_error_line = Regex::new("^ +[0-9]+:").unwrap();
-    let in_crate = Regex::new(&format!("^ +[0-9]+: {}::", crate_name)).unwrap();
+    let is_error_line = Regex::new("^ +[0-9]+:").explicit_unwrap();
+    let in_crate = Regex::new(&format!("^ +[0-9]+: {}::", crate_name)).explicit_unwrap();
 
     let mut count = 0;
     let mut adding = false;
@@ -227,7 +227,7 @@ pub fn clean_backtrace(error: &Error, crate_name: &'static str) -> String {
             if result.is_some() {
                 adding = false;
             } else {
-                clean_str += &line;
+                clean_str += line;
                 clean_str += "\n";
             }
         }

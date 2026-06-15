@@ -2,7 +2,7 @@ use std::{sync::Arc, time::{Duration, Instant}};
 
 use winit::{application::ApplicationHandler, dpi::{PhysicalPosition, PhysicalSize}, event::{ElementState, KeyEvent, WindowEvent}, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error::{ExplicitUnwrap, Result}};
+use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error::{ExplicitUnwrap, Result, dyn_error::Error}};
 
 #[derive(Debug)]
 pub enum WindowMode {
@@ -17,7 +17,7 @@ impl From<WindowMode> for Option<Fullscreen> {
             WindowMode::Windowed => None,
         }
     }
-}
+}   
 
 pub struct Engine {
     pub gfx: Graphics,
@@ -26,7 +26,7 @@ pub struct Engine {
     pub(in crate::engine) sprite_renderer: SpriteRenderer,
     pub(in crate::engine) terrain_renderer: TerrainRenderer,
     fixed_tick_duration: f64,
-    // error_queue: Vec<Error>
+    error_queue: Vec<Error>,
     pub(in crate::engine) window: Arc<Window>,
     initialization_time: Instant,
     last_tick: f64,
@@ -166,7 +166,7 @@ impl Engine {
         let mut gfx = Graphics::new(window.clone(), &event_loop)?;
         let sprite_renderer = SpriteRenderer::new();
         let terrain_renderer = TerrainRenderer::new(&mut gfx)?;
-        let engine = Engine { window, gfx, world, input: Input::new(), sprite_renderer, terrain_renderer, fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, should_close: false, _event_loop: Some(event_loop) };
+        let engine = Engine { window, gfx, world, input: Input::new(), sprite_renderer, terrain_renderer, error_queue: Vec::new(),fixed_tick_duration: 1.0 / 60.0, initialization_time: Instant::now(), last_tick: 0.0, last_fixed_tick: 0.0, fixed_tick_overflow: 0.0, should_close: false, _event_loop: Some(event_loop) };
 
         // let gfx = Graphics::init(window_title, width, height, window_mode)?;
 
@@ -193,14 +193,14 @@ impl Engine {
     }
 
     fn update(&mut self) -> crate::error::dyn_error::Result<()> {
-        self.log_errors();
         self.gfx.update_pipelines(&self.window)?;
 
         // TODO: move clear call to after game tick
         
         // Game tick
         let current_time = self.get_time();
-        World::update(self, (current_time - self.last_tick) as f32)?; // TODO: This is not supposed to crash, catch and log errors
+        let errors = World::update(self, (current_time - self.last_tick) as f32);
+        self.error_queue.extend(errors);
         self.last_tick = current_time;
 
         let fixed_diff = current_time - self.last_fixed_tick - self.fixed_tick_duration;
@@ -208,33 +208,51 @@ impl Engine {
         // Add overflow to adjust for errors in timing
         if fixed_diff + self.fixed_tick_overflow >= 0.0 {
             self.fixed_tick_overflow = f64::max(0.0, fixed_diff * 2.0);
-            World::fixed_update(self, (current_time - self.last_fixed_tick) as f32)?; // TODO: This is not supposed to crash, catch and log errors
+            let errors = World::fixed_update(self, (current_time - self.last_fixed_tick) as f32);
+            self.error_queue.extend(errors);
             self.last_fixed_tick = current_time;
         }
 
-        self.log_errors();
         if let Some(camera) = self.world.get_main_camera() {
             let mut camera = camera.borrow_mut();
-            self.sprite_renderer.update(&self.gfx, &camera.view_matrix(), &camera.projection_matrix());
-            self.terrain_renderer.update(&self.gfx, camera.view_matrix(), camera.projection_matrix(), camera.position());
+
+            let result = self.sprite_renderer.update(&self.gfx, &camera.view_matrix(), &camera.projection_matrix());
+            self.log_error(result);
+
+            let result = self.terrain_renderer.update(&self.gfx, camera.view_matrix(), camera.projection_matrix(), camera.position());
+            self.log_error(result);
         }
 
         for (owner, mut component) in self.world.get_removed_components() {
-            component.on_remove(self, owner);
+            let result = component.on_remove(self, owner);
+            self.log_error(result);
         }
 
         self.gfx.draw()?;
 
+        self.log_errors();
+
         Ok(())
     }
 
-    fn log_errors(&mut self) {
-        // Take erorr queue from error_queue, turn it into a Box and log them
-        // let mut errors = Vec::new();
-        // std::mem::swap(&mut errors, &mut self.error_queue);
-        // let errors = errors.into_boxed_slice();
+    fn log_error<T, E: Into<Error>>(&mut self, result: std::result::Result<T, E>) -> Option<T> {
+        match result {
+            Ok(value) => Some(value),
+            Err(err) => {
+                self.error_queue.push(err.into());
+                None
+            }
+        }
+    }
 
-        // errors.iter().for_each(|error| eprintln!("{}", error))
+    fn log_errors(&mut self) {
+        // For now just print errors to console
+        let mut errors = std::mem::take(&mut self.error_queue);
+
+        errors.iter_mut().for_each(|error| {
+            error.resolve_backtrace();
+            eprintln!("{}", error)
+        })
     }
 
     pub fn set_should_close(&mut self, should_close: bool) {

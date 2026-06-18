@@ -687,15 +687,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "error_union"
+name = "error"
 version = "0.1.0"
-dependencies = [
- "itertools 0.14.0",
- "proc-macro2",
- "quote",
- "syn",
- "thiserror 2.0.18",
-]
 
 [[package]]
 name = "exr"
@@ -1253,6 +1246,10 @@ checksum = "0fae87c125b03c1d2c0150c90365d7d6bcc53fb73a9acaef207d2d065860f062"
 dependencies = [
  "imgref",
 ]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
 
 [[package]]
 name = "malloc_buf"
@@ -1860,7 +1857,7 @@ dependencies = [
  "bytemuck",
  "const_format",
  "downcast-rs",
- "error_union",
+ "error",
  "function_name",
  "gl_types",
  "image",

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vulkano::image::{Image, sampler::Sampler, view::ImageView};
 
-use crate::{engine::graphics::error::BufferImageError, error::Result};
+use crate::{engine::graphics::error::BufferImageError, error2::Result};
 
 use super::Graphics;
 
@@ -45,7 +45,7 @@ pub mod builder {
     use image::RgbaImage;
     use vulkano::{format::Format, image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode}, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}};
 
-    use crate::{engine::graphics::{Graphics, Texture, texture::{error::TextureBuilderError}}, error::Result};
+    use crate::{engine::graphics::{Graphics, Texture, texture::{error::TextureBuilderError}}, error2::Result};
 
     pub struct TextureBuilder {
         data: Vec<u8>,
@@ -152,7 +152,7 @@ pub mod error {
     use error_union::error_union;
     use vulkano::command_buffer::CommandBufferExecError;
 
-    use crate::{engine::graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::NewTerrainRendererError}}, error::EngineError};
+    use crate::{engine::graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::NewTerrainRendererError}}, error2::EngineError};
     type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
     type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
     type BoxedValidationError = Box<vulkano::ValidationError>;

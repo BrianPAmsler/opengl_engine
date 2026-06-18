@@ -689,6 +689,10 @@ dependencies = [
 [[package]]
 name = "error"
 version = "0.1.0"
+dependencies = [
+ "backtrace",
+ "macros",
+]
 
 [[package]]
 name = "exr"

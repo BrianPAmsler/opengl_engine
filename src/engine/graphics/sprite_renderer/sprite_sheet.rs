@@ -3,7 +3,7 @@ use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, op
 use image::{RgbaImage, imageops};
 use lazy_static::lazy_static;
 
-use crate::{engine::graphics::{Graphics, Texture, builder::TextureBuilder, texture::error::TextureBuilderError}, error::{ExplicitUnwrap, Result}};
+use crate::{engine::graphics::{Graphics, Texture, builder::TextureBuilder, texture::error::TextureBuilderError}, error2::{ExplicitUnwrap, Result}};
 
 struct SpriteCell {
     x: u32,
@@ -374,7 +374,7 @@ mod tests {
 
     use pathbuf::pathbuf;
 
-    use crate::error::ExplicitUnwrap;
+    use crate::error2::ExplicitUnwrap;
 
     use super::SpriteSheetBuilder;
 

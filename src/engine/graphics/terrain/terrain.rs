@@ -2,7 +2,7 @@ use bytemuck::{Pod, Zeroable};
 use image::{ImageBuffer, Luma};
 use vulkano::{format::Format, image::sampler::Filter, pipeline::graphics::vertex_input::Vertex};
 
-use crate::{engine::{game_object::component::Component, graphics::{BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, builder::TextureBuilder, terrain::{error::{CellAccessError, TerrainFromRawError, UpdateTextureError}, terrain_renderer::{TerrainRenderer, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}}, error::{ExplicitUnwrap, Result, universal_errors::{OutOfBounds, Uninitialized}}};
+use crate::{engine::{game_object::component::Component, graphics::{BufferType, Graphics, PipelineBuilder, PipelineHandle, Texture, builder::TextureBuilder, terrain::{error::{CellAccessError, TerrainFromRawError, UpdateTextureError}, terrain_renderer::{TerrainRenderer, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}}, error2::{ExplicitUnwrap, Result, universal_errors::{OutOfBounds, Uninitialized}}};
 
 const VERTEX_DATA: &[TerrainVertex] = &[
     // [0]: Bottom-Left Corner
@@ -258,7 +258,7 @@ impl Terrain {
 }
 
 impl Component for Terrain {
-    fn init(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::error::dyn_error::Result<()> {
+    fn init(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::error2::dyn_error::Result<()> {
         let TerrainInner::Uninitialized { height_file, color_file  } = std::mem::take(&mut self.0) else { Err(Uninitialized)? };
 
         let grid = image::ImageReader::open(color_file)?.decode()?;
@@ -277,7 +277,7 @@ impl Component for Terrain {
         Ok(())
     }
 
-    fn update(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID, _delta_time: f32) -> crate::error::dyn_error::Result<()> {
+    fn update(&mut self, engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID, _delta_time: f32) -> crate::error2::dyn_error::Result<()> {
         self.update_textures(&engine.gfx)?;
 
         let TerrainInner::Initialized { width, height, pipeline, .. } = &self.0 else { Err(Uninitialized)? };
@@ -285,7 +285,7 @@ impl Component for Terrain {
         Ok(())
     }
 
-    fn on_remove(&mut self, _engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::error::dyn_error::Result<()> {
+    fn on_remove(&mut self, _engine: &mut crate::engine::Engine, _owner: crate::engine::game_object::ObjectID) -> crate::error2::dyn_error::Result<()> {
         Err("Unimplemented")?
     }
 
@@ -296,13 +296,13 @@ pub mod error {
     use error_union::error_union;
     use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError};
 
-    use crate::{engine::graphics::error::{BufferImageError, InvalidEntryPoint, NoLayout}, error::{EngineError, universal_errors::Uninitialized}};
+    use crate::{engine::graphics::error::{BufferImageError, InvalidEntryPoint, NoLayout}, error2::{EngineError, universal_errors::Uninitialized}};
 
     type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
     type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
     type BoxedValidationError = Box<vulkano::ValidationError>;
     type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
-    type OutOfBounds = crate::error::universal_errors::OutOfBounds<(u32, u32)>;
+    type OutOfBounds = crate::error2::universal_errors::OutOfBounds<(u32, u32)>;
 
     error_union!(ValidatedVulkanError, ValidatedAllocateBufferError, ValidatedAllocateImageError, NoLayout, BoxedValidationError, CommandBufferExecError, InvalidEntryPoint, IntoPipelineLayoutCreateInfoError as TerrainFromRawError);
     error_union!(OutOfBounds, Uninitialized as CellAccessError);

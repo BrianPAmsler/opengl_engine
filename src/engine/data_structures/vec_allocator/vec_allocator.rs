@@ -2,7 +2,7 @@ use std::{collections::VecDeque, fmt::Debug};
 
 use rand::RngExt as _;
 
-use crate::error::ExplicitUnwrap;
+use crate::error2::ExplicitUnwrap;
 
 use super::error::Result;
 
@@ -346,7 +346,7 @@ mod tests {
 
     use rand::{RngExt};
 
-    use crate::error::ExplicitUnwrap;
+    use crate::error2::ExplicitUnwrap;
 
     use super::{Slot, VecAllocator};
 

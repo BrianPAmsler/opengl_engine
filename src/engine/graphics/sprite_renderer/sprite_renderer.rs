@@ -8,7 +8,7 @@ use vulkano::buffer::{BufferContents, Subbuffer};
 use vulkano::command_buffer::DrawIndexedIndirectCommand;
 use vulkano::pipeline::graphics::vertex_input::Vertex;
 
-use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, builder::TextureBuilder, sprite_renderer::error::{AddSpritesheetError, SpriteRendererBufferError, SpriteRendererUpdateError, UnknownSpriteSheet}}}, error::Result};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, builder::TextureBuilder, sprite_renderer::error::{AddSpritesheetError, SpriteRendererBufferError, SpriteRendererUpdateError, UnknownSpriteSheet}}}, error2::Result};
 
 const UNIFORMS_BINDING: u32 = 1;
 const SPRITE_SHEET_BINDING: u32 = 2;
@@ -330,7 +330,7 @@ mod tests {
         }
     }
 
-    use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}, error::dyn_error::Result};
+    use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}, error2::dyn_error::Result};
     
     
     

@@ -2,7 +2,7 @@ use error_union::error_union;
 use thiserror::Error;
 use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError, sync::HostAccessError};
 
-use crate::{engine::{error::NewEngineErorr, graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::TerrainRendererUpdateError}, texture::error::TextureBuilderError}}, error::EngineError};
+use crate::{engine::{error::NewEngineErorr, graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::TerrainRendererUpdateError}, texture::error::TextureBuilderError}}, error2::EngineError};
 
 type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
 type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;

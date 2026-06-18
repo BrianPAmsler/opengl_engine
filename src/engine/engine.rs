@@ -2,7 +2,7 @@ use std::{sync::Arc, time::{Duration, Instant}};
 
 use winit::{application::ApplicationHandler, dpi::{PhysicalPosition, PhysicalSize}, event::{ElementState, KeyEvent, WindowEvent}, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error::{ExplicitUnwrap, Result, dyn_error::Error}};
+use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error2::{ExplicitUnwrap, Result, dyn_error::Error}};
 
 #[derive(Debug)]
 pub enum WindowMode {
@@ -170,7 +170,7 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn run(&mut self) -> crate::error::dyn_error::Result<()> {
+    pub fn run(&mut self) -> crate::error2::dyn_error::Result<()> {
         let event_loop = self._event_loop.take().ok_or("No event loop")?;
 
         self.window.request_redraw();
@@ -183,7 +183,7 @@ impl Engine {
         (Instant::now() - self.initialization_time).as_secs_f64()
     }
 
-    fn update(&mut self) -> crate::error::dyn_error::Result<()> {
+    fn update(&mut self) -> crate::error2::dyn_error::Result<()> {
         self.gfx.update_pipelines(&self.window)?;
 
         // TODO: move clear call to after game tick
@@ -257,7 +257,7 @@ pub mod error {
     use vulkano::command_buffer::CommandBufferExecError;
     use winit::error::EventLoopError;
 
-    use crate::{engine::graphics::error::{NoPhysicalDevices, SRGBUnsupported}, error::EngineError};
+    use crate::{engine::graphics::error::{NoPhysicalDevices, SRGBUnsupported}, error2::EngineError};
 
     type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
     type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;

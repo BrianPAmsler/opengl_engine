@@ -1,17 +1,13 @@
-#![cfg_attr(debug_assertions, allow(dead_code))]
-#![warn(clippy::unwrap_used, clippy::expect_used, clippy::empty_structs_with_brackets)]
-#![allow(clippy::too_many_arguments, clippy::module_inception)]
 
-pub mod engine;
-pub mod error;
 
 use std::{cell::RefCell, rc::Rc};
 
 
 use gl_types::{geometric::normalize, vec2, vec3};
+use opengl_engine::engine::Engine;
 use regex::Regex;
 
-use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error::{ExplicitUnwrap, TryUnwrap, dyn_error::{Error, Result}}};
+use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error2::{ExplicitUnwrap, TryUnwrap, dyn_error::{Error, Result}}};
 
 #[derive(Clone, Default)]
 pub struct FPSCounter {

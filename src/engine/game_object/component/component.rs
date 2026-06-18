@@ -1,4 +1,4 @@
-use crate::{engine::Engine, error::dyn_error::Result};
+use crate::{engine::Engine, error2::dyn_error::Result};
 use downcast_rs::{Downcast, impl_downcast};
 
 use crate::engine::game_object::ObjectID;

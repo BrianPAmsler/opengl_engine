@@ -3,7 +3,7 @@ use thiserror::Error;
 use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError, sync::HostAccessError};
 
 
-use crate::{engine::graphics::error::{GetBindingError, InvalidEntryPoint, NoLayout, SetIndirectBufferError}, error::EngineError};
+use crate::{engine::graphics::error::{GetBindingError, InvalidEntryPoint, NoLayout, SetIndirectBufferError}, error2::EngineError};
 
 #[derive(Error, Debug)]
 #[error("Invalid sprite sheet \"{sheet}\"")]

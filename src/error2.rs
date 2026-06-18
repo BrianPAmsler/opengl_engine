@@ -87,7 +87,7 @@ impl<T> TryUnwrap<T> for Option<T> {
 pub mod dyn_error {
     use thiserror::Error;
 
-    use crate::error::{DynamicErrorMessage, EngineError, ErrorMessage};
+    use crate::error2::{DynamicErrorMessage, EngineError, ErrorMessage};
 
     type BT = backtrace::Backtrace;
 
@@ -179,7 +179,7 @@ pub mod universal_errors {
 
     use thiserror::Error;
 
-    use crate::error::EngineError;
+    use crate::error2::EngineError;
 
     #[derive(Error, Debug)]
     #[error("Index {index:?} out of bounds ({bounds:?}).")]

@@ -4,7 +4,7 @@ use gl_types::{matrices::{Mat4, MatN}, vectors::{Vec3, VecN}};
 use rand::RngExt as _;
 use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand, format::Format, image::sampler::{Filter, SamplerAddressMode}, shader::ShaderModule};
 
-use crate::{engine::graphics::{Binding, Graphics, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{error::{NewTerrainRendererError, TerrainRendererUpdateError}, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}, error::Result};
+use crate::{engine::graphics::{Binding, Graphics, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{error::{NewTerrainRendererError, TerrainRendererUpdateError}, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}, error2::Result};
 
 pub(in crate::engine::graphics::terrain) mod vertex_shader {
     vulkano_shaders::shader!{
@@ -129,7 +129,7 @@ pub mod error {
     use error_union::error_union;
     use vulkano::{command_buffer::CommandBufferExecError, sync::HostAccessError};
 
-    use crate::{engine::{error::NewEngineErorr, graphics::error::{InvalidBinding, InvalidPipelineHandle}}, error::EngineError};
+    use crate::{engine::{error::NewEngineErorr, graphics::error::{InvalidBinding, InvalidPipelineHandle}}, error2::EngineError};
 
     type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
     type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;

@@ -4,14 +4,14 @@ use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::{BTreeMap, Has
 use gl_types::vectors::Vec3;
 use itertools::{Either::{Left, Right}, Itertools};
 
-use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, DeadComponent, DeadObject, WorldMismatch, unions::{ComponentBorrowError, ComponentError, ObjectError, RemoveError}}, game_object::Transform}, graphics::Camera}, error::{EngineError, ExplicitUnwrap, Result, dyn_error::Error as DynError}};
+use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, DeadComponent, DeadObject, WorldMismatch, unions::{ComponentBorrowError, ComponentError, ObjectError, RemoveError}}, game_object::Transform}, graphics::Camera}, error2::{EngineError, ExplicitUnwrap, Result, dyn_error::Error as DynError}};
 
 use super::{component::Component, game_object::GameObject};
 
 pub mod error {
     use thiserror::Error;
 
-    use crate::error::EngineError;
+    use crate::error2::EngineError;
 
     #[derive(Error, Debug)]
     #[error("Component is dead!")]
@@ -39,7 +39,7 @@ pub mod error {
 
     pub mod unions {
         use error_union::error_union;
-        use crate::error::{EngineError, Error, ErrorMessage};
+        use crate::error2::{EngineError, Error, ErrorMessage};
 
         error_union!(super::DeadComponent, super::WorldMismatch as ComponentError);
         error_union!(super::DeadObject, super::WorldMismatch as ObjectError);

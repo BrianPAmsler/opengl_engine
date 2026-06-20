@@ -1,8 +1,8 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{rc::Rc, sync::Arc, time::{Duration, Instant}};
 
 use winit::{application::ApplicationHandler, dpi::{PhysicalPosition, PhysicalSize}, event::{ElementState, KeyEvent, WindowEvent}, event_loop::{self, EventLoop}, monitor::MonitorHandle, platform::pump_events::EventLoopExtPumpEvents, window::{Fullscreen, Window, WindowAttributes}};
 
-use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error2::{ExplicitUnwrap, Result, dyn_error::Error}};
+use crate::{engine::{error::{InvalidWindowState, NewEngineErorr}, game_object::World, graphics::{Graphics, sprite_renderer::SpriteRenderer, terrain::terrain_renderer::TerrainRenderer}, input::{self, Input, Key}}, error::{ExplicitUnwrap, Result, any::{Error, IntoAny}}};
 
 #[derive(Debug)]
 pub enum WindowMode {
@@ -157,7 +157,7 @@ impl Engine {
         
         event_loop.pump_app_events(Some(Duration::ZERO), &mut app);
 
-        let WindowStatus::Initialized(window) = app.0 else { Err(InvalidWindowState)? };
+        let WindowStatus::Initialized(window) = app.0 else { return Err(InvalidWindowState.into()) };
         let window = Arc::new(window);
 
         let world = World::new();
@@ -170,11 +170,11 @@ impl Engine {
         Ok(engine)
     }
 
-    pub fn run(&mut self) -> crate::error2::dyn_error::Result<()> {
+    pub fn run(&mut self) -> crate::error::any::Result<()> {
         let event_loop = self._event_loop.take().ok_or("No event loop")?;
 
         self.window.request_redraw();
-        event_loop.run_app(self)?;
+        event_loop.run_app(self).into_any()?;
 
         Ok(())
     }
@@ -183,7 +183,7 @@ impl Engine {
         (Instant::now() - self.initialization_time).as_secs_f64()
     }
 
-    fn update(&mut self) -> crate::error2::dyn_error::Result<()> {
+    fn update(&mut self) -> crate::error::any::Result<()> {
         self.gfx.update_pipelines(&self.window)?;
 
         // TODO: move clear call to after game tick
@@ -214,7 +214,8 @@ impl Engine {
             self.log_error(result);
         }
 
-        for (owner, mut component) in self.world.get_removed_components() {
+        for (owner, component) in self.world.get_removed_components() {
+            let mut component = Rc::into_inner(component).explicit_expect("Cannot remove component due to Rc leak.").into_inner();
             let result = component.on_remove(self, owner);
             self.log_error(result);
         }
@@ -241,7 +242,6 @@ impl Engine {
         let mut errors = std::mem::take(&mut self.error_queue);
 
         errors.iter_mut().for_each(|error| {
-            error.resolve_backtrace();
             eprintln!("{}", error)
         })
     }
@@ -252,37 +252,24 @@ impl Engine {
 }
 
 pub mod error {
-    use error_union::error_union;
-    use thiserror::Error;
-    use vulkano::command_buffer::CommandBufferExecError;
+    use std::fmt::Debug;
     use winit::error::EventLoopError;
 
-    use crate::{engine::graphics::error::{NoPhysicalDevices, SRGBUnsupported}, error2::EngineError};
+    use crate::engine::graphics::error::NewGraphicsError;
+    use crate::engine::graphics::terrain::terrain_renderer::error::NewTerrainRendererError;
+    use crate::error as errors_module;
 
-    type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
-    type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
-    type BoxedValidationError = Box<vulkano::ValidationError>;
-    type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
+    use crate::error::{Error, union};
 
     #[derive(Error, Debug)]
     #[error("Invalid window state.")]
     pub struct InvalidWindowState;
-    impl EngineError for InvalidWindowState {}
 
-    error_union!(
+    union!(
         EventLoopError,
-        InvalidWindowState,
-        vulkano::LoadingError,
-        winit::raw_window_handle::HandleError,
-        ValidatedVulkanError,
-        vulkano::VulkanError,
-        vulkano::swapchain::FromWindowError,
-        NoPhysicalDevices,
-        BoxedValidationError,
-        ValidatedAllocateBufferError,
-        CommandBufferExecError,
-        ValidatedAllocateImageError,
-        SRGBUnsupported
+        NewGraphicsError,
+        NewTerrainRendererError,
+        InvalidWindowState
         as NewEngineErorr
     );
 }

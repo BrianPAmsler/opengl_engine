@@ -4,7 +4,7 @@ use gl_types::{matrices::{Mat4, MatN}, vectors::{Vec3, VecN}};
 use rand::RngExt as _;
 use vulkano::{buffer::Subbuffer, command_buffer::DrawIndexedIndirectCommand, format::Format, image::sampler::{Filter, SamplerAddressMode}, shader::ShaderModule};
 
-use crate::{engine::graphics::{Binding, Graphics, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{error::{NewTerrainRendererError, TerrainRendererUpdateError}, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}, error2::Result};
+use crate::{engine::graphics::{Binding, Graphics, PipelineHandle, Texture, builder::TextureBuilder, terrain::{INDEX_DATA, terrain_renderer::{error::{NewTerrainRendererError, TerrainRendererUpdateError}, fragment_shader::FragmentUniforms, vertex_shader::VertexUniforms}}}, error::Result};
 
 pub(in crate::engine::graphics::terrain) mod vertex_shader {
     vulkano_shaders::shader!{
@@ -52,7 +52,6 @@ pub struct TerrainRenderer {
 
 impl TerrainRenderer {
     pub fn new(gfx: &mut Graphics) -> Result<TerrainRenderer, NewTerrainRendererError> {
-
         let vertex_shader = vertex_shader::load(gfx.device())?;
         let fragment_shader = fragment_shader::load(gfx.device())?;
 
@@ -126,16 +125,11 @@ impl TerrainRenderer {
 }
 
 pub mod error {
-    use error_union::error_union;
-    use vulkano::{command_buffer::CommandBufferExecError, sync::HostAccessError};
+    use error::union;
+    use vulkano::{Validated, VulkanError, sync::HostAccessError};
+    use crate::{engine::graphics::{error::{GetBindingError, SetIndirectBufferError}, texture::error::TextureBuilderError}, error as errors_module};
 
-    use crate::{engine::{error::NewEngineErorr, graphics::error::{InvalidBinding, InvalidPipelineHandle}}, error2::EngineError};
 
-    type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
-    type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
-    type BoxedValidationError = Box<vulkano::ValidationError>;
-    type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
-
-    error_union!(ValidatedVulkanError, ValidatedAllocateImageError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError as NewTerrainRendererError into NewEngineErorr);
-    error_union!(InvalidPipelineHandle, HostAccessError, InvalidBinding as TerrainRendererUpdateError);
+    union!(Validated<VulkanError>, TextureBuilderError as NewTerrainRendererError);
+    union!(SetIndirectBufferError, HostAccessError, GetBindingError as TerrainRendererUpdateError);
 }

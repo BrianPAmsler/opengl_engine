@@ -1,60 +1,45 @@
-use error_union::error_union;
-use thiserror::Error;
-use vulkano::{command_buffer::CommandBufferExecError, pipeline::layout::IntoPipelineLayoutCreateInfoError, sync::HostAccessError};
-
-use crate::{engine::{error::NewEngineErorr, graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::TerrainRendererUpdateError}, texture::error::TextureBuilderError}}, error2::EngineError};
-
-type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
-type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
-type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
-type BoxedValidationError = Box<vulkano::ValidationError>;
+use error::{Error, union};
+use vulkano::{LoadingError, Validated, ValidationError, VulkanError, buffer::AllocateBufferError, command_buffer::CommandBufferExecError, image::AllocateImageError, pipeline::layout::IntoPipelineLayoutCreateInfoError, swapchain::FromWindowError, sync::HostAccessError};
+use winit::raw_window_handle::HandleError;
+use crate::error as errors_module;
 
 #[derive(Error, Debug)]
 #[error("Vulkan Error: No physical devices.")]
 pub struct NoPhysicalDevices;
-impl EngineError for NoPhysicalDevices {}
 
 #[derive(Error, Debug)]
 #[error("Vulkan Error: No layout.")]
 pub struct NoLayout;
-impl EngineError for NoLayout {}
 
 #[derive(Error, Debug)]
 #[error("Invalid shader entry point.")]
 pub struct InvalidEntryPoint;
-impl EngineError for InvalidEntryPoint {}
 
 #[derive(Error, Debug)]
 #[error("Device does not support sRGB.")]
 pub struct SRGBUnsupported;
-impl EngineError for SRGBUnsupported {}
 
 #[derive(Error, Debug)]
 #[error("Invalid pipeline handle.")]
 pub struct InvalidPipelineHandle;
-impl EngineError for InvalidPipelineHandle {}
 
 #[derive(Error, Debug)]
 #[error("Invalid binding.")]
 pub struct InvalidBinding;
-impl EngineError for InvalidBinding {}
 
-impl EngineError for vulkano::LoadingError {}
-impl EngineError for winit::raw_window_handle::HandleError {}
-impl EngineError for vulkano::Validated<vulkano::VulkanError> {}
-impl EngineError for vulkano::VulkanError {}
-impl EngineError for vulkano::swapchain::FromWindowError {}
-impl EngineError for vulkano::Validated<vulkano::buffer::AllocateBufferError> {}
-impl EngineError for IntoPipelineLayoutCreateInfoError {}
+union!(Validated<VulkanError> as GetRenderPassError);
 
-error_union!(ValidatedAllocateImageError, vulkano::LoadingError, winit::raw_window_handle::HandleError, ValidatedVulkanError, vulkano::VulkanError, vulkano::swapchain::FromWindowError, NoPhysicalDevices, SRGBUnsupported as NewGraphicsError into NewEngineErorr);
-error_union!(ValidatedVulkanError, NoLayout, InvalidEntryPoint, BoxedValidationError as DescriptorSetError into PipelineBuilderError);
-error_union!(ValidatedAllocateBufferError, ValidatedVulkanError, NoLayout, InvalidEntryPoint, BoxedValidationError, IntoPipelineLayoutCreateInfoError as PipelineBuilderError into AddSpritesheetError, TerrainFromRawError);
-error_union!(ValidatedAllocateImageError, ValidatedVulkanError, as GetFramebuffersError into NewGraphicsError, UpdatePipelinesError);
-error_union!(ValidatedAllocateImageError, ValidatedVulkanError, InvalidEntryPoint, BoxedValidationError, IntoPipelineLayoutCreateInfoError as UpdatePipelinesError);
-error_union!(ValidatedVulkanError, InvalidEntryPoint, BoxedValidationError, IntoPipelineLayoutCreateInfoError as GetPipelineError into PipelineBuilderError, UpdatePipelinesError);
-error_union!(ValidatedVulkanError, BoxedValidationError as GetCommandBuffersError into UpdatePipelinesError);
-error_union!(ValidatedVulkanError, CommandBufferExecError as DrawError);
-error_union!(InvalidPipelineHandle, HostAccessError as SetIndirectBufferError into TerrainRendererUpdateError);
-error_union!(InvalidPipelineHandle, InvalidBinding as GetBindingError into TerrainRendererUpdateError);
-error_union!(ValidatedVulkanError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError as BufferImageError into TextureBuilderError);
+union!(LoadingError, HandleError, NoPhysicalDevices, SRGBUnsupported, Validated<VulkanError>, VulkanError, FromWindowError, GetFramebuffersError, GetRenderPassError as NewGraphicsError);
+
+union!(NoLayout, Validated<VulkanError>, as DescriptorSetError);
+
+union!(GetPipelineError, DescriptorSetError, Validated<AllocateBufferError> as PipelineBuilderError);
+
+union!(Validated<AllocateImageError>, Validated<VulkanError> as GetFramebuffersError);
+union!(Validated<VulkanError>, GetPipelineError, GetCommandBuffersError, GetFramebuffersError as UpdatePipelinesError);
+union!(InvalidEntryPoint, Validated<VulkanError>, Box<ValidationError>, IntoPipelineLayoutCreateInfoError as GetPipelineError);
+union!(Validated<VulkanError>: ValidatedVulkanError, Box<ValidationError> as GetCommandBuffersError);
+union!(CommandBufferExecError, Validated<VulkanError> as DrawError);
+union!(InvalidPipelineHandle, HostAccessError as SetIndirectBufferError);
+union!(InvalidBinding, InvalidPipelineHandle as GetBindingError);
+union!(Validated<AllocateBufferError>, Box<ValidationError>, Validated<VulkanError>, CommandBufferExecError as BufferImageError);

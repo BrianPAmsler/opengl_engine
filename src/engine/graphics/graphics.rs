@@ -3,7 +3,7 @@ use std::{collections::HashMap, iter, sync::Arc};
 use itertools::Itertools;
 use vulkano::{Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, BufferCreateInfo, Subbuffer}, command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyBufferToImageInfo, DrawIndexedIndirectCommand, PrimaryAutoCommandBuffer, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, SubpassEndInfo, allocator::StandardCommandBufferAllocator}, descriptor_set::{DescriptorSet, WriteDescriptorSet, allocator::StandardDescriptorSetAllocator}, device::{Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType}, format::{ClearValue, Format}, image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{GraphicsPipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, depth_stencil::{DepthState, DepthStencilState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::{CullMode, FrontFace, RasterizationState}, vertex_input::{VertexBufferDescription, VertexDefinition as _}, viewport::{Viewport, ViewportState}}, layout::PipelineDescriptorSetLayoutCreateInfo}, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, shader::ShaderModule, swapchain::{self, PresentMode, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo}, sync::{self, GpuFuture}};
 use winit::{event_loop::EventLoop, window::Window};
-use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{Texture, error::{BufferImageError, DescriptorSetError, DrawError, GetBindingError, GetCommandBuffersError, GetFramebuffersError, GetPipelineError, InvalidBinding, InvalidEntryPoint, InvalidPipelineHandle, NewGraphicsError, NoLayout, NoPhysicalDevices, SRGBUnsupported, SetIndirectBufferError, UpdatePipelinesError}}}, error2::{ExplicitUnwrap, Result}};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{Texture, error::{BufferImageError, DescriptorSetError, DrawError, GetBindingError, GetCommandBuffersError, GetFramebuffersError, GetPipelineError, GetRenderPassError, InvalidBinding, InvalidEntryPoint, InvalidPipelineHandle, NewGraphicsError, NoLayout, NoPhysicalDevices, SRGBUnsupported, SetIndirectBufferError, UpdatePipelinesError}}}, error::{ExplicitUnwrap, Result}};
 
 unsafe fn exit<T> (status: i32) -> T {
     std::process::exit(status)
@@ -104,7 +104,7 @@ pub mod pipeline_builder {
 
         use vulkano::{Validated, buffer::{AllocateBufferError, Buffer, BufferContents, BufferCreateInfo, BufferUsage}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::Vertex, shader::ShaderModule};
 
-        use crate::{engine::graphics::Graphics, error2::Result};
+        use crate::{engine::graphics::Graphics, error::Result};
         
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics::graphics) gfx: &'a mut Graphics,
@@ -170,7 +170,7 @@ pub mod pipeline_builder {
 
         use vulkano::{Validated, buffer::{AllocateBufferError, Buffer, BufferContents, BufferCreateInfo, BufferUsage}, command_buffer::DrawIndexedIndirectCommand, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}, pipeline::graphics::vertex_input::VertexBufferDescription, shader::ShaderModule};
 
-        use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, error::PipelineBuilderError, graphics::{PipelineCell, get_descriptor_set, get_pipeline}}, error2::Result};
+        use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineHandle, Texture, error::PipelineBuilderError, graphics::{PipelineCell, get_descriptor_set, get_pipeline}}, error::Result};
 
         pub struct PipelineBuilder<'a> {
             pub(in crate::engine::graphics) gfx: &'a mut Graphics,
@@ -368,7 +368,7 @@ pub struct Graphics {
     recreate_command_buffers: bool
 }
 
-fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Result<Arc<RenderPass>, vulkano::Validated<vulkano::VulkanError>> {
+fn get_render_pass(device: Arc<Device>, swapchain: Arc<Swapchain>) -> Result<Arc<RenderPass>, GetRenderPassError> {
     Ok(vulkano::single_pass_renderpass!(
         device,
         attachments: {
@@ -490,7 +490,7 @@ fn get_descriptor_set(descriptor_set_allocator: &Arc<StandardDescriptorSetAlloca
     let descriptor_set_layout_index = 0;
     let descriptor_set_layout = descriptor_set_layouts
         .get(descriptor_set_layout_index)
-        .ok_or(NoLayout{})?;
+        .ok_or(NoLayout)?;
     let descriptor_writes = bindings.iter()
         .map(|(binding, buffer)| {
             match buffer {
@@ -597,7 +597,7 @@ impl Graphics {
                 // match wildcard `_` to catch all unknown device types.
                 _ => 4,
             })
-            .ok_or(NoPhysicalDevices {})?;
+            .ok_or(NoPhysicalDevices)?;
 
         let (device, mut queues) = Device::new(
             physical_device.clone(),

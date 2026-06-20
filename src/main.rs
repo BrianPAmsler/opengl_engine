@@ -4,10 +4,9 @@ use std::{cell::RefCell, rc::Rc};
 
 
 use gl_types::{geometric::normalize, vec2, vec3};
-use opengl_engine::engine::Engine;
 use regex::Regex;
 
-use crate::{engine::{Engine, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error2::{ExplicitUnwrap, TryUnwrap, dyn_error::{Error, Result}}};
+use opengl_engine::{engine::{Engine, WindowMode, game_object::{ObjectID, component::Component}, graphics::{Camera, Projection, sprite_renderer::components::{Sprite, SpriteSheet}, terrain::Terrain}, input::Key}, error::{ExplicitUnwrap, TryUnwrap, any::{Error, Result}}};
 
 #[derive(Clone, Default)]
 pub struct FPSCounter {
@@ -136,7 +135,7 @@ impl Component for Renderer {
 }
 
 fn start_game() -> Result<()> {
-    let mut engine = Engine::new("Test Window", 1280, 720, engine::WindowMode::Windowed)?;
+    let mut engine = Engine::new("Test Window", 1280, 720, WindowMode::Windowed)?;
 
     let a = engine.world.create_game_object("a", engine.world.get_root())?;
 

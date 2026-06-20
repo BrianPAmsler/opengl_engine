@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use bytemuck::{Pod, Zeroable};
+use crate::error::Result;
 use gl_types::{matrices::{Mat4, MatN}, vec2, vec4, vectors::{Vec2, Vec3, VecN}};
 use image::DynamicImage;
 use itertools::Itertools;
@@ -8,7 +9,7 @@ use vulkano::buffer::{BufferContents, Subbuffer};
 use vulkano::command_buffer::DrawIndexedIndirectCommand;
 use vulkano::pipeline::graphics::vertex_input::Vertex;
 
-use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, builder::TextureBuilder, sprite_renderer::error::{AddSpritesheetError, SpriteRendererBufferError, SpriteRendererUpdateError, UnknownSpriteSheet}}}, error2::Result};
+use crate::{engine::{data_structures::{AllocationIndex, VecAllocator}, graphics::{AlignedVec3, Binding, BufferType, Graphics, PipelineBuilder, PipelineHandle, builder::TextureBuilder, sprite_renderer::error::{AddSpritesheetError, SpriteRendererBufferError, SpriteRendererUpdateError, UnknownSpriteSheet}}}};
 
 const UNIFORMS_BINDING: u32 = 1;
 const SPRITE_SHEET_BINDING: u32 = 2;
@@ -330,7 +331,7 @@ mod tests {
         }
     }
 
-    use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}, error2::dyn_error::Result};
+    use crate::{engine::graphics::{Binding, BufferType, Graphics, PipelineBuilder, sprite_renderer::sprite_renderer::{AlignedVec3, GLSpriteStruct, INDEX_DATA, InputData, SPRITE_MAP_BINDING, SPRITE_SHEET_BINDING, SpriteSSBO, SpriteSheetSSBO, UNIFORMS_BINDING, VERTEX_DATA, Vec4Aligned}}};
     
     
     
@@ -338,7 +339,7 @@ mod tests {
     use winit::platform::windows::EventLoopBuilderExtWindows;
 
     #[test]
-    pub fn sprite_struct_test() -> Result<()> {
+    pub fn sprite_struct_test() -> Result<(), Box<dyn std::error::Error>> {
         let _lock = crate::engine::graphics::test_lock::LOCK.lock().unwrap();
 
         let mut event_loop = EventLoop::builder()

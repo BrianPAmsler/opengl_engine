@@ -4,77 +4,64 @@ use std::{any::TypeId, cell::{Ref, RefCell, RefMut}, collections::{BTreeMap, Has
 use gl_types::vectors::Vec3;
 use itertools::{Either::{Left, Right}, Itertools};
 
-use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, DeadComponent, DeadObject, WorldMismatch, unions::{ComponentBorrowError, ComponentError, ObjectError, RemoveError}}, game_object::Transform}, graphics::Camera}, error2::{EngineError, ExplicitUnwrap, Result, dyn_error::Error as DynError}};
+use crate::{engine::{Engine, data_structures::{AllocationIndex, VecAllocator}, game_object::{error::{ComponentDowncastError, unions::{ComponentBorrowError, ComponentError, ObjectError}}, game_object::Transform}, graphics::Camera}, error::{ExplicitUnwrap, Result}};
+use crate::error::{Error, any::Error as AnyError};
 
 use super::{component::Component, game_object::GameObject};
 
 pub mod error {
-    use thiserror::Error;
-
-    use crate::error2::EngineError;
+    use error::Error;
 
     #[derive(Error, Debug)]
     #[error("Component is dead!")]
     pub struct DeadComponent;
 
-    impl EngineError for DeadComponent {}
-
     #[derive(Error, Debug)]
     #[error("Object is dead!")]
     pub struct DeadObject;
 
-    impl EngineError for DeadObject {}
-
     #[derive(Error, Debug)]
-    #[error("{other} must belong to the same world!")]
-    pub struct WorldMismatch { pub other: &'static str }
-
-    impl EngineError for WorldMismatch {}
+    #[error("Object must belong to the same world!")]
+    pub struct WorldMismatch;
 
     #[derive(Error, Debug)]
     #[error("Component is not of type {type_name}")]
     pub struct ComponentDowncastError { pub type_name: String }
 
-    impl EngineError for ComponentDowncastError {}
-
     pub mod unions {
-        use error_union::error_union;
-        use crate::error2::{EngineError, Error, ErrorMessage};
+        use crate::engine::data_structures;
+        use crate::engine::game_object::error::{DeadComponent, DeadObject, WorldMismatch};
+        use crate::error::{Error, union};
+        use crate::error as errors_module;
 
-        error_union!(super::DeadComponent, super::WorldMismatch as ComponentError);
-        error_union!(super::DeadObject, super::WorldMismatch as ObjectError);
-        error_union!(super::DeadObject, super::DeadComponent, super::WorldMismatch, ErrorMessage as RemoveError);
-        error_union!(super::DeadComponent, super::WorldMismatch, super::ComponentDowncastError as ComponentBorrowError);
+        union!(super::DeadComponent, super::WorldMismatch as ComponentError);
+        union!(super::DeadObject, super::WorldMismatch as ObjectError);
+        union!(ComponentError as RemoveError);
+        union!(ComponentError, super::ComponentDowncastError as ComponentBorrowError);
 
-        impl From<ObjectError> for RemoveError {
-            fn from(value: ObjectError) -> Self {
+        impl From<data_structures::error::Error> for Error<ObjectError> {
+            fn from(value: data_structures::error::Error) -> Self {
                 match value {
-                    ObjectError::DeadObject(dead_object) => dead_object.into(),
-                    ObjectError::WorldMismatch(world_mismatch) => world_mismatch.into(),
+                    data_structures::error::Error::ElementRemovedError => DeadObject.into(),
+                    data_structures::error::Error::IndexPointerMismatchError => WorldMismatch.into(),
                 }
             }
         }
 
-        impl From<ComponentError> for RemoveError {
-            fn from(value: ComponentError) -> Self {
+        impl From<data_structures::error::Error> for Error<ComponentError> {
+            fn from(value: data_structures::error::Error) -> Self {
                 match value {
-                    ComponentError::DeadComponent(dead_component) => dead_component.into(),
-                    ComponentError::WorldMismatch(world_mismatch) => world_mismatch.into(),
+                    data_structures::error::Error::ElementRemovedError => DeadComponent.into(),
+                    data_structures::error::Error::IndexPointerMismatchError => WorldMismatch.into(),
                 }
             }
         }
 
-        impl From<&'static str> for Error<RemoveError> {
-            fn from(value: &'static str) -> Self {
-                RemoveError::ErrorMessage(ErrorMessage(value)).into()
-            }
-        }
-
-        impl From<ComponentError> for ComponentBorrowError {
-            fn from(value: ComponentError) -> Self {
+        impl From<data_structures::error::Error> for Error<ComponentBorrowError> {
+            fn from(value: data_structures::error::Error) -> Self {
                 match value {
-                    ComponentError::DeadComponent(dead_object) => dead_object.into(),
-                    ComponentError::WorldMismatch(world_mismatch) => world_mismatch.into(),
+                    data_structures::error::Error::ElementRemovedError => ComponentError::DeadComponent(DeadComponent).into(),
+                    data_structures::error::Error::IndexPointerMismatchError => ComponentError::WorldMismatch(WorldMismatch).into(),
                 }
             }
         }
@@ -87,7 +74,7 @@ pub struct World {
     pub(in crate::engine::game_object) components: VecAllocator<Rc<RefCell<Box<dyn Component>>>>, // TODO: rethink component storage
     ordered_components: BTreeMap<i32, HashSet<ComponentID>>,
     uninitialized_components: BTreeMap<i32, HashSet<ComponentID>>,
-    removed_comonents: Vec<(ObjectID, Box<dyn Component>)>,
+    removed_comonents: Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)>,
     main_camera: Option<Rc<RefCell<Camera>>> // yikes
 }
 
@@ -120,7 +107,7 @@ impl World {
         }
     }
 
-    fn init(engine: &mut Engine) -> Vec<DynError> {
+    fn init(engine: &mut Engine) -> Vec<AnyError> {
         // I really hope the compiler can optimize this nonsense
         let components: Vec<ComponentID> = engine.world.uninitialized_components.iter().flat_map(|(_, set)| {
             set.iter().cloned()
@@ -131,11 +118,11 @@ impl World {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), Error<ComponentError>>((owner, rc.clone()))
         })
         .partition_map(|result| match result {
             Ok(component) => Left(component),
-            Err(err) => Right(err),
+            Err(err) => Right(err.into()),
         });
 
         errors.extend(
@@ -147,7 +134,7 @@ impl World {
         errors
     }
 
-    pub(in crate::engine) fn update(engine: &mut Engine, delta_time: f32) -> Vec<DynError> {
+    pub(in crate::engine) fn update(engine: &mut Engine, delta_time: f32) -> Vec<AnyError> {
         // I really hope the compiler can optimize this nonsense
         let mut init_errors = Self::init(engine);
 
@@ -160,11 +147,11 @@ impl World {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), Error<ComponentError>>((owner, rc.clone()))
         })
         .partition_map(|result| match result {
             Ok(component) => Left(component),
-            Err(err) => Right(err),
+            Err(err) => Right(err.into()),
         });
 
         init_errors.extend(errors);
@@ -179,7 +166,7 @@ impl World {
         errors
     }
 
-    pub(in crate::engine) fn fixed_update(engine: &mut Engine, delta_time: f32) -> Vec<DynError> {
+    pub(in crate::engine) fn fixed_update(engine: &mut Engine, delta_time: f32) -> Vec<AnyError> {
         // I really hope the compiler can optimize this nonsense
         let components: Vec<ComponentID> = engine.world.ordered_components.iter().flat_map(|(_, set)| {
             set.iter().cloned()
@@ -189,11 +176,11 @@ impl World {
             let owner = component.owner;
             let rc = engine.world.components.get(component.index)?;
 
-            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), DynError>((owner, rc.clone()))
+            Ok::<(ObjectID, Rc<RefCell<Box<dyn Component>>>), Error<ComponentError>>((owner, rc.clone()))
         })
         .partition_map(|result| match result {
             Ok(component) => Left(component),
-            Err(err) => Right(err),
+            Err(err) => Right(err.into()),
         });
 
         errors.extend(
@@ -249,11 +236,10 @@ impl World {
         Ok(())
     }
 
-    pub fn remove_component(&mut self, component: ComponentID) -> Result<(), RemoveError> {
-        let c = self.components.remove(component.index).map_err(Into::<ComponentError>::into)?;
-        let c = Rc::into_inner(c).ok_or("Component still owned somewhere.")?.into_inner(); 
+    pub fn remove_component(&mut self, component: ComponentID) -> Result<(), ComponentError> {
+        let c = self.components.remove(component.index)?;
 
-        match self.ordered_components.get_mut(c.priority()) {
+        match self.ordered_components.get_mut(c.borrow().priority()) {
             Some(list) => list.remove(&component),
             None => unreachable!(),
         };
@@ -264,7 +250,7 @@ impl World {
     }
 
     pub fn borrow_component<'a, C: Component>(&'a self, component: ComponentID) -> Result<Ref<'a, C>, ComponentBorrowError> {
-        let ref_ = self.components.get(component.index).map_err(Into::<ComponentError>::into)?.borrow();
+        let ref_ = self.components.get(component.index)?.borrow();
 
         let downcast = Ref::filter_map(ref_, |t| {
             t.downcast_ref()
@@ -274,7 +260,7 @@ impl World {
     }
 
     pub fn borrow_component_mut<'a, C: Component>(&'a self, component: ComponentID) -> Result<RefMut<'a, C>, ComponentBorrowError> {
-        let ref_ = self.components.get(component.index).map_err(Into::<ComponentError>::into)?.borrow_mut();
+        let ref_ = self.components.get(component.index)?.borrow_mut();
 
         let downcast = RefMut::filter_map(ref_, |t| {
             t.downcast_mut()
@@ -383,7 +369,7 @@ impl World {
         Ok(())
     }
 
-    pub(in crate::engine) fn get_removed_components(&mut self) -> Vec<(ObjectID, Box<dyn Component>)> {
+    pub(in crate::engine) fn get_removed_components(&mut self) -> Vec<(ObjectID, Rc<RefCell<Box<dyn Component>>>)> {
         std::mem::take(&mut self.removed_comonents)
     }
 }
@@ -401,23 +387,3 @@ impl World {
 //         crate::engine::data_structures::error::Error::IndexPointerMismatchError => WorldMismatch { other: "" }.into(),
 //     }
 // }
-
-impl EngineError for crate::engine::data_structures::error::Error {}
-
-impl From<crate::engine::data_structures::error::Error> for ObjectError {
-    fn from(value: crate::engine::data_structures::error::Error) -> Self {
-        match value {
-            crate::engine::data_structures::error::Error::ElementRemovedError => DeadObject {}.into(),
-            crate::engine::data_structures::error::Error::IndexPointerMismatchError => WorldMismatch { other: "" }.into(),
-        }
-    }
-}
-
-impl From<crate::engine::data_structures::error::Error> for ComponentError {
-    fn from(value: crate::engine::data_structures::error::Error) -> Self {
-        match value {
-            crate::engine::data_structures::error::Error::ElementRemovedError => DeadComponent {}.into(),
-            crate::engine::data_structures::error::Error::IndexPointerMismatchError => WorldMismatch { other: "" }.into(),
-        }
-    }
-}

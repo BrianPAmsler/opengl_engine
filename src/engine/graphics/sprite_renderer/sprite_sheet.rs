@@ -1,9 +1,10 @@
 use std::{collections::{BTreeSet, HashMap, VecDeque}, fmt::Debug, hash::Hash, ops::DerefMut};
 
+use crate::error::{ExplicitUnwrap, Result};
 use image::{RgbaImage, imageops};
 use lazy_static::lazy_static;
 
-use crate::{engine::graphics::{Graphics, Texture, builder::TextureBuilder, texture::error::TextureBuilderError}, error2::{ExplicitUnwrap, Result}};
+use crate::{engine::graphics::{Graphics, Texture, builder::TextureBuilder, texture::error::TextureBuilderError}};
 
 struct SpriteCell {
     x: u32,
@@ -374,7 +375,7 @@ mod tests {
 
     use pathbuf::pathbuf;
 
-    use crate::error2::ExplicitUnwrap;
+    use crate::{error::ExplicitUnwrap};
 
     use super::SpriteSheetBuilder;
 

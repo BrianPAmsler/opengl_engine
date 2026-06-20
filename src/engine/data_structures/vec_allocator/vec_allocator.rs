@@ -2,7 +2,7 @@ use std::{collections::VecDeque, fmt::Debug};
 
 use rand::RngExt as _;
 
-use crate::error2::ExplicitUnwrap;
+use crate::error::ExplicitUnwrap;
 
 use super::error::Result;
 
@@ -344,9 +344,9 @@ impl<T> IntoIterator for VecAllocator<T> {
 #[cfg(test)]
 mod tests {
 
-    use rand::{RngExt};
+    use rand::RngExt;
 
-    use crate::error2::ExplicitUnwrap;
+    use crate::error::ExplicitUnwrap;
 
     use super::{Slot, VecAllocator};
 

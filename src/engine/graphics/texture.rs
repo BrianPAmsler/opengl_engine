@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use vulkano::image::{Image, sampler::Sampler, view::ImageView};
 
-use crate::{engine::graphics::error::BufferImageError, error2::Result};
+use crate::{engine::graphics::error::BufferImageError, error::Result};
 
 use super::Graphics;
 
@@ -45,7 +45,7 @@ pub mod builder {
     use image::RgbaImage;
     use vulkano::{format::Format, image::{Image, ImageCreateInfo, ImageType, ImageUsage, sampler::{Filter, Sampler, SamplerAddressMode, SamplerCreateInfo, SamplerMipmapMode}, view::ImageView}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter}};
 
-    use crate::{engine::graphics::{Graphics, Texture, texture::{error::TextureBuilderError}}, error2::Result};
+    use crate::{engine::graphics::{Graphics, Texture, texture::error::TextureBuilderError}, error::Result};
 
     pub struct TextureBuilder {
         data: Vec<u8>,
@@ -149,17 +149,9 @@ pub mod builder {
 
 #[allow(clippy::enum_variant_names)]
 pub mod error {
-    use error_union::error_union;
-    use vulkano::command_buffer::CommandBufferExecError;
+    use error::union;
+    use crate::{engine::graphics::error::BufferImageError, error as errors_module};
+    use vulkano::{Validated, ValidationError, VulkanError, buffer::AllocateBufferError, command_buffer::CommandBufferExecError, image::AllocateImageError};
 
-    use crate::{engine::graphics::{sprite_renderer::error::AddSpritesheetError, terrain::{error::TerrainFromRawError, terrain_renderer::error::NewTerrainRendererError}}, error2::EngineError};
-    type ValidatedVulkanError = vulkano::Validated<vulkano::VulkanError>;
-    type ValidatedAllocateBufferError = vulkano::Validated<vulkano::buffer::AllocateBufferError>;
-    type BoxedValidationError = Box<vulkano::ValidationError>;
-    type ValidatedAllocateImageError = vulkano::Validated<vulkano::image::AllocateImageError>;
-
-    impl EngineError for Box<vulkano::ValidationError> {}
-    impl EngineError for CommandBufferExecError {}
-    impl EngineError for ValidatedAllocateImageError {}
-    error_union!(ValidatedAllocateImageError, ValidatedAllocateBufferError, BoxedValidationError, CommandBufferExecError, ValidatedVulkanError as TextureBuilderError into AddSpritesheetError, NewTerrainRendererError, TerrainFromRawError);
+    union!(Validated<AllocateImageError>, Validated<AllocateBufferError>, Box<ValidationError>, CommandBufferExecError, BufferImageError, Validated<VulkanError> as TextureBuilderError);
 }
